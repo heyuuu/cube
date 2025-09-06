@@ -31,6 +31,7 @@ func rootPreExecute() error {
 	var debug bool
 	cmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config folder path (default is ~/.go-cube/)")
 	cmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "open debug mode")
+	cmd.PersistentFlags().ParseErrorsAllowlist.UnknownFlags = true
 	err := cmd.PersistentFlags().Parse(args)
 	if err != nil {
 		return err
@@ -45,8 +46,8 @@ func rootPreExecute() error {
 	// 初始化 Logger
 	logger.Init()
 
-	slog.Info("init root env", "debug", debug, "cfgPath", cfgPath)
-	slog.Debug("command args", "args", args)
+	// 记录启动日志
+	slog.Debug("command start", "debug", debug, "cfgPath", config.ConfigPath(), "args", args)
 
 	return nil
 }
@@ -70,11 +71,13 @@ func init() {
 func Execute() {
 	err := rootPreExecute()
 	if err != nil {
+		slog.Error("pre execute failed", "err", err)
 		os.Exit(1)
 	}
 
 	err = rootCmd.Execute()
 	if err != nil {
+		slog.Error("execute failed", "err", err)
 		os.Exit(1)
 	}
 }

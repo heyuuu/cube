@@ -31,7 +31,9 @@ var appSearchCmd = &easycobra.Command{
 			if len(projectName) > 0 {
 				wsService := app.Default().WorkspaceService()
 				ws := wsService.FindByProjectName(projectName)
-				preferApps = ws.PreferApps()
+				if ws != nil {
+					preferApps = ws.PreferApps()
+				}
 			}
 			apps = sortApps(apps, preferApps)
 

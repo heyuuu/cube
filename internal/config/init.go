@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/heyuuu/go-cube/internal/util/pathkit"
 	"log"
-	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -16,9 +15,6 @@ const defaultCfgPath = "~/.go-cube/"
 func InitConfig(cfgPath string) {
 	if len(cfgPath) == 0 {
 		cfgPath = defaultCfgPath
-	}
-	if IsDebug() {
-		slog.Info("init config", "cfgPath", cfgPath)
 	}
 	cfgPath = pathkit.RealPath(cfgPath)
 
