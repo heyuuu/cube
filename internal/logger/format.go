@@ -4,11 +4,33 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
+// projPath 项目绝对路径，用于计算日志中 file 字段的相对位置
+var projPath string
+
+// 项目路径的相对位置，用于计算 projPath
+const relativeProjPath = "../../"
+
+func init() {
+	// 初始化项目绝对路径
+	var pc [1]uintptr
+	runtime.Callers(1, pc[:]) // skip [runtime.Callers]
+	frames := runtime.CallersFrames(pc[:])
+	frame, _ := frames.Next()
+	projPath = filepath.Join(filepath.Dir(frame.File), relativeProjPath)
+
+	lazyLog(func() {
+		slog.Debug("init proj path", "path", projPath)
+	})
+}
+
+// 日志模板变量
 const (
 	segString   = "string"
 	segTime     = "time"
@@ -99,7 +121,11 @@ func formatRecordEx(rule formatRule, r slog.Record, prefix string, suffix string
 		case segFunction:
 			buf.WriteString(f.Function)
 		case segFile:
-			buf.WriteString(f.File)
+			file := f.File
+			if projPath != "" && strings.HasPrefix(file, projPath) {
+				file, _ = filepath.Rel(projPath, file)
+			}
+			buf.WriteString(file)
 		case segLine:
 			buf.WriteString(strconv.Itoa(f.Line))
 		case segAttrs:
