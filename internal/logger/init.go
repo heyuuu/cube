@@ -79,7 +79,7 @@ func initFileHandler() slog.Handler {
 
 	// init log file
 	filePath := filepath.Join(path, logFileName)
-	file, err := os.Create(filePath)
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		lazyLog(func() {
 			slog.Error("open log file failed", "logFile", filePath, "err", err)
