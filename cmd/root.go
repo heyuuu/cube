@@ -62,6 +62,7 @@ func init() {
 		alfred.AlfredCmd,
 		// simple commands
 		versionCmd,
+		configCmd,
 		serverCmd,
 	)
 }
