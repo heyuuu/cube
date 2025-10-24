@@ -32,6 +32,7 @@ func InitApp() *App {
 		services.NewProjectService,
 		services.NewApplicationService,
 		services.NewRemoteService,
+		services.NewHistoryService,
 
 		// app
 		wire.Struct(new(App), "*"),

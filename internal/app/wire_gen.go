@@ -29,12 +29,14 @@ func InitApp() *App {
 	remoteHandler := handlers.NewRemoteHandler(remoteService)
 	v := handlers.AllHandlers(configHandler, workspaceHandler, projectHandler, applicationHandler, remoteHandler)
 	serverServer := server.NewServer(v)
+	historyService := services.NewHistoryService()
 	app := &App{
 		server:             serverServer,
 		workspaceService:   workspaceService,
 		projectService:     projectService,
 		applicationService: applicationService,
 		remoteService:      remoteService,
+		historyService:     historyService,
 	}
 	return app
 }

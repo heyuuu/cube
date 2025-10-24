@@ -23,6 +23,9 @@ var projectOpenCmd = &easycobra.Command{
 		return func(cmd *cobra.Command, args []string) {
 			projectName := args[0]
 
+			// history: 记录打开项目的程序
+			app.Default().HistoryService().AddProjectOpenLog(projectName, appName, true)
+
 			appService := app.Default().ApplicationService()
 			projService := app.Default().ProjectService()
 

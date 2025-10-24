@@ -12,6 +12,7 @@ type App struct {
 	projectService     *services.ProjectService
 	applicationService *services.ApplicationService
 	remoteService      *services.RemoteService
+	historyService     *services.HistoryService
 }
 
 func (app *App) Server() *server.Server {
@@ -32,4 +33,8 @@ func (app *App) ApplicationService() *services.ApplicationService {
 
 func (app *App) RemoteService() *services.RemoteService {
 	return app.remoteService
+}
+
+func (app *App) HistoryService() *services.HistoryService {
+	return app.historyService
 }

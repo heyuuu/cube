@@ -22,6 +22,11 @@ var appSearchCmd = &easycobra.Command{
 		return func(cmd *cobra.Command, args []string) {
 			query := args
 
+			// sticky: alfred 选择项目后会以空参数调用此命令
+			if len(query) == 0 && len(projectName) > 0 {
+				app.Default().HistoryService().AddProjectSelectLog(projectName, true)
+			}
+
 			// 获取匹配的命令列表
 			service := app.Default().ApplicationService()
 			apps := service.Search(strings.Join(query, " "))

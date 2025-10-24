@@ -3,8 +3,12 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/heyuuu/go-cube/internal/model"
 	"github.com/heyuuu/go-cube/internal/util/pathkit"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -23,6 +27,12 @@ func InitConfig(cfgPath string) {
 
 	// 初始化配置文件 config.json
 	err := initDefaultConf(cfgPath)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// 初始化数据文件 data.db
+	err = initDefaultDb(cfgPath)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -63,4 +73,46 @@ func parseConfigFile(cfgFile string, cfg *Config) error {
 	}
 
 	return nil
+}
+
+// sqlite file (data.db)
+
+var dataDb *gorm.DB
+
+func DataDb() *gorm.DB {
+	return dataDb
+}
+
+func initDefaultDb(cfgPath string) error {
+	dbFile := filepath.Join(cfgPath, "data.db")
+
+	db, err := initDb(dbFile)
+	if err != nil {
+		return err
+	}
+
+	dataDb = db
+	return nil
+}
+
+func initDb(dsn string) (*gorm.DB, error) {
+	// 连接到 SQLite 数据库
+	slog.Info("init db", "dsn", dsn)
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		//Logger: logger.Default.LogMode(logger.Info),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("无法连接到数据库: %w", err)
+	}
+
+	// 自动迁移数据表结构
+	err = db.AutoMigrate(
+		&model.ProjectSelectLog{},
+		&model.ProjectOpenLog{},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("数据表结构迁移失败: %w", err)
+	}
+
+	return db, nil
 }
