@@ -5,6 +5,7 @@ import (
 	"github.com/heyuuu/go-cube/internal/entities"
 	"github.com/heyuuu/go-cube/internal/util/easycobra"
 	"github.com/spf13/cobra"
+	"slices"
 	"strings"
 )
 
@@ -20,6 +21,11 @@ var projectSearchCmd = &easycobra.Command{
 		service := app.Default().ProjectService()
 		projects := service.Search(query)
 
+		// 最近打开日志
+		historyService := app.Default().HistoryService()
+		history := historyService.LeastSelectedProjects(10, true)
+		sortProjectsWithHistory(projects, history)
+
 		// 返回结果
 		PrintResultFunc(projects, func(proj *entities.Project) Item {
 			return Item{
@@ -29,4 +35,21 @@ var projectSearchCmd = &easycobra.Command{
 			}
 		})
 	},
+}
+
+// 优先将 history 排在前面，保持其他顺序不变
+func sortProjectsWithHistory(projects []*entities.Project, history []string) []*entities.Project {
+	weights := make(map[string]int, len(history))
+	for i, proj := range projects {
+		weights[proj.Name()] = i + len(history)
+	}
+	for i, proj := range history {
+		weights[proj] = i
+	}
+
+	slices.SortFunc(projects, func(a, b *entities.Project) int {
+		return weights[a.Name()] - weights[b.Name()]
+	})
+
+	return projects
 }

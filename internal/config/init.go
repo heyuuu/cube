@@ -7,6 +7,7 @@ import (
 	"github.com/heyuuu/go-cube/internal/util/pathkit"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"log"
 	"log/slog"
 	"os"
@@ -98,9 +99,12 @@ func initDefaultDb(cfgPath string) error {
 func initDb(dsn string) (*gorm.DB, error) {
 	// 连接到 SQLite 数据库
 	slog.Info("init db", "dsn", dsn)
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		//Logger: logger.Default.LogMode(logger.Info),
-	})
+
+	gormConfig := &gorm.Config{}
+	if IsDebug() {
+		gormConfig.Logger = logger.Default.LogMode(logger.Info)
+	}
+	db, err := gorm.Open(sqlite.Open(dsn), gormConfig)
 	if err != nil {
 		return nil, fmt.Errorf("无法连接到数据库: %w", err)
 	}
