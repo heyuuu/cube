@@ -1,11 +1,12 @@
 package logger
 
 import (
-	"github.com/heyuuu/go-cube/internal/config"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/heyuuu/go-cube/internal/config"
 )
 
 const logFileName = "cube.log"

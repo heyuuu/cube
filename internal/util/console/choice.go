@@ -2,8 +2,9 @@ package console
 
 import (
 	"fmt"
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
 	"strconv"
+
+	"github.com/heyuuu/go-cube/internal/util/slicekit"
 )
 
 func ChoiceItem[T any](title string, items []T, nameGetter func(T) string) (item T, ok bool) {

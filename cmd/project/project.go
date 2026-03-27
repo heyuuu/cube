@@ -2,18 +2,19 @@ package project
 
 import (
 	"fmt"
-	"github.com/heyuuu/go-cube/internal/app"
-	"github.com/heyuuu/go-cube/internal/entities"
-	"github.com/heyuuu/go-cube/internal/util/console"
-	"github.com/heyuuu/go-cube/internal/util/easycobra"
-	"github.com/heyuuu/go-cube/internal/util/git"
-	"github.com/spf13/cobra"
 	"log"
 	"os"
 	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/heyuuu/go-cube/internal/app"
+	"github.com/heyuuu/go-cube/internal/entities"
+	"github.com/heyuuu/go-cube/internal/util/console"
+	"github.com/heyuuu/go-cube/internal/util/easycobra"
+	"github.com/heyuuu/go-cube/internal/util/git"
+	"github.com/spf13/cobra"
 )
 
 // cmd group `project *`

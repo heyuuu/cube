@@ -1,12 +1,13 @@
 package alfred
 
 import (
-	"github.com/heyuuu/go-cube/internal/app"
-	"github.com/heyuuu/go-cube/internal/util/easycobra"
-	"github.com/spf13/cobra"
 	"log"
 	"os"
 	"os/exec"
+
+	"github.com/heyuuu/go-cube/internal/app"
+	"github.com/heyuuu/go-cube/internal/util/easycobra"
+	"github.com/spf13/cobra"
 )
 
 // cmd `alfred project-open`

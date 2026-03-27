@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/heyuuu/go-cube/internal/config"
 	"github.com/heyuuu/go-cube/internal/cube"
 	"github.com/heyuuu/go-cube/internal/util/easycobra"

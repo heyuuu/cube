@@ -3,15 +3,16 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"log/slog"
+	"os"
+	"path/filepath"
+
 	"github.com/heyuuu/go-cube/internal/model"
 	"github.com/heyuuu/go-cube/internal/util/pathkit"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log"
-	"log/slog"
-	"os"
-	"path/filepath"
 )
 
 // 默认配置目录

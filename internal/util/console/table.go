@@ -2,8 +2,9 @@ package console
 
 import (
 	"fmt"
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
 	"strings"
+
+	"github.com/heyuuu/go-cube/internal/util/slicekit"
 )
 
 func PrintTableFunc[T any](records []T, headers []string, rowGetter func(T) []string) {

@@ -2,8 +2,9 @@ package matcher
 
 import (
 	"cmp"
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
 	"slices"
+
+	"github.com/heyuuu/go-cube/internal/util/slicekit"
 )
 
 type Matcher[T any] struct {

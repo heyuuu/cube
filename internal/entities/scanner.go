@@ -1,11 +1,12 @@
 package entities
 
 import (
-	"github.com/heyuuu/go-cube/internal/common"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/heyuuu/go-cube/internal/common"
 )
 
 type ProjectScanner interface {

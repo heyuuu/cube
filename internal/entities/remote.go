@@ -1,10 +1,11 @@
 package entities
 
 import (
-	"github.com/heyuuu/go-cube/internal/config"
-	"github.com/heyuuu/go-cube/internal/util/git"
 	"path/filepath"
 	"strings"
+
+	"github.com/heyuuu/go-cube/internal/config"
+	"github.com/heyuuu/go-cube/internal/util/git"
 )
 
 type Remote struct {

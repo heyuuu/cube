@@ -1,12 +1,13 @@
 package alfred
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/heyuuu/go-cube/internal/app"
 	"github.com/heyuuu/go-cube/internal/entities"
 	"github.com/heyuuu/go-cube/internal/util/easycobra"
 	"github.com/spf13/cobra"
-	"slices"
-	"strings"
 )
 
 // cmd `alfred project-search`

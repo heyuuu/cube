@@ -1,12 +1,13 @@
 package services
 
 import (
-	"github.com/heyuuu/go-cube/internal/entities"
-	"github.com/heyuuu/go-cube/internal/util/matcher"
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
 	"log"
 	"slices"
 	"sync"
+
+	"github.com/heyuuu/go-cube/internal/entities"
+	"github.com/heyuuu/go-cube/internal/util/matcher"
+	"github.com/heyuuu/go-cube/internal/util/slicekit"
 )
 
 type ProjectService struct {

@@ -1,10 +1,11 @@
 package services
 
 import (
+	"strings"
+
 	"github.com/heyuuu/go-cube/internal/config"
 	"github.com/heyuuu/go-cube/internal/entities"
 	"github.com/heyuuu/go-cube/internal/util/slicekit"
-	"strings"
 )
 
 type WorkspaceService struct {

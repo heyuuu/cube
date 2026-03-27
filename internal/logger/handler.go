@@ -3,9 +3,10 @@ package logger
 import (
 	"context"
 	"errors"
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
 	"io"
 	"log/slog"
+
+	"github.com/heyuuu/go-cube/internal/util/slicekit"
 )
 
 // ansi colors

@@ -2,6 +2,7 @@ package remote
 
 import (
 	"fmt"
+
 	"github.com/heyuuu/go-cube/internal/app"
 	"github.com/heyuuu/go-cube/internal/entities"
 	"github.com/heyuuu/go-cube/internal/util/console"

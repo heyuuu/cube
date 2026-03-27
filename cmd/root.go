@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"log/slog"
+	"os"
+
 	"github.com/heyuuu/go-cube/cmd/alfred"
 	"github.com/heyuuu/go-cube/cmd/application"
 	"github.com/heyuuu/go-cube/cmd/project"
@@ -10,8 +13,6 @@ import (
 	"github.com/heyuuu/go-cube/internal/cube"
 	"github.com/heyuuu/go-cube/internal/logger"
 	"github.com/heyuuu/go-cube/internal/util/easycobra"
-	"log/slog"
-	"os"
 )
 
 // rootCmd represents the base command when called without any subcommands

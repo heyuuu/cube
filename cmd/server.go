@@ -1,10 +1,11 @@
 package cmd
 
 import (
+	"log"
+
 	"github.com/heyuuu/go-cube/internal/app"
 	"github.com/heyuuu/go-cube/internal/util/easycobra"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 // serverCmd represents the server command

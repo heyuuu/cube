@@ -3,9 +3,10 @@ package alfred
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+
 	"github.com/heyuuu/go-cube/internal/util/easycobra"
 	"github.com/heyuuu/go-cube/internal/util/slicekit"
-	"log"
 )
 
 // alfred root cmd
