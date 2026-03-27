@@ -73,7 +73,7 @@ func (sc *GitProjectScanner) checkPath(path string) (isProject bool, tags []stri
 		return false, nil, err
 	}
 	for _, entry := range dirEntries {
-		if entry.IsDir() && entry.Name() == ".git" { // 若 .git 目录存在则认为是一个 project
+		if entry.Name() == ".git" { // 若 .git 存在则认为是一个 project (常规仓库为 .git 目录，worktree 仓库为 .git 文件)
 			tags = append(tags, common.TagGit)
 		} else if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".godot") {
 			tags = append(tags, common.TagGodot)
