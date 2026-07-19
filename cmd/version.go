@@ -3,9 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
-
-	"github.com/heyuuu/cube/util/easycobra"
+	"github.com/heyuuu/cube/cmd/util/easycobra"
 	"github.com/heyuuu/cube/version"
 )
 
@@ -13,7 +11,8 @@ import (
 var versionCmd = &easycobra.Command{
 	Use:   "version",
 	Short: "show version",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(args []string) error {
 		fmt.Println("go-cube " + version.Version)
+		return nil
 	},
 }

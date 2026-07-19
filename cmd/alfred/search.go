@@ -4,18 +4,16 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/spf13/cobra"
-
 	"github.com/heyuuu/cube/app"
+	"github.com/heyuuu/cube/cmd/util/easycobra"
 	"github.com/heyuuu/cube/project"
-	"github.com/heyuuu/cube/util/easycobra"
 )
 
 // cmd `alfred project-search`
 var projectSearchCmd = &easycobra.Command{
 	Use:   "project-search {query?* : 项目名，支持模糊匹配}",
 	Short: "搜索项目列表",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(args []string) error {
 		// 获取输入参数
 		query := strings.Join(args, " ")
 
@@ -29,7 +27,7 @@ var projectSearchCmd = &easycobra.Command{
 		sortProjectsWithHistory(projects, history)
 
 		// 返回结果
-		PrintResultFunc(projects, func(proj *project.Project) Item {
+		return PrintResult(projects, func(proj *project.Project) Item {
 			return Item{
 				Title:    proj.Name(),
 				SubTitle: proj.RepoUrl(),

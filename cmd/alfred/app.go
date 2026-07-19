@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/heyuuu/cube/app"
+	"github.com/heyuuu/cube/cmd/util/easycobra"
 	"github.com/heyuuu/cube/opener"
-	"github.com/heyuuu/cube/util/easycobra"
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
@@ -15,13 +15,13 @@ import (
 var appSearchCmd = &easycobra.Command{
 	Use:   "app-search {query? : 命令名，支持模糊匹配} {--project= : 项目名}",
 	Short: "搜索可用命令列表",
-	InitRun: func(cmd *cobra.Command) func(cmd *cobra.Command, args []string) {
+	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
 		var projectName string
 		cmd.Flags().StringVar(&projectName, "project", "", "项目名")
 
 		// run
-		return func(cmd *cobra.Command, args []string) {
+		return func(args []string) error {
 			query := args
 
 			// sticky: alfred 选择项目后会以空参数调用此命令
@@ -38,7 +38,7 @@ var appSearchCmd = &easycobra.Command{
 			apps = sortApps(apps, preferApps)
 
 			// 返回结果
-			PrintResultFunc(apps, func(item *opener.Opener) Item {
+			return PrintResult(apps, func(item *opener.Opener) Item {
 				return Item{
 					Title:    item.Name(),
 					SubTitle: item.Bin(),

@@ -4,40 +4,35 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/spf13/cobra"
-
 	"github.com/heyuuu/cube/app"
+	"github.com/heyuuu/cube/cmd/util/console"
+	"github.com/heyuuu/cube/cmd/util/easycobra"
 	"github.com/heyuuu/cube/opener"
-	"github.com/heyuuu/cube/util/console"
-	"github.com/heyuuu/cube/util/easycobra"
 )
 
 var RootCmd = &easycobra.Command{
-	Use:     "opener",
-	Aliases: []string{"app"},
-}
-
-func init() {
-	RootCmd.AddCommand(appListCmd)
-	RootCmd.AddCommand(appSearchCmd)
-}
-
-// cmd `app list`
-var appListCmd = &easycobra.Command{
-	Use:   "list",
-	Short: "列出可用命令列表",
-	Run: func(cmd *cobra.Command, args []string) {
-		service := app.Default().OpenerService()
-		apps := service.Openers()
-		showApps(apps)
+	Use: "opener",
+	Children: []*easycobra.Command{
+		openerListCmd,
+		openerSearchCmd,
 	},
 }
 
-// cmd `app search`
-var appSearchCmd = &easycobra.Command{
-	Use:   "search {query? : 命令名，支持模糊匹配}",
-	Short: "搜索可用命令列表",
-	Run: func(cmd *cobra.Command, args []string) {
+var openerListCmd = &easycobra.Command{
+	Use:   "list [query]",
+	Short: "列出可用 Opener 列表",
+	Run: func(args []string) error {
+		service := app.Default().OpenerService()
+		apps := service.Openers()
+		showOpeners(apps)
+		return nil
+	},
+}
+
+var openerSearchCmd = &easycobra.Command{
+	Use:   "search [query]",
+	Short: "搜索可用 Opener 列表",
+	Run: func(args []string) error {
 		query := args
 
 		// 获取匹配的命令列表
@@ -45,11 +40,12 @@ var appSearchCmd = &easycobra.Command{
 		apps := service.Search(strings.Join(query, " "))
 
 		// 返回结果
-		showApps(apps)
+		showOpeners(apps)
+		return nil
 	},
 }
 
-func showApps(apps []*opener.Opener) {
+func showOpeners(apps []*opener.Opener) {
 	console.PrintTableFunc(apps, []string{
 		fmt.Sprintf("项目(%d)", len(apps)),
 		"路径",

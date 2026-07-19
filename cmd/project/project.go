@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -12,30 +13,29 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/heyuuu/cube/app"
+	"github.com/heyuuu/cube/cmd/util/console"
+	"github.com/heyuuu/cube/cmd/util/easycobra"
 	"github.com/heyuuu/cube/project"
-	"github.com/heyuuu/cube/util/console"
-	"github.com/heyuuu/cube/util/easycobra"
 	"github.com/heyuuu/cube/util/git"
 )
 
 // cmd group `project *`
-var ProjectCmd = &easycobra.Command{
+var RootCmd = &easycobra.Command{
 	Use:     "project",
 	Aliases: []string{"proj", "p"},
-}
-
-func init() {
-	ProjectCmd.AddCommand(projectSearchCmd)
-	ProjectCmd.AddCommand(projectInfoCmd)
-	ProjectCmd.AddCommand(projectOpenCmd)
-	ProjectCmd.AddCommand(projectCloneCmd)
+	Children: []*easycobra.Command{
+		projectSearchCmd,
+		projectInfoCmd,
+		projectOpenCmd,
+		projectCloneCmd,
+	},
 }
 
 // cmd `project search`
 var projectSearchCmd = &easycobra.Command{
 	Use:   "search {query?* : 项目名，支持模糊匹配} {--w|workspace= : 指定工作区，默认针对所有工作区} {--status : 分析项目}",
 	Short: "搜索项目列表",
-	InitRun: func(cmd *cobra.Command) func(cmd *cobra.Command, args []string) {
+	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
 		var workspaceName string
 		var showStatus bool
@@ -43,7 +43,7 @@ var projectSearchCmd = &easycobra.Command{
 		cmd.Flags().BoolVar(&showStatus, "status", false, "分析项目")
 
 		// run
-		return func(cmd *cobra.Command, args []string) {
+		return func(args []string) error {
 			// 获取输入参数
 			query := strings.Join(args, " ")
 
@@ -98,6 +98,8 @@ var projectSearchCmd = &easycobra.Command{
 					}
 				})
 			}
+
+			return nil
 		}
 	},
 }
@@ -107,24 +109,26 @@ var projectInfoCmd = &easycobra.Command{
 	Use:   "info {project : 项目名，支持模糊匹配} {--w|workspace= : 指定工作区，默认针对所有工作区}",
 	Short: "打开项目",
 	Args:  cobra.ExactArgs(1),
-	InitRun: func(cmd *cobra.Command) func(cmd *cobra.Command, args []string) {
+	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
 		var workspaceName string
 		cmd.Flags().StringVarP(&workspaceName, "workspace", "w", "", "指定工作区，默认针对所有工作区")
 
 		// run
-		return func(cmd *cobra.Command, args []string) {
+		return func(args []string) error {
 			query := args[0]
 
 			// 匹配项目
 			proj := selectProject(query, workspaceName)
 			if proj == nil {
-				return
+				return nil
 			}
 
 			fmt.Printf("project: %s\n", proj.Name())
 			fmt.Printf("path   : %s\n", proj.Path())
 			fmt.Printf("git-url: %s\n", proj.RepoUrl())
+
+			return nil
 		}
 	},
 }
@@ -134,7 +138,7 @@ var projectOpenCmd = &easycobra.Command{
 	Use:   "open {project : 项目名} {--app= : 打开项目的App} {--w|workspace= : 指定工作区，仅交互模式有意义}",
 	Short: "打开项目。非交互模式只支持准确项目名，非交互模式下支持模糊搜索",
 	Args:  cobra.ExactArgs(1),
-	InitRun: func(cmd *cobra.Command) func(cmd *cobra.Command, args []string) {
+	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
 		var workspaceName string
 		var appName string
@@ -142,28 +146,29 @@ var projectOpenCmd = &easycobra.Command{
 		cmd.Flags().StringVar(&appName, "app", "", "打开项目的App")
 
 		// run
-		return func(cmd *cobra.Command, args []string) {
+		return func(args []string) error {
 			query := args[0]
 
 			// 获取打开项目的app
 			openerService := app.Default().OpenerService()
 			openApp := openerService.FindByName(appName)
 			if openApp == nil {
-				log.Fatal("未找到指定app: " + appName)
-				return
+				return errors.New("未找到指定app: " + appName)
 			}
 
 			// 匹配项目
 			proj := selectProject(query, workspaceName)
 			if proj == nil {
-				return
+				return nil
 			}
 
 			// 打开项目
 			err := passthruRun(openApp.Bin(), proj.Path())
 			if err != nil {
-				log.Fatalf("打开失败: " + err.Error())
+				return fmt.Errorf("打开失败: %w", err)
 			}
+
+			return nil
 		}
 	},
 }
@@ -192,7 +197,7 @@ var projectCloneCmd = &easycobra.Command{
 	Use:   "clone {repoUrl} {--depth= : 克隆深度，默认为不限制} {--b|branch=}",
 	Short: "使用 RepoUrl 初始化项目",
 	Args:  cobra.ExactArgs(1),
-	InitRun: func(cmd *cobra.Command) func(cmd *cobra.Command, args []string) {
+	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
 		var depth int
 		var branch string
@@ -200,7 +205,7 @@ var projectCloneCmd = &easycobra.Command{
 		cmd.Flags().StringVarP(&branch, "branch", "b", "", "分支名，默认为master")
 
 		// run
-		return func(cmd *cobra.Command, args []string) {
+		return func(args []string) error {
 			rawRepoUrl := args[0]
 			if branch != "" && depth == 0 {
 				depth = 1 // // 指定分支情况下，默认深度为1
@@ -209,23 +214,20 @@ var projectCloneCmd = &easycobra.Command{
 			// 解析 repoUrl
 			u, err := git.ParseRepoUrl(rawRepoUrl)
 			if err != nil {
-				log.Fatalf("repoUrl 不是合法地址: url=%s", rawRepoUrl)
-				return
+				return fmt.Errorf("repoUrl 不是合法地址: url=%s", rawRepoUrl)
 			}
 
 			// 匹配hub
 			service := app.Default().ProjectService()
 			remote := service.FindRemoteByHost(u.Host)
 			if remote == nil {
-				log.Fatalf("repoUrl 没有对应 remote 配置: host=%s", u.Host)
-				return
+				return fmt.Errorf("repoUrl 没有对应 remote 配置: host=%s", u.Host)
 			}
 
 			// 匹配本地地址
 			localPath, ok := remote.MapDefaultPath(u)
 			if !ok {
-				log.Fatalf("对应 remote 未支持此路径: remote=%s, path=%s", remote.Name(), u.Path)
-				return
+				return fmt.Errorf("对应 remote 未支持此路径: remote=%s, path=%s", remote.Name(), u.Path)
 			}
 
 			// 执行命令
@@ -233,6 +235,8 @@ var projectCloneCmd = &easycobra.Command{
 			if err != nil {
 				log.Fatalf("执行 clone 命令失败: " + err.Error())
 			}
+
+			return nil
 		}
 	},
 }

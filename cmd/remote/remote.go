@@ -3,30 +3,28 @@ package remote
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	"github.com/heyuuu/cube/app"
+	"github.com/heyuuu/cube/cmd/util/console"
+	"github.com/heyuuu/cube/cmd/util/easycobra"
 	"github.com/heyuuu/cube/project"
-	"github.com/heyuuu/cube/util/console"
-	"github.com/heyuuu/cube/util/easycobra"
 )
 
-var RemoteCmd = &easycobra.Command{
+var RootCmd = &easycobra.Command{
 	Use: "remote",
-}
-
-func init() {
-	RemoteCmd.AddCommand(remoteListCmd)
+	Children: []*easycobra.Command{
+		remoteListCmd,
+	},
 }
 
 // cmd `remote list`
 var remoteListCmd = &easycobra.Command{
 	Use:   "list",
 	Short: "列出可用远端仓库列表",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(args []string) error {
 		service := app.Default().ProjectService()
 		remotes := service.Remotes()
 		showRemotes(remotes)
+		return nil
 	},
 }
 

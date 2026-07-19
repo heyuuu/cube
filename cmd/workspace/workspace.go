@@ -3,28 +3,26 @@ package workspace
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	"github.com/heyuuu/cube/app"
-	"github.com/heyuuu/cube/util/easycobra"
+	"github.com/heyuuu/cube/cmd/util/easycobra"
 )
 
-var WorkspaceCmd = &easycobra.Command{
+var RootCmd = &easycobra.Command{
 	Use:     "workspace",
 	Aliases: []string{"ws"},
-}
-
-func init() {
-	WorkspaceCmd.AddCommand(workspaceListCmd)
+	Children: []*easycobra.Command{
+		workspaceListCmd,
+	},
 }
 
 // cmd `workspace list`
 var workspaceListCmd = &easycobra.Command{
 	Use: "list",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(args []string) error {
 		service := app.Default().ProjectService()
 		for _, ws := range service.Workspaces() {
 			fmt.Println(ws.Name())
 		}
+		return nil
 	},
 }

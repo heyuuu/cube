@@ -3,21 +3,18 @@ package alfred
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
-	"github.com/heyuuu/cube/util/easycobra"
+	"github.com/heyuuu/cube/cmd/util/easycobra"
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
-// alfred root cmd
-var AlfredCmd = &easycobra.Command{
+var RootCmd = &easycobra.Command{
 	Use: "alfred",
-}
-
-func init() {
-	AlfredCmd.AddCommand(projectSearchCmd)
-	AlfredCmd.AddCommand(projectOpenCmd)
-	AlfredCmd.AddCommand(appSearchCmd)
+	Children: []*easycobra.Command{
+		projectSearchCmd,
+		projectOpenCmd,
+		appSearchCmd,
+	},
 }
 
 // helpers
@@ -31,20 +28,16 @@ type Item struct {
 	Arg      string `json:"arg"`
 }
 
-func PrintResult(items []Item) {
+func PrintResult[T any](items []T, fn func(item T) Item) error {
 	result := H{
-		"items": items,
+		"items": slicekit.Map(items, fn),
 	}
 
 	bytes, err := json.Marshal(result)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	fmt.Println(string(bytes))
-}
-
-func PrintResultFunc[T any](items []T, fn func(item T) Item) {
-	listItems := slicekit.Map(items, fn)
-	PrintResult(listItems)
+	return nil
 }
