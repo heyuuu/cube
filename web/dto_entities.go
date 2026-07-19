@@ -1,4 +1,4 @@
-package response
+package web
 
 type ProjectDto struct {
 	Name    string   `json:"name"`

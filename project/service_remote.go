@@ -1,28 +1,27 @@
-package services
+package project
 
 import (
 	"github.com/heyuuu/cube/config"
-	"github.com/heyuuu/cube/entities"
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
 type RemoteService struct {
-	remotes []*entities.Remote
+	remotes []*Remote
 }
 
 func NewRemoteService(conf config.Config) *RemoteService {
-	remotes := slicekit.Map(conf.Remotes, entities.NewRemote)
+	remotes := slicekit.Map(conf.Remotes, NewRemote)
 
 	return &RemoteService{
 		remotes: remotes,
 	}
 }
 
-func (s *RemoteService) Remotes() []*entities.Remote {
+func (s *RemoteService) Remotes() []*Remote {
 	return s.remotes
 }
 
-func (s *RemoteService) FindByName(name string) *entities.Remote {
+func (s *RemoteService) FindByName(name string) *Remote {
 	for _, r := range s.remotes {
 		if r.Name() == name {
 			return r
@@ -31,7 +30,7 @@ func (s *RemoteService) FindByName(name string) *entities.Remote {
 	return nil
 }
 
-func (s *RemoteService) FindByHost(host string) *entities.Remote {
+func (s *RemoteService) FindByHost(host string) *Remote {
 	for _, r := range s.remotes {
 		if r.Host() == host {
 			return r

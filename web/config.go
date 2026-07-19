@@ -1,14 +1,14 @@
-package handlers
+package web
 
 import (
-	"github.com/heyuuu/cube/services"
+	"github.com/heyuuu/cube/config"
 )
 
 type ConfigHandler struct {
-	service *services.ConfigService
+	service *config.ConfigService
 }
 
-func NewConfigHandler(service *services.ConfigService) *ConfigHandler {
+func NewConfigHandler(service *config.ConfigService) *ConfigHandler {
 	return &ConfigHandler{
 		service: service,
 	}

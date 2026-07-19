@@ -1,4 +1,4 @@
-package entities
+package project
 
 import (
 	"io/fs"

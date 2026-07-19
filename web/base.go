@@ -1,4 +1,4 @@
-package handlers
+package web
 
 type H map[string]any
 

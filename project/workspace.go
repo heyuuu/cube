@@ -1,4 +1,4 @@
-package entities
+package project
 
 import (
 	"github.com/heyuuu/cube/config"

@@ -1,11 +1,23 @@
-package services
+package history
 
 import (
 	"gorm.io/gorm"
 
-	"github.com/heyuuu/cube/config"
-	"github.com/heyuuu/cube/model"
+	"github.com/heyuuu/cube/db"
 )
+
+type ProjectSelectLog struct {
+	gorm.Model
+	Project string `gorm:"project"`
+	Alfred  bool   `gorm:"alfred"`
+}
+
+type ProjectOpenLog struct {
+	gorm.Model
+	Project string `gorm:"project"`
+	App     string `gorm:"app"`
+	Alfred  bool   `gorm:"alfred"`
+}
 
 type HistoryService struct {
 	db *gorm.DB
@@ -16,9 +28,9 @@ func NewHistoryService() *HistoryService {
 }
 
 func (s *HistoryService) AddProjectSelectLog(project string, alfred bool) error {
-	db := config.DataDb()
+	db := db.DataDb()
 
-	m := &model.ProjectSelectLog{
+	m := &ProjectSelectLog{
 		Project: project,
 		Alfred:  alfred,
 	}
@@ -27,12 +39,12 @@ func (s *HistoryService) AddProjectSelectLog(project string, alfred bool) error 
 }
 
 func (s *HistoryService) LeastSelectedProjects(limit int, alfred bool) []string {
-	db := config.DataDb()
+	db := db.DataDb()
 
 	var projects []string
-	db.Model(&model.ProjectSelectLog{}).
+	db.Model(&ProjectSelectLog{}).
 		Select("project").
-		Where(&model.ProjectSelectLog{
+		Where(&ProjectSelectLog{
 			Alfred: alfred,
 		}).
 		Group("project").
@@ -44,9 +56,9 @@ func (s *HistoryService) LeastSelectedProjects(limit int, alfred bool) []string 
 }
 
 func (s *HistoryService) AddProjectOpenLog(project string, app string, alfred bool) error {
-	db := config.DataDb()
+	db := db.DataDb()
 
-	m := &model.ProjectOpenLog{
+	m := &ProjectOpenLog{
 		Project: project,
 		App:     app,
 		Alfred:  alfred,
@@ -56,12 +68,12 @@ func (s *HistoryService) AddProjectOpenLog(project string, app string, alfred bo
 }
 
 func (s *HistoryService) LeastProjectOpenApps(project string, limit int, alfred bool) []string {
-	db := config.DataDb()
+	db := db.DataDb()
 
 	var projects []string
-	db.Model(&model.ProjectOpenLog{}).
+	db.Model(&ProjectOpenLog{}).
 		Select("app").
-		Where(&model.ProjectOpenLog{
+		Where(&ProjectOpenLog{
 			Project: project,
 			Alfred:  alfred,
 		}).

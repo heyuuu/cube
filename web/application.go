@@ -1,16 +1,15 @@
-package handlers
+package web
 
 import (
-	"github.com/heyuuu/cube/converter"
-	"github.com/heyuuu/cube/services"
+	"github.com/heyuuu/cube/opener"
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
 type ApplicationHandler struct {
-	service *services.ApplicationService
+	service *opener.ApplicationService
 }
 
-func NewApplicationHandler(service *services.ApplicationService) *ApplicationHandler {
+func NewApplicationHandler(service *opener.ApplicationService) *ApplicationHandler {
 	return &ApplicationHandler{
 		service: service,
 	}
@@ -23,7 +22,7 @@ func (h *ApplicationHandler) Register(register func(name string, handler HandleF
 
 func (h *ApplicationHandler) List(params any) (result any, err error) {
 	apps := h.service.Apps()
-	list := slicekit.Map(apps, converter.ToApplicationResponseDto)
+	list := slicekit.Map(apps, ToApplicationResponseDto)
 	return listResult(list), nil
 }
 
@@ -39,5 +38,5 @@ func (h *ApplicationHandler) Info(params any) (result any, err error) {
 	}
 
 	app := h.service.FindByName(p.Name)
-	return itemResult(app, converter.ToApplicationResponseDto)
+	return itemResult(app, ToApplicationResponseDto)
 }

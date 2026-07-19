@@ -1,4 +1,4 @@
-package entities
+package opener
 
 import (
 	"github.com/heyuuu/cube/config"

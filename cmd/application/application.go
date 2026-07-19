@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/heyuuu/cube/app"
-	"github.com/heyuuu/cube/entities"
+	"github.com/heyuuu/cube/opener"
 	"github.com/heyuuu/cube/util/console"
 	"github.com/heyuuu/cube/util/easycobra"
 )
@@ -49,11 +49,11 @@ var appSearchCmd = &easycobra.Command{
 	},
 }
 
-func showApps(apps []*entities.Application) {
+func showApps(apps []*opener.Application) {
 	console.PrintTableFunc(apps, []string{
 		fmt.Sprintf("项目(%d)", len(apps)),
 		"路径",
-	}, func(app *entities.Application) []string {
+	}, func(app *opener.Application) []string {
 		return []string{
 			app.Name(),
 			app.Bin(),

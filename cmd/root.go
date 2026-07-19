@@ -11,6 +11,8 @@ import (
 	"github.com/heyuuu/cube/cmd/workspace"
 	config2 "github.com/heyuuu/cube/config"
 	"github.com/heyuuu/cube/cube"
+	"github.com/heyuuu/cube/db"
+	"github.com/heyuuu/cube/history"
 	"github.com/heyuuu/cube/logger"
 	"github.com/heyuuu/cube/util/easycobra"
 )
@@ -42,7 +44,19 @@ func rootPreExecute() error {
 	config2.SetDebug(debug)
 
 	// 初始化配置
-	config2.InitConfig(cfgPath)
+	err = config2.InitConfig(cfgPath)
+	if err != nil {
+		return err
+	}
+
+	// 初始化数据文件 data.db
+	err = db.Init(config2.ConfigPath(),
+		&history.ProjectSelectLog{},
+		&history.ProjectOpenLog{},
+	)
+	if err != nil {
+		return err
+	}
 
 	// 初始化 Logger
 	logger.Init()

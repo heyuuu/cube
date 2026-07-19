@@ -1,16 +1,15 @@
-package handlers
+package web
 
 import (
-	"github.com/heyuuu/cube/converter"
-	"github.com/heyuuu/cube/services"
+	"github.com/heyuuu/cube/project"
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
 type ProjectHandler struct {
-	service *services.ProjectService
+	service *project.ProjectService
 }
 
-func NewProjectHandler(service *services.ProjectService) *ProjectHandler {
+func NewProjectHandler(service *project.ProjectService) *ProjectHandler {
 	return &ProjectHandler{
 		service: service,
 	}
@@ -23,7 +22,7 @@ func (h *ProjectHandler) Register(register func(name string, handler HandleFunc)
 
 func (h *ProjectHandler) List(params any) (result any, err error) {
 	projects := h.service.Projects()
-	list := slicekit.Map(projects, converter.ToProjectResponseDto)
+	list := slicekit.Map(projects, ToProjectResponseDto)
 	return listResult(list), nil
 }
 
@@ -39,5 +38,5 @@ func (h *ProjectHandler) Info(params any) (result any, err error) {
 	}
 
 	app := h.service.FindByName(p.Name)
-	return itemResult(app, converter.ToProjectResponseDto)
+	return itemResult(app, ToProjectResponseDto)
 }

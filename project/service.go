@@ -1,11 +1,10 @@
-package services
+package project
 
 import (
 	"log"
 	"slices"
 	"sync"
 
-	entities2 "github.com/heyuuu/cube/entities"
 	"github.com/heyuuu/cube/util/matcher"
 	"github.com/heyuuu/cube/util/slicekit"
 )
@@ -13,26 +12,26 @@ import (
 type ProjectService struct {
 	workspaceService *WorkspaceService
 
-	scanCache map[string][]*entities2.Project
+	scanCache map[string][]*Project
 	lockPool  sync.Map
 }
 
 func NewProjectService(workspaceService *WorkspaceService) *ProjectService {
 	return &ProjectService{
 		workspaceService: workspaceService,
-		scanCache:        make(map[string][]*entities2.Project),
+		scanCache:        make(map[string][]*Project),
 	}
 }
 
-func (s *ProjectService) Projects() []*entities2.Project {
+func (s *ProjectService) Projects() []*Project {
 	workspaces := s.workspaceService.Workspaces()
-	projectsGroup := slicekit.Map(workspaces, func(ws *entities2.Workspace) []*entities2.Project {
+	projectsGroup := slicekit.Map(workspaces, func(ws *Workspace) []*Project {
 		return s.ScanProjects(ws)
 	})
 	return slices.Concat(projectsGroup...)
 }
 
-func (s *ProjectService) FindByName(name string) *entities2.Project {
+func (s *ProjectService) FindByName(name string) *Project {
 	ws := s.workspaceService.FindByProjectName(name)
 	if ws == nil {
 		return nil
@@ -46,11 +45,11 @@ func (s *ProjectService) FindByName(name string) *entities2.Project {
 	return nil
 }
 
-func (s *ProjectService) Search(query string) []*entities2.Project {
+func (s *ProjectService) Search(query string) []*Project {
 	return s.SearchInWorkspace(query, "")
 }
 
-func (s *ProjectService) SearchInWorkspace(query string, workspaceName string) []*entities2.Project {
+func (s *ProjectService) SearchInWorkspace(query string, workspaceName string) []*Project {
 	projects := s.projectsInWorkspace(workspaceName)
 	if len(projects) == 0 {
 		return nil
@@ -60,11 +59,11 @@ func (s *ProjectService) SearchInWorkspace(query string, workspaceName string) [
 		return projects
 	}
 
-	projectMatcher := matcher.NewKeywordMatcher(projects, (*entities2.Project).Name, nil)
+	projectMatcher := matcher.NewKeywordMatcher(projects, (*Project).Name, nil)
 	return projectMatcher.Match(query)
 }
 
-func (s *ProjectService) projectsInWorkspace(workspaceName string) []*entities2.Project {
+func (s *ProjectService) projectsInWorkspace(workspaceName string) []*Project {
 	if workspaceName == "" {
 		return s.Projects()
 	} else {
@@ -82,7 +81,7 @@ func (s *ProjectService) getLock(key string) *sync.RWMutex {
 	return lock.(*sync.RWMutex)
 }
 
-func (s *ProjectService) ScanProjects(ws *entities2.Workspace) []*entities2.Project {
+func (s *ProjectService) ScanProjects(ws *Workspace) []*Project {
 	// 判断是否有扫描规则，若没有直接返回
 	scanner := ws.Scanner()
 	if scanner == nil {

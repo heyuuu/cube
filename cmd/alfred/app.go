@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/heyuuu/cube/app"
-	"github.com/heyuuu/cube/entities"
+	"github.com/heyuuu/cube/opener"
 	"github.com/heyuuu/cube/util/easycobra"
 	"github.com/heyuuu/cube/util/slicekit"
 )
@@ -38,7 +38,7 @@ var appSearchCmd = &easycobra.Command{
 			apps = sortApps(apps, preferApps)
 
 			// 返回结果
-			PrintResultFunc(apps, func(item *entities.Application) Item {
+			PrintResultFunc(apps, func(item *opener.Application) Item {
 				return Item{
 					Title:    item.Name(),
 					SubTitle: item.Bin(),
@@ -71,7 +71,7 @@ func getProjectPreferApps(projectName string) []string {
 	return nil
 }
 
-func sortApps(apps []*entities.Application, preferAppNames []string) []*entities.Application {
+func sortApps(apps []*opener.Application, preferAppNames []string) []*opener.Application {
 	if len(apps) <= 1 || len(preferAppNames) == 0 {
 		return apps
 	}
@@ -81,7 +81,7 @@ func sortApps(apps []*entities.Application, preferAppNames []string) []*entities
 		preferAppNameMap[appName] = i
 	}
 
-	return slicekit.SortByWithIndex(apps, func(i int, app *entities.Application) int {
+	return slicekit.SortByWithIndex(apps, func(i int, app *opener.Application) int {
 		if idx, ok := preferAppNameMap[app.Name()]; ok {
 			return idx
 		} else {

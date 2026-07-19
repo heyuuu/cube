@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/heyuuu/cube/app"
-	"github.com/heyuuu/cube/entities"
+	"github.com/heyuuu/cube/project"
 	"github.com/heyuuu/cube/util/console"
 	"github.com/heyuuu/cube/util/easycobra"
 )
@@ -30,11 +30,11 @@ var remoteListCmd = &easycobra.Command{
 	},
 }
 
-func showRemotes(remotes []*entities.Remote) {
+func showRemotes(remotes []*project.Remote) {
 	console.PrintTableFunc(remotes, []string{
 		fmt.Sprintf("Remote(%d)", len(remotes)),
 		"Path",
-	}, func(r *entities.Remote) []string {
+	}, func(r *project.Remote) []string {
 		return []string{
 			r.Name(),
 			r.Host(),

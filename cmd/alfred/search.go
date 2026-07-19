@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/heyuuu/cube/app"
-	"github.com/heyuuu/cube/entities"
+	"github.com/heyuuu/cube/project"
 	"github.com/heyuuu/cube/util/easycobra"
 )
 
@@ -29,7 +29,7 @@ var projectSearchCmd = &easycobra.Command{
 		sortProjectsWithHistory(projects, history)
 
 		// 返回结果
-		PrintResultFunc(projects, func(proj *entities.Project) Item {
+		PrintResultFunc(projects, func(proj *project.Project) Item {
 			return Item{
 				Title:    proj.Name(),
 				SubTitle: proj.RepoUrl(),
@@ -40,7 +40,7 @@ var projectSearchCmd = &easycobra.Command{
 }
 
 // 优先将 history 排在前面，保持其他顺序不变
-func sortProjectsWithHistory(projects []*entities.Project, history []string) []*entities.Project {
+func sortProjectsWithHistory(projects []*project.Project, history []string) []*project.Project {
 	weights := make(map[string]int, len(history))
 	for i, proj := range projects {
 		weights[proj.Name()] = i + len(history)
@@ -49,7 +49,7 @@ func sortProjectsWithHistory(projects []*entities.Project, history []string) []*
 		weights[proj] = i
 	}
 
-	slices.SortFunc(projects, func(a, b *entities.Project) int {
+	slices.SortFunc(projects, func(a, b *project.Project) int {
 		return weights[a.Name()] - weights[b.Name()]
 	})
 

@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/heyuuu/cube/app"
-	"github.com/heyuuu/cube/entities"
+	"github.com/heyuuu/cube/project"
 	console2 "github.com/heyuuu/cube/util/console"
 	"github.com/heyuuu/cube/util/easycobra"
 	git2 "github.com/heyuuu/cube/util/git"
@@ -56,7 +56,7 @@ var projectSearchCmd = &easycobra.Command{
 				console2.PrintTableFunc(projects, []string{
 					fmt.Sprintf("项目(%d)", len(projects)),
 					"路径",
-				}, func(p *entities.Project) []string {
+				}, func(p *project.Project) []string {
 					return []string{
 						p.Name(),
 						p.Path(),
@@ -69,7 +69,7 @@ var projectSearchCmd = &easycobra.Command{
 					"当前分支",
 					"Master差异",
 					"当前工作区是否干净",
-				}, func(p *entities.Project) []string {
+				}, func(p *project.Project) []string {
 					branches, currBranch, _ := git2.Branches(p.Path(), true, true)
 
 					var branchDiff string
@@ -168,7 +168,7 @@ var projectOpenCmd = &easycobra.Command{
 	},
 }
 
-func selectProject(query string, workspace string) *entities.Project {
+func selectProject(query string, workspace string) *project.Project {
 	service := app.Default().ProjectService()
 	projects := service.SearchInWorkspace(query, workspace)
 	switch len(projects) {
@@ -178,7 +178,7 @@ func selectProject(query string, workspace string) *entities.Project {
 	case 1:
 		return projects[0]
 	default:
-		proj, ok := console2.ChoiceItem("选择项目", projects, (*entities.Project).Name)
+		proj, ok := console2.ChoiceItem("选择项目", projects, (*project.Project).Name)
 		if !ok {
 			fmt.Println("选择项目失败")
 			return nil

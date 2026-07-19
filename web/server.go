@@ -1,5 +1,5 @@
 // 提供了类RPC的服务端功能实现，允许拓展兼容 web api、rpc、wails api 等的调用
-package server
+package web
 
 import (
 	"encoding/json"
@@ -7,9 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-
-	"github.com/heyuuu/cube/dto/response"
-	"github.com/heyuuu/cube/handlers"
 )
 
 // errors
@@ -23,12 +20,12 @@ func IsMethodNotFound(err error) bool {
 
 // Server 服务器，响应 api 请求
 type Server struct {
-	handlers map[string]handlers.HandleFunc
+	handlers map[string]HandleFunc
 }
 
-func NewServer(apiHandlers []handlers.Handler) *Server {
+func NewServer(apiHandlers []Handler) *Server {
 	s := &Server{
-		handlers: map[string]handlers.HandleFunc{},
+		handlers: map[string]HandleFunc{},
 	}
 
 	// init api handlers
@@ -39,7 +36,7 @@ func NewServer(apiHandlers []handlers.Handler) *Server {
 	return s
 }
 
-func (s *Server) registerHandler(name string, handler handlers.HandleFunc) {
+func (s *Server) registerHandler(name string, handler HandleFunc) {
 	name = strings.Trim(name, "/")
 	if name != "" {
 		s.handlers[name] = handler
@@ -94,11 +91,11 @@ func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// 调用对应的处理函数
-	var res *response.ApiResponse
+	var res *ApiResponse
 	if result, err := handler(args); err == nil {
-		res = response.NewApiResponse(true, "", result)
+		res = NewApiResponse(true, "", result)
 	} else {
-		res = response.NewApiResponse(false, err.Error(), nil)
+		res = NewApiResponse(false, err.Error(), nil)
 	}
 
 	// json 化；若失败，返回 500

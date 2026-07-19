@@ -1,40 +1,42 @@
 package app
 
 import (
-	"github.com/heyuuu/cube/server"
-	services2 "github.com/heyuuu/cube/services"
+	"github.com/heyuuu/cube/history"
+	"github.com/heyuuu/cube/opener"
+	"github.com/heyuuu/cube/project"
+	"github.com/heyuuu/cube/web"
 )
 
 type App struct {
-	server *server.Server
+	server *web.Server
 
-	workspaceService   *services2.WorkspaceService
-	projectService     *services2.ProjectService
-	applicationService *services2.ApplicationService
-	remoteService      *services2.RemoteService
-	historyService     *services2.HistoryService
+	workspaceService   *project.WorkspaceService
+	projectService     *project.ProjectService
+	applicationService *opener.ApplicationService
+	remoteService      *project.RemoteService
+	historyService     *history.HistoryService
 }
 
-func (app *App) Server() *server.Server {
+func (app *App) Server() *web.Server {
 	return app.server
 }
 
-func (app *App) WorkspaceService() *services2.WorkspaceService {
+func (app *App) WorkspaceService() *project.WorkspaceService {
 	return app.workspaceService
 }
 
-func (app *App) ProjectService() *services2.ProjectService {
+func (app *App) ProjectService() *project.ProjectService {
 	return app.projectService
 }
 
-func (app *App) ApplicationService() *services2.ApplicationService {
+func (app *App) ApplicationService() *opener.ApplicationService {
 	return app.applicationService
 }
 
-func (app *App) RemoteService() *services2.RemoteService {
+func (app *App) RemoteService() *project.RemoteService {
 	return app.remoteService
 }
 
-func (app *App) HistoryService() *services2.HistoryService {
+func (app *App) HistoryService() *history.HistoryService {
 	return app.historyService
 }
