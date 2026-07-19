@@ -62,8 +62,8 @@ func getProjectPreferApps(projectName string) []string {
 	}
 
 	// 使用工作区的编号 app 作为项目默认偏好
-	wsService := app.Default().WorkspaceService()
-	ws := wsService.FindByProjectName(projectName)
+	service := app.Default().ProjectService()
+	ws := service.FindWorkspaceByProjectName(projectName)
 	if ws != nil {
 		return ws.PreferApps()
 	}

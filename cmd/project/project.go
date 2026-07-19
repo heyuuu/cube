@@ -214,8 +214,8 @@ var projectCloneCmd = &easycobra.Command{
 			}
 
 			// 匹配hub
-			remoteService := app.Default().RemoteService()
-			remote := remoteService.FindByHost(u.Host)
+			service := app.Default().ProjectService()
+			remote := service.FindRemoteByHost(u.Host)
 			if remote == nil {
 				log.Fatalf("repoUrl 没有对应 remote 配置: host=%s", u.Host)
 				return

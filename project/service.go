@@ -3,36 +3,90 @@ package project
 import (
 	"log"
 	"slices"
+	"strings"
 	"sync"
 
+	"github.com/heyuuu/cube/config"
 	"github.com/heyuuu/cube/util/matcher"
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
-type ProjectService struct {
-	workspaceService *WorkspaceService
-
-	scanCache map[string][]*Project
-	lockPool  sync.Map
+type Service struct {
+	workspaces []*Workspace
+	remotes    []*Remote
+	scanCache  map[string][]*Project
+	lockPool   sync.Map
 }
 
-func NewProjectService(workspaceService *WorkspaceService) *ProjectService {
-	return &ProjectService{
-		workspaceService: workspaceService,
-		scanCache:        make(map[string][]*Project),
+func NewProjectService(conf config.Config) *Service {
+	workspaces := slicekit.Map(conf.Workspaces, NewWorkspace)
+	remotes := slicekit.Map(conf.Remotes, NewRemote)
+
+	return &Service{
+		workspaces: workspaces,
+		remotes:    remotes,
+		scanCache:  make(map[string][]*Project),
 	}
 }
 
-func (s *ProjectService) Projects() []*Project {
-	workspaces := s.workspaceService.Workspaces()
+// --- workspace --
+
+func (s *Service) Workspaces() []*Workspace {
+	return s.workspaces
+}
+
+func (s *Service) FindWorkspaceByName(name string) *Workspace {
+	for _, ws := range s.workspaces {
+		if ws.Name() == name {
+			return ws
+		}
+	}
+	return nil
+}
+
+func (s *Service) FindWorkspaceByProjectName(projectName string) *Workspace {
+	if wsName, _, ok := strings.Cut(projectName, ":"); ok {
+		return s.FindWorkspaceByName(wsName)
+	}
+	return nil
+}
+
+// -- remote --
+
+func (s *Service) Remotes() []*Remote {
+	return s.remotes
+}
+
+func (s *Service) FindRemoteByName(name string) *Remote {
+	for _, r := range s.remotes {
+		if r.Name() == name {
+			return r
+		}
+	}
+	return nil
+}
+
+func (s *Service) FindRemoteByHost(host string) *Remote {
+	for _, r := range s.remotes {
+		if r.Host() == host {
+			return r
+		}
+	}
+	return nil
+}
+
+// --- project --
+
+func (s *Service) Projects() []*Project {
+	workspaces := s.Workspaces()
 	projectsGroup := slicekit.Map(workspaces, func(ws *Workspace) []*Project {
 		return s.ScanProjects(ws)
 	})
 	return slices.Concat(projectsGroup...)
 }
 
-func (s *ProjectService) FindByName(name string) *Project {
-	ws := s.workspaceService.FindByProjectName(name)
+func (s *Service) FindByName(name string) *Project {
+	ws := s.FindWorkspaceByProjectName(name)
 	if ws == nil {
 		return nil
 	}
@@ -45,11 +99,11 @@ func (s *ProjectService) FindByName(name string) *Project {
 	return nil
 }
 
-func (s *ProjectService) Search(query string) []*Project {
+func (s *Service) Search(query string) []*Project {
 	return s.SearchInWorkspace(query, "")
 }
 
-func (s *ProjectService) SearchInWorkspace(query string, workspaceName string) []*Project {
+func (s *Service) SearchInWorkspace(query string, workspaceName string) []*Project {
 	projects := s.projectsInWorkspace(workspaceName)
 	if len(projects) == 0 {
 		return nil
@@ -63,11 +117,11 @@ func (s *ProjectService) SearchInWorkspace(query string, workspaceName string) [
 	return projectMatcher.Match(query)
 }
 
-func (s *ProjectService) projectsInWorkspace(workspaceName string) []*Project {
+func (s *Service) projectsInWorkspace(workspaceName string) []*Project {
 	if workspaceName == "" {
 		return s.Projects()
 	} else {
-		ws := s.workspaceService.FindByName(workspaceName)
+		ws := s.FindWorkspaceByName(workspaceName)
 		if ws == nil {
 			return nil
 		}
@@ -76,12 +130,12 @@ func (s *ProjectService) projectsInWorkspace(workspaceName string) []*Project {
 	}
 }
 
-func (s *ProjectService) getLock(key string) *sync.RWMutex {
+func (s *Service) getLock(key string) *sync.RWMutex {
 	lock, _ := s.lockPool.LoadOrStore(key, &sync.RWMutex{})
 	return lock.(*sync.RWMutex)
 }
 
-func (s *ProjectService) ScanProjects(ws *Workspace) []*Project {
+func (s *Service) ScanProjects(ws *Workspace) []*Project {
 	// 判断是否有扫描规则，若没有直接返回
 	scanner := ws.Scanner()
 	if scanner == nil {

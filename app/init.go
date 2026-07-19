@@ -24,35 +24,29 @@ func Default() *App {
 }
 
 func InitApp() *App {
-	configConfig := config.Default()
+	conf := config.Default()
 	defaultDB := db.Default()
 
-	configService := config.NewConfigService(configConfig)
+	configHandler := web.NewConfigHandler(conf)
 
-	configHandler := web.NewConfigHandler(configService)
-	workspaceService := project.NewWorkspaceService(configConfig)
-	workspaceHandler := web.NewWorkspaceHandler(workspaceService)
-
-	projectService := project.NewProjectService(workspaceService)
+	projectService := project.NewProjectService(conf)
 	projectHandler := web.NewProjectHandler(projectService)
 
-	applicationService := opener.NewApplicationService(configConfig)
+	applicationService := opener.NewApplicationService(conf)
 	applicationHandler := web.NewApplicationHandler(applicationService)
 
-	remoteService := project.NewRemoteService(configConfig)
-	remoteHandler := web.NewRemoteHandler(remoteService)
-
-	v := web.AllHandlers(configHandler, workspaceHandler, projectHandler, applicationHandler, remoteHandler)
-	server := web.NewServer(v)
+	server := web.NewServer(
+		configHandler,
+		projectHandler,
+		applicationHandler,
+	)
 
 	historyService := history.NewHistoryService(defaultDB)
 
 	return &App{
 		server:             server,
-		workspaceService:   workspaceService,
 		projectService:     projectService,
 		applicationService: applicationService,
-		remoteService:      remoteService,
 		historyService:     historyService,
 	}
 }

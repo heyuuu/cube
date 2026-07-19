@@ -9,21 +9,27 @@ import (
 	"strings"
 )
 
+type H map[string]any
+
+// HandleFunc 请求处理函数
+type HandleFunc func(params any) (result any, err error)
+
+// Handler 接口
+type Handler interface {
+	Register(register func(name string, handler HandleFunc))
+}
+
 // errors
 var (
 	errMethodNotFound = errors.New("api not found")
 )
-
-func IsMethodNotFound(err error) bool {
-	return errors.Is(err, errMethodNotFound)
-}
 
 // Server 服务器，响应 api 请求
 type Server struct {
 	handlers map[string]HandleFunc
 }
 
-func NewServer(apiHandlers []Handler) *Server {
+func NewServer(apiHandlers ...Handler) *Server {
 	s := &Server{
 		handlers: map[string]HandleFunc{},
 	}

@@ -5,12 +5,12 @@ import (
 )
 
 type ConfigHandler struct {
-	service *config.ConfigService
+	conf config.Config
 }
 
-func NewConfigHandler(service *config.ConfigService) *ConfigHandler {
+func NewConfigHandler(conf config.Config) *ConfigHandler {
 	return &ConfigHandler{
-		service: service,
+		conf: conf,
 	}
 }
 
@@ -19,5 +19,5 @@ func (h *ConfigHandler) Register(register func(name string, handler HandleFunc))
 }
 
 func (h *ConfigHandler) Get(params any) (result any, err error) {
-	return h.service.Config(), nil
+	return h.conf, nil
 }

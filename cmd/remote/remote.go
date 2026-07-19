@@ -24,7 +24,7 @@ var remoteListCmd = &easycobra.Command{
 	Use:   "list",
 	Short: "列出可用远端仓库列表",
 	Run: func(cmd *cobra.Command, args []string) {
-		service := app.Default().RemoteService()
+		service := app.Default().ProjectService()
 		remotes := service.Remotes()
 		showRemotes(remotes)
 	},

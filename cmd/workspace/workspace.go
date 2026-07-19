@@ -22,7 +22,7 @@ func init() {
 var workspaceListCmd = &easycobra.Command{
 	Use: "list",
 	Run: func(cmd *cobra.Command, args []string) {
-		service := app.Default().WorkspaceService()
+		service := app.Default().ProjectService()
 		for _, ws := range service.Workspaces() {
 			fmt.Println(ws.Name())
 		}
