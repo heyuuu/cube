@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/heyuuu/cube/internal/util/easycobra"
-	"github.com/heyuuu/cube/internal/util/slicekit"
+	"github.com/heyuuu/cube/util/easycobra"
+	"github.com/heyuuu/cube/util/slicekit"
 )
 
 // alfred root cmd

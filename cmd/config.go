@@ -3,11 +3,11 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/heyuuu/cube/internal/config"
-	"github.com/heyuuu/cube/internal/cube"
-	"github.com/heyuuu/cube/internal/util/easycobra"
-
 	"github.com/spf13/cobra"
+
+	"github.com/heyuuu/cube/config"
+	"github.com/heyuuu/cube/cube"
+	"github.com/heyuuu/cube/util/easycobra"
 )
 
 // configCmd represents the version command

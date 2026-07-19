@@ -9,10 +9,10 @@ import (
 	"github.com/heyuuu/cube/cmd/project"
 	"github.com/heyuuu/cube/cmd/remote"
 	"github.com/heyuuu/cube/cmd/workspace"
-	"github.com/heyuuu/cube/internal/config"
-	"github.com/heyuuu/cube/internal/cube"
-	"github.com/heyuuu/cube/internal/logger"
-	"github.com/heyuuu/cube/internal/util/easycobra"
+	config2 "github.com/heyuuu/cube/config"
+	"github.com/heyuuu/cube/cube"
+	"github.com/heyuuu/cube/logger"
+	"github.com/heyuuu/cube/util/easycobra"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -39,16 +39,16 @@ func rootPreExecute() error {
 	}
 
 	// 设置 debug 环境
-	config.SetDebug(debug)
+	config2.SetDebug(debug)
 
 	// 初始化配置
-	config.InitConfig(cfgPath)
+	config2.InitConfig(cfgPath)
 
 	// 初始化 Logger
 	logger.Init()
 
 	// 记录启动日志
-	slog.Debug("command start", "debug", debug, "cfgPath", config.ConfigPath(), "args", args)
+	slog.Debug("command start", "debug", debug, "cfgPath", config2.ConfigPath(), "args", args)
 
 	return nil
 }

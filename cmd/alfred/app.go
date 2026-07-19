@@ -3,11 +3,12 @@ package alfred
 import (
 	"strings"
 
-	"github.com/heyuuu/cube/internal/app"
-	"github.com/heyuuu/cube/internal/entities"
-	"github.com/heyuuu/cube/internal/util/easycobra"
-	"github.com/heyuuu/cube/internal/util/slicekit"
 	"github.com/spf13/cobra"
+
+	"github.com/heyuuu/cube/app"
+	"github.com/heyuuu/cube/entities"
+	"github.com/heyuuu/cube/util/easycobra"
+	"github.com/heyuuu/cube/util/slicekit"
 )
 
 // cmd `alfred app-search`
