@@ -1,6 +1,8 @@
 package web
 
 import (
+	"github.com/danielgtaylor/huma/v2"
+
 	"github.com/heyuuu/cube/config"
 )
 
@@ -14,10 +16,10 @@ func NewConfigHandler(conf config.Config) *ConfigHandler {
 	}
 }
 
-func (h *ConfigHandler) Register(register func(name string, handler HandleFunc)) {
-	register("config", h.Get)
+func (h *ConfigHandler) Register(api huma.API) {
+	apiGet(api, "/api/config", "获取配置信息", h.getConfig)
 }
 
-func (h *ConfigHandler) Get(params any) (result any, err error) {
+func (h *ConfigHandler) getConfig(_ struct{}) (any, error) {
 	return h.conf, nil
 }

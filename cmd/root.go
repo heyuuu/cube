@@ -5,21 +5,22 @@ import (
 	"os"
 
 	"github.com/heyuuu/cube/cmd/alfred"
+	"github.com/heyuuu/cube/cmd/opener"
 	"github.com/heyuuu/cube/cmd/project"
 	"github.com/heyuuu/cube/cmd/remote"
 	"github.com/heyuuu/cube/cmd/workspace"
 	"github.com/heyuuu/cube/config"
-	"github.com/heyuuu/cube/cube"
 	"github.com/heyuuu/cube/db"
 	"github.com/heyuuu/cube/history"
 	"github.com/heyuuu/cube/logger"
 	"github.com/heyuuu/cube/util/easycobra"
+	"github.com/heyuuu/cube/version"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &easycobra.Command{
 	Use:   "go-cube",
-	Short: "go-cube " + cube.Version,
+	Short: "go-cube " + version.Version,
 }
 
 // 在 Execute 前执行全局 flags 的解析和应用
@@ -70,7 +71,7 @@ func init() {
 	rootCmd.AddCommand(
 		// group commands
 		project.ProjectCmd,
-		opener.AppCmd,
+		opener.RootCmd,
 		remote.RemoteCmd,
 		workspace.WorkspaceCmd,
 		alfred.AlfredCmd,

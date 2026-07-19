@@ -1,11 +1,20 @@
 package web
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"strings"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humago"
+
+	"github.com/heyuuu/cube/version"
 )
 
 type H map[string]any
@@ -15,108 +24,62 @@ type HandleFunc func(params any) (result any, err error)
 
 // Handler 接口
 type Handler interface {
-	Register(register func(name string, handler HandleFunc))
+	Register(api huma.API)
 }
-
-// errors
-var (
-	errMethodNotFound = errors.New("api not found")
-)
 
 // Server 服务器，响应 api 请求
 type Server struct {
-	handlers map[string]HandleFunc
+	mux *http.ServeMux
+	api huma.API
 }
 
-func NewServer(apiHandlers ...Handler) *Server {
-	s := &Server{
-		handlers: map[string]HandleFunc{},
+func NewServer(handlers ...Handler) *Server {
+	mux := http.NewServeMux()
+
+	cfg := huma.DefaultConfig("Cube API", version.Version)
+	cfg.DocsRenderer = huma.DocsRendererScalar // 切换 /docs 页面风格为 Scalar 渲染器
+	api := humago.New(mux, cfg)
+
+	// 各 domain 注册自己的路由
+	for _, handler := range handlers {
+		handler.Register(api)
 	}
 
-	// init api handlers
-	for _, apiHandler := range apiHandlers {
-		apiHandler.Register(s.registerHandler)
-	}
-
-	return s
+	return &Server{mux: mux, api: api}
 }
 
-func (s *Server) registerHandler(name string, handler HandleFunc) {
-	name = strings.Trim(name, "/")
-	if name != "" {
-		s.handlers[name] = handler
-	}
-}
+func (s *Server) API() huma.API { return s.api }
 
-func (s *Server) Call(name string, args any) (result any, err error) {
-	h, ok := s.handlers[name]
-	if !ok {
-		return nil, errMethodNotFound
-	}
-
-	return h(args)
-}
-
-func (s *Server) StartHTTP(addr string) error {
-	http.Handle("/api/", s)
-
-	fmt.Printf("Server starting on %s\n", addr)
-	return http.ListenAndServe(addr, nil)
-}
-
-// 以 http 的方式提供 api 调用
-// 限定请求必须以 api/ 为前缀，使用 POST JSON 方式请求
-func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	// 校验路由名，并从中获取对应 api 名
-	apiName, ok := strings.CutPrefix(request.URL.Path, "/api/")
-	if !ok {
-		s.fastResponse(writer, http.StatusNotFound, "404 api not found")
-		return
+// Start 启动 server, 收到 SIGINT/SIGTERM 优雅关闭。
+func (s *Server) Start(addr string) error {
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           s.mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		//ReadTimeout:       10 * time.Second,
+		//WriteTimeout:      30 * time.Second,
+		IdleTimeout: 120 * time.Second,
 	}
 
-	// 查找对应 handler
-	handler, ok := s.handlers[apiName]
-	if !ok {
-		s.fastResponse(writer, http.StatusNotFound, "404 api not found")
-		return
+	errCh := make(chan error, 1)
+	go func() {
+		slog.Info("server starting", "addr", addr)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	// 接收信号关闭 server
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case err := <-errCh:
+		return fmt.Errorf("server start failed: %w", err)
+	case sig := <-sigCh:
+		slog.Info("server shutting down", "signal", sig)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return server.Shutdown(ctx)
 	}
-
-	// 限定必须为 POST 请求
-	if request.Method != http.MethodPost {
-		s.fastResponse(writer, http.StatusMethodNotAllowed, "only POST method is allowed")
-		return
-	}
-
-	// 读取请求参数
-	var args any
-	decoder := json.NewDecoder(request.Body)
-	if err := decoder.Decode(&args); err != nil {
-		s.fastResponse(writer, http.StatusBadRequest, "failed to parse JSON body")
-		return
-	}
-
-	// 调用对应的处理函数
-	var res *ApiResponse
-	if result, err := handler(args); err == nil {
-		res = NewApiResponse(true, "", result)
-	} else {
-		res = NewApiResponse(false, err.Error(), nil)
-	}
-
-	// json 化；若失败，返回 500
-	content, err := json.Marshal(res)
-	if err != nil {
-		s.fastResponse(writer, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	// 返回正常处理结果
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusOK)
-	writer.Write(content)
-}
-
-func (s *Server) fastResponse(writer http.ResponseWriter, code int, message string) {
-	writer.WriteHeader(code)
-	_, _ = writer.Write([]byte(message))
 }

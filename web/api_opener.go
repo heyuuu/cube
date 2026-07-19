@@ -1,9 +1,31 @@
 package web
 
 import (
+	"github.com/danielgtaylor/huma/v2"
+
 	"github.com/heyuuu/cube/opener"
 	"github.com/heyuuu/cube/util/slicekit"
 )
+
+// --- dto ---
+
+type OpenerDTO struct {
+	Name string `json:"name"`
+	Bin  string `json:"bin"`
+}
+
+func toOpenerDTO(entity *opener.Opener) *OpenerDTO {
+	if entity == nil {
+		return nil
+	}
+
+	return &OpenerDTO{
+		Name: entity.Name(),
+		Bin:  entity.Bin(),
+	}
+}
+
+// --- handler ---
 
 type OpenerHandler struct {
 	service *opener.Service
@@ -15,28 +37,20 @@ func NewOpenerHandler(service *opener.Service) *OpenerHandler {
 	}
 }
 
-func (h *OpenerHandler) Register(register func(name string, handler HandleFunc)) {
-	register("opener/list", h.List)
-	register("opener/info", h.Info)
+func (h *OpenerHandler) Register(api huma.API) {
+	apiGet(api, "/api/opener/list", "获取 opener 列表", h.openerList)
+	apiGet(api, "/api/opener/info", "获取 opener 详情", h.openerInfo)
 }
 
-func (h *OpenerHandler) List(params any) (result any, err error) {
+func (h *OpenerHandler) openerList(_ struct{}) (ListResult[*OpenerDTO], error) {
 	apps := h.service.Openers()
-	list := slicekit.Map(apps, ToOpenerDTO)
+	list := slicekit.Map(apps, toOpenerDTO)
 	return listResult(list), nil
 }
 
-func (h *OpenerHandler) Info(params any) (result any, err error) {
-	type infoParams struct {
-		Name string `json:"name"`
-	}
-
-	// 将 params 转换为结构体
-	p, err := parseParam[infoParams](params)
-	if err != nil {
-		return nil, err
-	}
-
-	app := h.service.FindByName(p.Name)
-	return itemResult(app, ToOpenerDTO)
+func (h *OpenerHandler) openerInfo(input struct {
+	Name string `json:"name"`
+}) (*OpenerDTO, error) {
+	o := h.service.FindByName(input.Name)
+	return toOpenerDTO(o), nil
 }

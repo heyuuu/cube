@@ -17,7 +17,7 @@ var serverCmd = &easycobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		server := app.Default().Server()
 
-		err := server.StartHTTP(":8080")
+		err := server.Start(":8080")
 		if err != nil {
 			log.Fatal(err)
 		}
