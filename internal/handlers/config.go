@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/heyuuu/go-cube/internal/services"
+	"github.com/heyuuu/cube/internal/services"
 )
 
 type ConfigHandler struct {

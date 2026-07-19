@@ -1,6 +1,6 @@
 package entities
 
-import "github.com/heyuuu/go-cube/internal/config"
+import "github.com/heyuuu/cube/internal/config"
 
 type Application struct {
 	name string // 应用名, 唯一标识符

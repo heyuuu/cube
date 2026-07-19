@@ -1,6 +1,6 @@
 package services
 
-import "github.com/heyuuu/go-cube/internal/config"
+import "github.com/heyuuu/cube/internal/config"
 
 type ConfigService struct {
 	conf config.Config

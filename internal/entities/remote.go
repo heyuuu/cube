@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/heyuuu/go-cube/internal/config"
-	"github.com/heyuuu/go-cube/internal/util/git"
+	"github.com/heyuuu/cube/internal/config"
+	"github.com/heyuuu/cube/internal/util/git"
 )
 
 type Remote struct {

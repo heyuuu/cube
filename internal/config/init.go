@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/heyuuu/go-cube/internal/model"
-	"github.com/heyuuu/go-cube/internal/util/pathkit"
+	"github.com/heyuuu/cube/internal/model"
+	"github.com/heyuuu/cube/internal/util/pathkit"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

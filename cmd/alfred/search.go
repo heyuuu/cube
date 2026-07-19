@@ -4,9 +4,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/heyuuu/go-cube/internal/app"
-	"github.com/heyuuu/go-cube/internal/entities"
-	"github.com/heyuuu/go-cube/internal/util/easycobra"
+	"github.com/heyuuu/cube/internal/app"
+	"github.com/heyuuu/cube/internal/entities"
+	"github.com/heyuuu/cube/internal/util/easycobra"
 	"github.com/spf13/cobra"
 )
 

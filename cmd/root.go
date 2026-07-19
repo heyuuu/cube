@@ -4,15 +4,15 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/heyuuu/go-cube/cmd/alfred"
-	"github.com/heyuuu/go-cube/cmd/application"
-	"github.com/heyuuu/go-cube/cmd/project"
-	"github.com/heyuuu/go-cube/cmd/remote"
-	"github.com/heyuuu/go-cube/cmd/workspace"
-	"github.com/heyuuu/go-cube/internal/config"
-	"github.com/heyuuu/go-cube/internal/cube"
-	"github.com/heyuuu/go-cube/internal/logger"
-	"github.com/heyuuu/go-cube/internal/util/easycobra"
+	"github.com/heyuuu/cube/cmd/alfred"
+	"github.com/heyuuu/cube/cmd/application"
+	"github.com/heyuuu/cube/cmd/project"
+	"github.com/heyuuu/cube/cmd/remote"
+	"github.com/heyuuu/cube/cmd/workspace"
+	"github.com/heyuuu/cube/internal/config"
+	"github.com/heyuuu/cube/internal/cube"
+	"github.com/heyuuu/cube/internal/logger"
+	"github.com/heyuuu/cube/internal/util/easycobra"
 )
 
 // rootCmd represents the base command when called without any subcommands

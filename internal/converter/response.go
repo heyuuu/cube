@@ -1,8 +1,8 @@
 package converter
 
 import (
-	"github.com/heyuuu/go-cube/internal/dto/response"
-	"github.com/heyuuu/go-cube/internal/entities"
+	"github.com/heyuuu/cube/internal/dto/response"
+	"github.com/heyuuu/cube/internal/entities"
 )
 
 func ToProjectResponseDto(entity *entities.Project) response.ProjectDto {

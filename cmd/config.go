@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/heyuuu/go-cube/internal/config"
-	"github.com/heyuuu/go-cube/internal/cube"
-	"github.com/heyuuu/go-cube/internal/util/easycobra"
+	"github.com/heyuuu/cube/internal/config"
+	"github.com/heyuuu/cube/internal/cube"
+	"github.com/heyuuu/cube/internal/util/easycobra"
 
 	"github.com/spf13/cobra"
 )

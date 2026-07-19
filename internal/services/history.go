@@ -1,8 +1,8 @@
 package services
 
 import (
-	"github.com/heyuuu/go-cube/internal/config"
-	"github.com/heyuuu/go-cube/internal/model"
+	"github.com/heyuuu/cube/internal/config"
+	"github.com/heyuuu/cube/internal/model"
 	"gorm.io/gorm"
 )
 

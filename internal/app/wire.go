@@ -4,10 +4,10 @@ package app
 
 import (
 	"github.com/google/wire"
-	"github.com/heyuuu/go-cube/internal/config"
-	"github.com/heyuuu/go-cube/internal/handlers"
-	"github.com/heyuuu/go-cube/internal/server"
-	"github.com/heyuuu/go-cube/internal/services"
+	"github.com/heyuuu/cube/internal/config"
+	"github.com/heyuuu/cube/internal/handlers"
+	"github.com/heyuuu/cube/internal/server"
+	"github.com/heyuuu/cube/internal/services"
 )
 
 func InitApp() *App {

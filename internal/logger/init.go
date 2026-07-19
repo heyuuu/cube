@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/heyuuu/go-cube/internal/config"
+	"github.com/heyuuu/cube/internal/config"
 )
 
 const logFileName = "cube.log"

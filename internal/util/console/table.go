@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
+	"github.com/heyuuu/cube/internal/util/slicekit"
 )
 
 func PrintTableFunc[T any](records []T, headers []string, rowGetter func(T) []string) {

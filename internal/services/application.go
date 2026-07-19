@@ -1,10 +1,10 @@
 package services
 
 import (
-	"github.com/heyuuu/go-cube/internal/config"
-	"github.com/heyuuu/go-cube/internal/entities"
-	"github.com/heyuuu/go-cube/internal/util/matcher"
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
+	"github.com/heyuuu/cube/internal/config"
+	"github.com/heyuuu/cube/internal/entities"
+	"github.com/heyuuu/cube/internal/util/matcher"
+	"github.com/heyuuu/cube/internal/util/slicekit"
 )
 
 type ApplicationService struct {

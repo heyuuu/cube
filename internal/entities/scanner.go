@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/heyuuu/go-cube/internal/common"
+	"github.com/heyuuu/cube/internal/common"
 )
 
 type ProjectScanner interface {

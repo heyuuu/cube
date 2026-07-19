@@ -6,7 +6,7 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
+	"github.com/heyuuu/cube/internal/util/slicekit"
 )
 
 // ansi colors

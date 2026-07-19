@@ -1,8 +1,8 @@
 package entities
 
 import (
-	"github.com/heyuuu/go-cube/internal/config"
-	"github.com/heyuuu/go-cube/internal/util/pathkit"
+	"github.com/heyuuu/cube/internal/config"
+	"github.com/heyuuu/cube/internal/util/pathkit"
 )
 
 // Workspace 工作区

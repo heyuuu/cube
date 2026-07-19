@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
+	"github.com/heyuuu/cube/internal/util/slicekit"
 )
 
 type Matcher[T any] struct {

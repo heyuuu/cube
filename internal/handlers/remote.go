@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"github.com/heyuuu/go-cube/internal/converter"
-	"github.com/heyuuu/go-cube/internal/services"
-	"github.com/heyuuu/go-cube/internal/util/slicekit"
+	"github.com/heyuuu/cube/internal/converter"
+	"github.com/heyuuu/cube/internal/services"
+	"github.com/heyuuu/cube/internal/util/slicekit"
 )
 
 type RemoteHandler struct {

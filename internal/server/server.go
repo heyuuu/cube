@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/heyuuu/go-cube/internal/dto/response"
-	"github.com/heyuuu/go-cube/internal/handlers"
+	"github.com/heyuuu/cube/internal/dto/response"
+	"github.com/heyuuu/cube/internal/handlers"
 )
 
 // errors

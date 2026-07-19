@@ -1,8 +1,8 @@
 package app
 
 import (
-	"github.com/heyuuu/go-cube/internal/server"
-	"github.com/heyuuu/go-cube/internal/services"
+	"github.com/heyuuu/cube/internal/server"
+	"github.com/heyuuu/cube/internal/services"
 )
 
 type App struct {
