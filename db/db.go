@@ -14,10 +14,10 @@ import (
 
 // sqlite file (data.db)
 
-var dataDb *gorm.DB
+var defaultDB *gorm.DB
 
-func DataDb() *gorm.DB {
-	return dataDb
+func Default() *gorm.DB {
+	return defaultDB
 }
 
 func Init(cfgPath string, models ...any) error {
@@ -43,6 +43,6 @@ func Init(cfgPath string, models ...any) error {
 		}
 	}
 
-	dataDb = db
+	defaultDB = db
 	return nil
 }

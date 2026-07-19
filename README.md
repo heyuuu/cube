@@ -1,4 +1,4 @@
-# go-cube
+# cube
 
 ## 介绍
 

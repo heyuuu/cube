@@ -6,7 +6,6 @@ require (
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.27.0
-	github.com/google/wire v0.7.0
 	github.com/spf13/cobra v1.10.1
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0

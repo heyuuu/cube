@@ -23,12 +23,14 @@ type HistoryService struct {
 	db *gorm.DB
 }
 
-func NewHistoryService() *HistoryService {
-	return &HistoryService{}
+func NewHistoryService(db *gorm.DB) *HistoryService {
+	return &HistoryService{
+		db: db,
+	}
 }
 
 func (s *HistoryService) AddProjectSelectLog(project string, alfred bool) error {
-	db := db.DataDb()
+	db := db.Default()
 
 	m := &ProjectSelectLog{
 		Project: project,
@@ -39,7 +41,7 @@ func (s *HistoryService) AddProjectSelectLog(project string, alfred bool) error 
 }
 
 func (s *HistoryService) LeastSelectedProjects(limit int, alfred bool) []string {
-	db := db.DataDb()
+	db := db.Default()
 
 	var projects []string
 	db.Model(&ProjectSelectLog{}).
@@ -56,7 +58,7 @@ func (s *HistoryService) LeastSelectedProjects(limit int, alfred bool) []string 
 }
 
 func (s *HistoryService) AddProjectOpenLog(project string, app string, alfred bool) error {
-	db := db.DataDb()
+	db := db.Default()
 
 	m := &ProjectOpenLog{
 		Project: project,
@@ -68,7 +70,7 @@ func (s *HistoryService) AddProjectOpenLog(project string, app string, alfred bo
 }
 
 func (s *HistoryService) LeastProjectOpenApps(project string, limit int, alfred bool) []string {
-	db := db.DataDb()
+	db := db.Default()
 
 	var projects []string
 	db.Model(&ProjectOpenLog{}).
