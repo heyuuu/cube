@@ -4,17 +4,17 @@ import (
 	"github.com/heyuuu/cube/config"
 )
 
-type Application struct {
+type Opener struct {
 	name string // 应用名, 唯一标识符
 	bin  string // 应用路径
 }
 
-func NewApplication(conf config.ApplicationConfig) *Application {
-	return &Application{
+func NewOpener(conf config.OpenerConfig) *Opener {
+	return &Opener{
 		name: conf.Name,
 		bin:  conf.Bin,
 	}
 }
 
-func (app *Application) Name() string { return app.name }
-func (app *Application) Bin() string  { return app.bin }
+func (app *Opener) Name() string { return app.name }
+func (app *Opener) Bin() string  { return app.bin }

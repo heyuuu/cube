@@ -1,9 +1,9 @@
 package config
 
 type Config struct {
-	Workspaces   []WorkspaceConfig   `json:"workspaces"`
-	Remotes      []RemoteConfig      `json:"remotes"`
-	Applications []ApplicationConfig `json:"applications"`
+	Workspaces []WorkspaceConfig `json:"workspaces"`
+	Remotes    []RemoteConfig    `json:"remotes"`
+	Openers    []OpenerConfig    `json:"openers"`
 
 	// 日志相关
 	LogPath   string `json:"logPath"`
@@ -25,7 +25,7 @@ type RemoteConfig struct {
 	DefaultPath string `json:"defaultPath"`
 }
 
-type ApplicationConfig struct {
+type OpenerConfig struct {
 	Name string `json:"name"`
 	Bin  string `json:"bin"`
 }

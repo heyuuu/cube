@@ -13,9 +13,9 @@ import (
 
 	"github.com/heyuuu/cube/app"
 	"github.com/heyuuu/cube/project"
-	console2 "github.com/heyuuu/cube/util/console"
+	"github.com/heyuuu/cube/util/console"
 	"github.com/heyuuu/cube/util/easycobra"
-	git2 "github.com/heyuuu/cube/util/git"
+	"github.com/heyuuu/cube/util/git"
 )
 
 // cmd group `project *`
@@ -53,7 +53,7 @@ var projectSearchCmd = &easycobra.Command{
 
 			// 返回结果
 			if !showStatus {
-				console2.PrintTableFunc(projects, []string{
+				console.PrintTableFunc(projects, []string{
 					fmt.Sprintf("项目(%d)", len(projects)),
 					"路径",
 				}, func(p *project.Project) []string {
@@ -63,19 +63,19 @@ var projectSearchCmd = &easycobra.Command{
 					}
 				})
 			} else {
-				console2.PrintTableFunc(projects, []string{
+				console.PrintTableFunc(projects, []string{
 					fmt.Sprintf("项目(%d)", len(projects)),
 					"路径",
 					"当前分支",
 					"Master差异",
 					"当前工作区是否干净",
 				}, func(p *project.Project) []string {
-					branches, currBranch, _ := git2.Branches(p.Path(), true, true)
+					branches, currBranch, _ := git.Branches(p.Path(), true, true)
 
 					var branchDiff string
 					if slices.Contains(branches, "master") && slices.Contains(branches, "origin/master") {
-						forward, _ := git2.LogBetweenCount(p.Path(), "master", "origin/master")
-						backward, _ := git2.LogBetweenCount(p.Path(), "origin/master", "master")
+						forward, _ := git.LogBetweenCount(p.Path(), "master", "origin/master")
+						backward, _ := git.LogBetweenCount(p.Path(), "origin/master", "master")
 						if forward != 0 {
 							branchDiff += "+" + strconv.Itoa(forward)
 						}
@@ -85,7 +85,7 @@ var projectSearchCmd = &easycobra.Command{
 					}
 
 					var statusText string
-					if isDirty, _ := git2.IsDirty(p.Path()); isDirty {
+					if isDirty, _ := git.IsDirty(p.Path()); isDirty {
 						statusText = "dirty"
 					}
 
@@ -146,8 +146,8 @@ var projectOpenCmd = &easycobra.Command{
 			query := args[0]
 
 			// 获取打开项目的app
-			applicationService := app.Default().ApplicationService()
-			openApp := applicationService.FindByName(appName)
+			openerService := app.Default().OpenerService()
+			openApp := openerService.FindByName(appName)
 			if openApp == nil {
 				log.Fatal("未找到指定app: " + appName)
 				return
@@ -178,7 +178,7 @@ func selectProject(query string, workspace string) *project.Project {
 	case 1:
 		return projects[0]
 	default:
-		proj, ok := console2.ChoiceItem("选择项目", projects, (*project.Project).Name)
+		proj, ok := console.ChoiceItem("选择项目", projects, (*project.Project).Name)
 		if !ok {
 			fmt.Println("选择项目失败")
 			return nil
@@ -207,7 +207,7 @@ var projectCloneCmd = &easycobra.Command{
 			}
 
 			// 解析 repoUrl
-			u, err := git2.ParseRepoUrl(rawRepoUrl)
+			u, err := git.ParseRepoUrl(rawRepoUrl)
 			if err != nil {
 				log.Fatalf("repoUrl 不是合法地址: url=%s", rawRepoUrl)
 				return

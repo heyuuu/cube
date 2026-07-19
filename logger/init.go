@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	config2 "github.com/heyuuu/cube/config"
+	"github.com/heyuuu/cube/config"
 )
 
 const logFileName = "cube.log"
@@ -60,7 +60,7 @@ func initHandler() slog.Handler {
 	fileHandler = initFileHandler()
 
 	// 在 Debug 模式下或日志文件不生效时，初始化标准 io handler
-	if config2.IsDebug() || fileHandler == nil {
+	if config.IsDebug() || fileHandler == nil {
 		stdioHandler = initStdioHandler()
 	}
 
@@ -70,12 +70,12 @@ func initHandler() slog.Handler {
 
 // 初始化日志文件 handler
 func initFileHandler() slog.Handler {
-	conf := config2.Default()
+	conf := config.Default()
 
 	// path
 	path := conf.LogPath
 	if path == "" {
-		path = config2.ConfigPath()
+		path = config.ConfigPath()
 	}
 
 	// init log file

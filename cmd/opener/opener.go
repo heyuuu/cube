@@ -1,4 +1,4 @@
-package application
+package opener
 
 import (
 	"fmt"
@@ -12,14 +12,14 @@ import (
 	"github.com/heyuuu/cube/util/easycobra"
 )
 
-var AppCmd = &easycobra.Command{
-	Use:     "application",
+var RootCmd = &easycobra.Command{
+	Use:     "opener",
 	Aliases: []string{"app"},
 }
 
 func init() {
-	AppCmd.AddCommand(appListCmd)
-	AppCmd.AddCommand(appSearchCmd)
+	RootCmd.AddCommand(appListCmd)
+	RootCmd.AddCommand(appSearchCmd)
 }
 
 // cmd `app list`
@@ -27,8 +27,8 @@ var appListCmd = &easycobra.Command{
 	Use:   "list",
 	Short: "列出可用命令列表",
 	Run: func(cmd *cobra.Command, args []string) {
-		service := app.Default().ApplicationService()
-		apps := service.Apps()
+		service := app.Default().OpenerService()
+		apps := service.Openers()
 		showApps(apps)
 	},
 }
@@ -41,7 +41,7 @@ var appSearchCmd = &easycobra.Command{
 		query := args
 
 		// 获取匹配的命令列表
-		service := app.Default().ApplicationService()
+		service := app.Default().OpenerService()
 		apps := service.Search(strings.Join(query, " "))
 
 		// 返回结果
@@ -49,11 +49,11 @@ var appSearchCmd = &easycobra.Command{
 	},
 }
 
-func showApps(apps []*opener.Application) {
+func showApps(apps []*opener.Opener) {
 	console.PrintTableFunc(apps, []string{
 		fmt.Sprintf("项目(%d)", len(apps)),
 		"路径",
-	}, func(app *opener.Application) []string {
+	}, func(app *opener.Opener) []string {
 		return []string{
 			app.Name(),
 			app.Bin(),

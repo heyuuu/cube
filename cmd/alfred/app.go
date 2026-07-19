@@ -30,7 +30,7 @@ var appSearchCmd = &easycobra.Command{
 			}
 
 			// 获取匹配的命令列表
-			service := app.Default().ApplicationService()
+			service := app.Default().OpenerService()
 			apps := service.Search(strings.Join(query, " "))
 
 			// 若指定项目，且对应空间有指定命令优先级，则按优先级排序
@@ -38,7 +38,7 @@ var appSearchCmd = &easycobra.Command{
 			apps = sortApps(apps, preferApps)
 
 			// 返回结果
-			PrintResultFunc(apps, func(item *opener.Application) Item {
+			PrintResultFunc(apps, func(item *opener.Opener) Item {
 				return Item{
 					Title:    item.Name(),
 					SubTitle: item.Bin(),
@@ -71,7 +71,7 @@ func getProjectPreferApps(projectName string) []string {
 	return nil
 }
 
-func sortApps(apps []*opener.Application, preferAppNames []string) []*opener.Application {
+func sortApps(apps []*opener.Opener, preferAppNames []string) []*opener.Opener {
 	if len(apps) <= 1 || len(preferAppNames) == 0 {
 		return apps
 	}
@@ -81,7 +81,7 @@ func sortApps(apps []*opener.Application, preferAppNames []string) []*opener.App
 		preferAppNameMap[appName] = i
 	}
 
-	return slicekit.SortByWithIndex(apps, func(i int, app *opener.Application) int {
+	return slicekit.SortByWithIndex(apps, func(i int, app *opener.Opener) int {
 		if idx, ok := preferAppNameMap[app.Name()]; ok {
 			return idx
 		} else {

@@ -28,7 +28,7 @@ var projectOpenCmd = &easycobra.Command{
 			// history: 记录打开项目的程序
 			app.Default().HistoryService().AddProjectOpenLog(projectName, appName, true)
 
-			appService := app.Default().ApplicationService()
+			appService := app.Default().OpenerService()
 			projService := app.Default().ProjectService()
 
 			// 匹配项目

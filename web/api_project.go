@@ -26,7 +26,7 @@ func (h *ProjectHandler) Register(register func(name string, handler HandleFunc)
 
 func (h *ProjectHandler) projectList(params any) (result any, err error) {
 	projects := h.service.Projects()
-	list := slicekit.Map(projects, ToProjectResponseDto)
+	list := slicekit.Map(projects, ToProjectDTO)
 	return listResult(list), nil
 }
 
@@ -42,12 +42,12 @@ func (h *ProjectHandler) projectInfo(params any) (result any, err error) {
 	}
 
 	app := h.service.FindByName(p.Name)
-	return itemResult(app, ToProjectResponseDto)
+	return itemResult(app, ToProjectDTO)
 }
 
 func (h *ProjectHandler) workspaceList(params any) (result any, err error) {
 	workspaces := h.service.Workspaces()
-	list := slicekit.Map(workspaces, ToWorkspaceResponseDto)
+	list := slicekit.Map(workspaces, ToWorkspaceDTO)
 	return listResult(list), nil
 }
 
@@ -63,12 +63,12 @@ func (h *ProjectHandler) workspaceInfo(params any) (result any, err error) {
 	}
 
 	app := h.service.FindWorkspaceByName(p.Name)
-	return itemResult(app, ToWorkspaceResponseDto)
+	return itemResult(app, ToWorkspaceDTO)
 }
 
 func (h *ProjectHandler) remoteList(params any) (result any, err error) {
 	remotes := h.service.Remotes()
-	list := slicekit.Map(remotes, ToRemoteResponseDto)
+	list := slicekit.Map(remotes, ToRemoteDTO)
 	return listResult(list), nil
 }
 
@@ -84,5 +84,5 @@ func (h *ProjectHandler) remoteInfo(params any) (result any, err error) {
 	}
 
 	app := h.service.FindRemoteByName(p.Name)
-	return itemResult(app, ToRemoteResponseDto)
+	return itemResult(app, ToRemoteDTO)
 }

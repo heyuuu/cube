@@ -1,4 +1,3 @@
-// 提供了类RPC的服务端功能实现，允许拓展兼容 web api、rpc、wails api 等的调用
 package web
 
 import (

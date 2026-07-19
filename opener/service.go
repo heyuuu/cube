@@ -6,24 +6,24 @@ import (
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
-type ApplicationService struct {
-	apps []*Application
+type Service struct {
+	apps []*Opener
 }
 
-func NewApplicationService(conf config.Config) *ApplicationService {
+func NewService(conf config.Config) *Service {
 	// 读取配置
-	apps := slicekit.Map(conf.Applications, NewApplication)
+	apps := slicekit.Map(conf.Openers, NewOpener)
 
-	return &ApplicationService{
+	return &Service{
 		apps: apps,
 	}
 }
 
-func (s *ApplicationService) Apps() []*Application {
+func (s *Service) Openers() []*Opener {
 	return s.apps
 }
 
-func (s *ApplicationService) FindByName(name string) *Application {
+func (s *Service) FindByName(name string) *Opener {
 	for _, app := range s.apps {
 		if app.Name() == name {
 			return app
@@ -33,13 +33,13 @@ func (s *ApplicationService) FindByName(name string) *Application {
 	return nil
 }
 
-func (s *ApplicationService) Search(query string) []*Application {
+func (s *Service) Search(query string) []*Opener {
 	if len(query) == 0 || len(s.apps) == 0 {
 		return s.apps
 	}
 
 	// match
-	m := matcher.NewKeywordMatcher(s.apps, func(app *Application) string {
+	m := matcher.NewKeywordMatcher(s.apps, func(app *Opener) string {
 		return app.Name()
 	}, nil)
 	return m.Match(query)

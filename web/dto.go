@@ -5,7 +5,6 @@ import (
 	"github.com/heyuuu/cube/project"
 )
 
-// API 响应的基础结构
 type ApiResponse struct {
 	Ok      bool   `json:"ok"`
 	Message string `json:"message"`
@@ -16,15 +15,15 @@ func NewApiResponse(ok bool, message string, data any) *ApiResponse {
 	return &ApiResponse{ok, message, data}
 }
 
-type ProjectDto struct {
+type ProjectDTO struct {
 	Name    string   `json:"name"`
 	Path    string   `json:"path"`
 	RepoUrl string   `json:"repoUrl"`
 	Tags    []string `json:"tags"`
 }
 
-func ToProjectResponseDto(entity *project.Project) ProjectDto {
-	return ProjectDto{
+func ToProjectDTO(entity *project.Project) ProjectDTO {
+	return ProjectDTO{
 		Name:    entity.Name(),
 		Path:    entity.Path(),
 		RepoUrl: entity.RepoUrl(),
@@ -32,15 +31,15 @@ func ToProjectResponseDto(entity *project.Project) ProjectDto {
 	}
 }
 
-type WorkspaceDto struct {
+type WorkspaceDTO struct {
 	Name       string   `json:"name"`
 	Root       string   `json:"root"`
 	PreferApps []string `json:"preferApps"`
 	Scanner    any      `json:"scanner"`
 }
 
-func ToWorkspaceResponseDto(entity *project.Workspace) WorkspaceDto {
-	return WorkspaceDto{
+func ToWorkspaceDTO(entity *project.Workspace) WorkspaceDTO {
+	return WorkspaceDTO{
 		Name:       entity.Name(),
 		Root:       entity.Path(),
 		PreferApps: entity.PreferApps(),
@@ -60,26 +59,26 @@ func toScannerResponseData(scanner project.ProjectScanner) map[string]any {
 	}
 }
 
-type ApplicationDto struct {
+type OpenerDTO struct {
 	Name string `json:"name"`
 	Bin  string `json:"bin"`
 }
 
-func ToApplicationResponseDto(entity *opener.Application) ApplicationDto {
-	return ApplicationDto{
+func ToOpenerDTO(entity *opener.Opener) OpenerDTO {
+	return OpenerDTO{
 		Name: entity.Name(),
 		Bin:  entity.Bin(),
 	}
 }
 
-type RemoteDto struct {
+type RemoteDTO struct {
 	Name        string `json:"name"`
 	Host        string `json:"host"`
 	DefaultPath string `json:"defaultPath"`
 }
 
-func ToRemoteResponseDto(entity *project.Remote) RemoteDto {
-	return RemoteDto{
+func ToRemoteDTO(entity *project.Remote) RemoteDTO {
+	return RemoteDTO{
 		Name:        entity.Name(),
 		Host:        entity.Host(),
 		DefaultPath: entity.DefaultPath(),

@@ -5,11 +5,10 @@ import (
 	"os"
 
 	"github.com/heyuuu/cube/cmd/alfred"
-	"github.com/heyuuu/cube/cmd/application"
 	"github.com/heyuuu/cube/cmd/project"
 	"github.com/heyuuu/cube/cmd/remote"
 	"github.com/heyuuu/cube/cmd/workspace"
-	config2 "github.com/heyuuu/cube/config"
+	"github.com/heyuuu/cube/config"
 	"github.com/heyuuu/cube/cube"
 	"github.com/heyuuu/cube/db"
 	"github.com/heyuuu/cube/history"
@@ -41,16 +40,16 @@ func rootPreExecute() error {
 	}
 
 	// 设置 debug 环境
-	config2.SetDebug(debug)
+	config.SetDebug(debug)
 
 	// 初始化配置
-	err = config2.InitConfig(cfgPath)
+	err = config.InitConfig(cfgPath)
 	if err != nil {
 		return err
 	}
 
 	// 初始化数据文件 data.db
-	err = db.Init(config2.ConfigPath(),
+	err = db.Init(config.ConfigPath(),
 		&history.ProjectSelectLog{},
 		&history.ProjectOpenLog{},
 	)
@@ -62,7 +61,7 @@ func rootPreExecute() error {
 	logger.Init()
 
 	// 记录启动日志
-	slog.Debug("command start", "debug", debug, "cfgPath", config2.ConfigPath(), "args", args)
+	slog.Debug("command start", "debug", debug, "cfgPath", config.ConfigPath(), "args", args)
 
 	return nil
 }
@@ -71,7 +70,7 @@ func init() {
 	rootCmd.AddCommand(
 		// group commands
 		project.ProjectCmd,
-		application.AppCmd,
+		opener.AppCmd,
 		remote.RemoteCmd,
 		workspace.WorkspaceCmd,
 		alfred.AlfredCmd,

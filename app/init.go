@@ -32,21 +32,21 @@ func InitApp() *App {
 	projectService := project.NewProjectService(conf)
 	projectHandler := web.NewProjectHandler(projectService)
 
-	applicationService := opener.NewApplicationService(conf)
-	applicationHandler := web.NewApplicationHandler(applicationService)
+	openerService := opener.NewService(conf)
+	openerHandler := web.NewOpenerHandler(openerService)
 
 	server := web.NewServer(
 		configHandler,
 		projectHandler,
-		applicationHandler,
+		openerHandler,
 	)
 
 	historyService := history.NewHistoryService(defaultDB)
 
 	return &App{
-		server:             server,
-		projectService:     projectService,
-		applicationService: applicationService,
-		historyService:     historyService,
+		server:         server,
+		projectService: projectService,
+		openerService:  openerService,
+		historyService: historyService,
 	}
 }
