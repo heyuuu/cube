@@ -18,7 +18,7 @@ var RootCmd = &easycobra.Command{
 
 var openerListCmd = &easycobra.Command{
 	Use:   "list [query]",
-	Short: "列出可用 Opener 列表(可模糊搜索)",
+	Short: "列出可用 Opener 列表(支持模糊搜索)",
 	Run: func(args []string) error {
 		var query string
 		if len(args) > 0 {

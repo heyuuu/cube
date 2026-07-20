@@ -3,9 +3,18 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = []
-  bin = "./tmp/main -d -c ./tmp/config/ server"
+  # 编译
+  pre_cmd = [
+    "goimports -w .",
+    "go vet ./..."
+  ]
   cmd = "go build -o ./tmp/main ."
+  post_cmd = []
+  # 启动
+  bin = "./tmp/main"
+  args_bin = ["-d", "server"]
+#  args_bin = ["-d", "-c", "./tmp/config", "server"]
+  # 防抖(毫秒)
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "frontend", "build"]
   exclude_file = []
@@ -20,8 +29,6 @@ tmp_dir = "tmp"
   log = "build-errors.log"
   poll = false
   poll_interval = 0
-  post_cmd = []
-  pre_cmd = []
   rerun = false
   rerun_delay = 500
   send_interrupt = true
@@ -36,7 +43,7 @@ tmp_dir = "tmp"
 
 [log]
   main_only = false
-  time = false
+  time = true
 
 [misc]
   clean_on_exit = false

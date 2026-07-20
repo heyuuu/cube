@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -21,7 +20,7 @@ var RootCmd = &easycobra.Command{
 	Use:     "project",
 	Aliases: []string{"proj", "p"},
 	Children: []*easycobra.Command{
-		projectSearchCmd,
+		projectListCmd,
 		projectInfoCmd,
 		projectOpenCmd,
 		projectScanRulesCmd,
@@ -30,10 +29,10 @@ var RootCmd = &easycobra.Command{
 	},
 }
 
-// cmd `project search`
-var projectSearchCmd = &easycobra.Command{
-	Use:   "search {query?* : 项目名，支持模糊匹配} {--status : 分析项目}",
-	Short: "搜索项目列表",
+// cmd `project list`
+var projectListCmd = &easycobra.Command{
+	Use:   "list [query]",
+	Short: "项目列表(支持模糊搜索)",
 	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
 		var showStatus bool
@@ -42,7 +41,10 @@ var projectSearchCmd = &easycobra.Command{
 		// run
 		return func(args []string) error {
 			// 获取输入参数
-			query := strings.Join(args, " ")
+			var query string
+			if len(args) > 0 {
+				query = args[0]
+			}
 
 			// 项目列表
 			service := app.Default().ProjectService()
@@ -103,25 +105,23 @@ var projectSearchCmd = &easycobra.Command{
 
 // cmd `project info`
 var projectInfoCmd = &easycobra.Command{
-	Use:   "info {project : 项目名，支持模糊匹配}",
-	Short: "打开项目",
+	Use:   "info [query]",
+	Short: "打开项目(支持模糊搜索)",
 	Args:  cobra.ExactArgs(1),
-	InitRun: func(cmd *cobra.Command) easycobra.Run {
-		return func(args []string) error {
-			query := args[0]
+	Run: func(args []string) error {
+		query := args[0]
 
-			// 匹配项目
-			proj := selectProject(query)
-			if proj == nil {
-				return nil
-			}
-
-			fmt.Printf("project: %s\n", proj.Name())
-			fmt.Printf("path   : %s\n", proj.Path())
-			fmt.Printf("git-url: %s\n", proj.RepoUrl())
-
+		// 匹配项目
+		proj := selectProject(query)
+		if proj == nil {
 			return nil
 		}
+
+		fmt.Printf("project: %s\n", proj.Name())
+		fmt.Printf("path   : %s\n", proj.Path())
+		fmt.Printf("git-url: %s\n", proj.RepoUrl())
+
+		return nil
 	},
 }
 
@@ -131,7 +131,6 @@ var projectOpenCmd = &easycobra.Command{
 	Short: "打开项目。非交互模式只支持准确项目名，非交互模式下支持模糊搜索",
 	Args:  cobra.ExactArgs(1),
 	InitRun: func(cmd *cobra.Command) easycobra.Run {
-		// init flags
 		var appName string
 		cmd.Flags().StringVar(&appName, "app", "", "打开项目的App")
 

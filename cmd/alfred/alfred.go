@@ -45,8 +45,8 @@ var projectSearchCmd = &easycobra.Command{
 		return PrintResult(projects, func(proj *project.Project) Item {
 			return Item{
 				Title:    proj.Name(),
-				SubTitle: proj.RepoUrl(),
-				Arg:      proj.Name(),
+				SubTitle: proj.Path(),
+				Arg:      proj.Path(),
 			}
 		})
 	},
@@ -71,7 +71,7 @@ func sortProjectsWithHistory(projects []*project.Project, history []string) []*p
 
 // cmd `alfred opener-search`
 var openerSearchCmd = &easycobra.Command{
-	Use:   "opener-search {query? : 命令名，支持模糊匹配} {--project= : 项目名}",
+	Use:   "opener-search [query]",
 	Short: "搜索可用命令列表",
 	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
@@ -89,17 +89,17 @@ var openerSearchCmd = &easycobra.Command{
 
 			// 获取匹配的命令列表
 			service := app.Default().OpenerService()
-			apps := service.Search(strings.Join(query, " "))
+			openers := service.Search(strings.Join(query, " "))
 
 			// 若指定项目，且对应空间有指定命令优先级，则按优先级排序
 			if len(projectName) > 0 {
 				historyService := app.Default().HistoryService()
 				history := historyService.LeastProjectOpenApps(projectName, 3, true)
-				apps = sortOpener(apps, history)
+				openers = sortOpeners(openers, history)
 			}
 
 			// 返回结果
-			return PrintResult(apps, func(item *opener.Opener) Item {
+			return PrintResult(openers, func(item *opener.Opener) Item {
 				return Item{
 					Title:    item.Name(),
 					SubTitle: item.Bin(),
@@ -110,7 +110,7 @@ var openerSearchCmd = &easycobra.Command{
 	},
 }
 
-func sortOpener(openers []*opener.Opener, history []string) []*opener.Opener {
+func sortOpeners(openers []*opener.Opener, history []string) []*opener.Opener {
 	if len(openers) <= 1 || len(history) == 0 {
 		return openers
 	}
@@ -143,38 +143,37 @@ func sortOpener(openers []*opener.Opener, history []string) []*opener.Opener {
 
 // cmd `alfred project-open`
 var projectOpenCmd = &easycobra.Command{
-	Use:   "project-open {project : 项目名} {--app= : 打开项目的App}",
-	Short: "打开项目。非交互模式只支持准确项目名，非交互模式下支持模糊搜索",
+	Use:   "project-open <project-name>",
+	Short: "打开项目, 只支持准确项目绝对路径",
 	Args:  cobra.ExactArgs(1),
 	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
-		var appName string
-		cmd.Flags().StringVar(&appName, "app", "", "打开项目的App")
+		var openerName string
+		cmd.Flags().StringVarP(&openerName, "opener", "o", "", "打开项目的 Opener")
 
 		// run
 		return func(args []string) error {
 			projectName := args[0]
 
 			// history: 记录打开项目的程序
-			app.Default().HistoryService().AddProjectOpenLog(projectName, appName, true)
-
-			appService := app.Default().OpenerService()
-			projService := app.Default().ProjectService()
+			app.Default().HistoryService().AddProjectOpenLog(projectName, openerName, true)
 
 			// 匹配项目
+			projService := app.Default().ProjectService()
 			proj := projService.FindByName(projectName)
 			if proj == nil {
 				return errors.New("未找到指定项目: " + projectName)
 			}
 
 			// 获取打开项目的app
-			openApp := appService.FindByName(appName)
-			if openApp == nil {
-				return errors.New("未找到指定app: " + appName)
+			openerService := app.Default().OpenerService()
+			opener := openerService.FindByName(openerName)
+			if opener == nil {
+				return errors.New("未找到指定 opener: " + openerName)
 			}
 
 			// 打开项目
-			err := passthruRun(openApp.Bin(), proj.Path())
+			err := passthruRun(opener.Bin(), proj.Path())
 			if err != nil {
 				return fmt.Errorf("打开失败: %w", err)
 			}

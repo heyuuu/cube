@@ -1,1 +1,8 @@
 /tmp
+cube
+openapi.json
+
+#
+.claude/plans
+.cursor/plans
+.zcode/plans

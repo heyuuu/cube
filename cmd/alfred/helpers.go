@@ -9,8 +9,6 @@ import (
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
-// helpers
-
 type H map[string]any
 
 // see: https://www.alfredapp.com/help/workflows/inputs/script-filter/json/
