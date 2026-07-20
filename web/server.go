@@ -45,6 +45,11 @@ func NewServer(handlers ...Handler) *Server {
 
 func (s *Server) API() huma.API { return s.api }
 
+// OpenAPIJSON 返回 OpenAPI 3.1 spec 的 JSON 字节。供 generate 命令或 /openapi.json 端点使用。
+func (s *Server) OpenAPIJSON() ([]byte, error) {
+	return s.api.OpenAPI().MarshalJSON()
+}
+
 // Start 启动 server, 收到 SIGINT/SIGTERM 优雅关闭。
 func (s *Server) Start(addr string) error {
 	server := &http.Server{
