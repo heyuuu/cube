@@ -75,7 +75,7 @@ func initFileHandler() slog.Handler {
 	// path
 	path := conf.Log.Path
 	if path == "" {
-		path = config.ConfigPath()
+		path = config.Path()
 	}
 
 	// init log file

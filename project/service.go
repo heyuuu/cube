@@ -33,6 +33,7 @@ func NewService(conf config.ProjectConfig) *Service {
 		}
 	})
 
+	// 构建 service 实体
 	s := &Service{
 		scanRules:  scanRules,
 		cloneRules: cloneRules,

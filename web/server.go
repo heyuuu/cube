@@ -17,11 +17,6 @@ import (
 	"github.com/heyuuu/cube/version"
 )
 
-type H map[string]any
-
-// HandleFunc 请求处理函数
-type HandleFunc func(params any) (result any, err error)
-
 // Handler 接口
 type Handler interface {
 	Register(api huma.API)

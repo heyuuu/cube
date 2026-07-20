@@ -42,10 +42,10 @@ func NewProjectHandler(service *project.Service) *ProjectHandler {
 }
 
 func (h *ProjectHandler) Register(api huma.API) {
-	apiGet(api, "/api/project/list", "", h.projectList)
-	apiGet(api, "/api/project/info", "", h.projectInfo)
-	apiGet(api, "/api/project/scan-rules", "", h.scanRules)
-	apiGet(api, "/api/project/clone-rules", "", h.cloneRules)
+	apiGet(api, "/api/project/list", "获取项目列表", h.projectList)
+	apiGet(api, "/api/project/info", "获取项目详情", h.projectInfo)
+	apiGet(api, "/api/project/scan-rules", "获取扫描规则", h.scanRules)
+	apiGet(api, "/api/project/clone-rules", "获取 clone 规则", h.cloneRules)
 }
 
 func (h *ProjectHandler) projectList(_ struct{}) (ListResult[*ProjectDTO], error) {

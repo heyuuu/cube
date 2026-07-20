@@ -52,13 +52,13 @@ func rootPreExecute() error {
 	config.SetDebug(debug)
 
 	// 初始化配置
-	err = config.InitConfig(cfgPath)
+	err = config.Init(cfgPath)
 	if err != nil {
 		return err
 	}
 
 	// 初始化数据文件 data.db
-	err = db.Init(config.ConfigPath(),
+	err = db.Init(config.Path(),
 		&history.ProjectSelectLog{},
 		&history.ProjectOpenLog{},
 	)
@@ -70,7 +70,7 @@ func rootPreExecute() error {
 	logger.Init()
 
 	// 记录启动日志
-	slog.Debug("command start", "debug", debug, "cfgPath", config.ConfigPath(), "args", args)
+	slog.Debug("command start", "debug", debug, "cfgPath", config.Path(), "args", args)
 
 	return nil
 }

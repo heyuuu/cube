@@ -1,7 +1,7 @@
 package project
 
 import (
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strconv"
@@ -27,6 +27,6 @@ func passthruGitClone(localPath string, repoUrl string, depth int, branch string
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	log.Println("Run Cmd >>> " + cmd.String())
+	slog.Info("Run cmd", "cmd", cmd.String())
 	return cmd.Run()
 }

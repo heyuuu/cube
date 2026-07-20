@@ -43,6 +43,7 @@ func Init(cfgPath string, models ...any) error {
 		}
 	}
 
+	// 记录到全局
 	defaultDB = db
 	return nil
 }

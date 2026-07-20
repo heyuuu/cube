@@ -10,13 +10,20 @@ import (
 )
 
 // 默认配置目录
-const defaultCfgPath = "~/.go-cube/"
+const defaultCfgPath = "~/.cube/"
 
-func InitConfig(cfgPath string) error {
+func Init(cfgPath string) error {
 	if len(cfgPath) == 0 {
 		cfgPath = defaultCfgPath
 	}
 	cfgPath = pathkit.RealPath(cfgPath)
+
+	// 若 cfgPath 不存在则创建
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(cfgPath, 0755); err != nil {
+			return fmt.Errorf("create config dir failed: %w", err)
+		}
+	}
 
 	// 记录日志目录
 	configPath = cfgPath
@@ -28,7 +35,7 @@ func InitConfig(cfgPath string) error {
 // config path
 var configPath string
 
-func ConfigPath() string {
+func Path() string {
 	return configPath
 }
 

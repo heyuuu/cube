@@ -13,8 +13,8 @@ var configCmd = &easycobra.Command{
 	Use:   "config",
 	Short: "show config",
 	Run: func(args []string) error {
-		fmt.Println("go-cube " + version.Version)
-		fmt.Println("config path: " + config.ConfigPath())
+		fmt.Println("cube " + version.Version)
+		fmt.Println("config path: " + config.Path())
 		return nil
 	},
 }
