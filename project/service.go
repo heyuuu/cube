@@ -2,167 +2,95 @@ package project
 
 import (
 	"log"
-	"slices"
-	"strings"
-	"sync"
 
 	"github.com/heyuuu/cube/config"
-	"github.com/heyuuu/cube/util/matcher"
+	"github.com/heyuuu/cube/util/easycache"
+	"github.com/heyuuu/cube/util/fuzzy"
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
 type Service struct {
-	workspaces []*Workspace
-	remotes    []*Remote
-	scanCache  map[string][]*Project
-	lockPool   sync.Map
+	// scan
+	scanRules []ScanRule                  // 项目扫描规则
+	scanCache *easycache.Item[[]*Project] // 项目扫描的缓存
+	// clone
+	cloneRules []CloneRule // 项目 clone 规则
 }
 
-func NewProjectService(conf config.Config) *Service {
-	workspaces := slicekit.Map(conf.Workspaces, NewWorkspace)
-	remotes := slicekit.Map(conf.Remotes, NewRemote)
-
-	return &Service{
-		workspaces: workspaces,
-		remotes:    remotes,
-		scanCache:  make(map[string][]*Project),
-	}
-}
-
-// --- workspace --
-
-func (s *Service) Workspaces() []*Workspace {
-	return s.workspaces
-}
-
-func (s *Service) FindWorkspaceByName(name string) *Workspace {
-	for _, ws := range s.workspaces {
-		if ws.Name() == name {
-			return ws
+func NewService(conf config.ProjectConfig) *Service {
+	scanRules := slicekit.Map(conf.Scan, func(r config.ScanRuleConfig) ScanRule {
+		return ScanRule{
+			Group:    r.Group,
+			Path:     r.Path,
+			MaxDepth: r.MaxDepth,
 		}
-	}
-	return nil
-}
-
-func (s *Service) FindWorkspaceByProjectName(projectName string) *Workspace {
-	if wsName, _, ok := strings.Cut(projectName, ":"); ok {
-		return s.FindWorkspaceByName(wsName)
-	}
-	return nil
-}
-
-// -- remote --
-
-func (s *Service) Remotes() []*Remote {
-	return s.remotes
-}
-
-func (s *Service) FindRemoteByName(name string) *Remote {
-	for _, r := range s.remotes {
-		if r.Name() == name {
-			return r
+	})
+	cloneRules := slicekit.Map(conf.Clone, func(r config.CloneRuleConfig) CloneRule {
+		return CloneRule{
+			RepoHost:   r.RepoHost,
+			RepoPrefix: r.RepoPrefix,
+			LocalPath:  r.LocalPath,
 		}
+	})
+
+	s := &Service{
+		scanRules:  scanRules,
+		cloneRules: cloneRules,
 	}
-	return nil
+	s.scanCache = easycache.NewItem(s.loadProjects)
+	return s
 }
 
-func (s *Service) FindRemoteByHost(host string) *Remote {
-	for _, r := range s.remotes {
-		if r.Host() == host {
-			return r
-		}
-	}
-	return nil
-}
+// -- getter --
 
-// --- project --
+func (s *Service) ScanRules() []ScanRule   { return s.scanRules }
+func (s *Service) CloneRules() []CloneRule { return s.cloneRules }
+
+// --- project 读操作 ---
 
 func (s *Service) Projects() []*Project {
-	workspaces := s.Workspaces()
-	projectsGroup := slicekit.Map(workspaces, func(ws *Workspace) []*Project {
-		return s.ScanProjects(ws)
-	})
-	return slices.Concat(projectsGroup...)
+	return s.scanCache.Get()
+}
+
+func (s *Service) FindByPath(path string) *Project {
+	for _, proj := range s.Projects() {
+		if proj.Path() == path {
+			return proj
+		}
+	}
+	return nil
 }
 
 func (s *Service) FindByName(name string) *Project {
-	ws := s.FindWorkspaceByProjectName(name)
-	if ws == nil {
-		return nil
-	}
-
-	for _, project := range s.ScanProjects(ws) {
-		if project.Name() == name {
-			return project
+	for _, proj := range s.Projects() {
+		if proj.Name() == name {
+			return proj
 		}
 	}
 	return nil
 }
 
 func (s *Service) Search(query string) []*Project {
-	return s.SearchInWorkspace(query, "")
+	return fuzzy.MatchBy(query, s.Projects(), (*Project).Name, nil)
 }
 
-func (s *Service) SearchInWorkspace(query string, workspaceName string) []*Project {
-	projects := s.projectsInWorkspace(workspaceName)
-	if len(projects) == 0 {
-		return nil
-	}
+// --- scan 相关 ---
 
-	if len(query) == 0 {
-		return projects
-	}
-
-	projectMatcher := matcher.NewKeywordMatcher(projects, (*Project).Name, nil)
-	return projectMatcher.Match(query)
-}
-
-func (s *Service) projectsInWorkspace(workspaceName string) []*Project {
-	if workspaceName == "" {
-		return s.Projects()
-	} else {
-		ws := s.FindWorkspaceByName(workspaceName)
-		if ws == nil {
-			return nil
+// 加载所有项目的实际逻辑
+func (s *Service) loadProjects() []*Project {
+	var result []*Project
+	for _, rule := range s.scanRules {
+		projects, err := ScanProjects(rule)
+		if err != nil {
+			log.Println(err)
 		}
-
-		return s.ScanProjects(ws)
+		result = append(result, projects...)
 	}
+	return result
 }
 
-func (s *Service) getLock(key string) *sync.RWMutex {
-	lock, _ := s.lockPool.LoadOrStore(key, &sync.RWMutex{})
-	return lock.(*sync.RWMutex)
-}
+// --- clone 相关 ---
 
-func (s *Service) ScanProjects(ws *Workspace) []*Project {
-	// 判断是否有扫描规则，若没有直接返回
-	scanner := ws.Scanner()
-	if scanner == nil {
-		return nil
-	}
-
-	// 获取锁
-	lock := s.getLock(ws.Name())
-
-	// 先尝试读缓存
-	lock.RLock()
-	if projects, ok := s.scanCache[ws.Name()]; ok {
-		lock.RUnlock()
-		return projects
-	}
-	lock.RUnlock()
-
-	// 缓存未命中，实际扫描本地文件
-	lock.Lock()
-	defer lock.Unlock()
-
-	projects, err := scanner.Scan(ws)
-	if err != nil {
-		log.Print(err)
-	}
-
-	// 更新缓存(即使有 err 也更新，避免重复扫描)
-	s.scanCache[ws.Name()] = projects
-	return projects
+func (s *Service) MatchCloneRule(repoUrl string) (rule CloneRule, localPath string, ok bool) {
+	return MatchCloneRule(repoUrl, s.cloneRules)
 }

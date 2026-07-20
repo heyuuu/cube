@@ -5,29 +5,23 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/heyuuu/cube/common"
 )
 
-type ProjectScanner interface {
-	Scan(ws *Workspace) (projects []*Project, err error)
+// ScanRule 扫描规则
+type ScanRule struct {
+	Group    string `json:"group"`    // 扫描出的项目组名
+	Path     string `json:"path"`     // 扫描的根目录
+	MaxDepth int    `json:"maxDepth"` // 扫描的最大深度
 }
 
-// GitProjectScanner 扫描 git 项目的规则
-type GitProjectScanner struct {
-	maxDepth int
-}
+// 项目标签。scanner 命中特征时打标；用于区分 git/godot 等项目类型。
+const (
+	TagGit   = "git"
+	TagGodot = "godot"
+)
 
-func NewGitProjectScanner(maxDepth int) *GitProjectScanner {
-	return &GitProjectScanner{maxDepth: maxDepth}
-}
-
-func (sc *GitProjectScanner) MaxDepth() int {
-	return sc.maxDepth
-}
-
-func (sc *GitProjectScanner) Scan(ws *Workspace) (projects []*Project, err error) {
-	root := ws.Path()
+func ScanProjects(r ScanRule) (projects []*Project, err error) {
+	root, maxDepth := r.Path, r.MaxDepth
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -38,11 +32,11 @@ func (sc *GitProjectScanner) Scan(ws *Workspace) (projects []*Project, err error
 		}
 
 		// 检查目录，返回此目录为项目或跳过目录或nil
-		isProject, tags, checkErr := sc.checkPath(path)
+		isProject, tags, checkErr := checkProjectPath(path)
 		if checkErr != nil {
 			return checkErr
 		} else if isProject {
-			projects = append(projects, NewProject(ws, path, tags))
+			projects = append(projects, newProject(r, path, tags))
 			return fs.SkipDir
 		}
 
@@ -51,7 +45,7 @@ func (sc *GitProjectScanner) Scan(ws *Workspace) (projects []*Project, err error
 		if path != root {
 			depth = strings.Count(path[len(root)-1:], "/")
 		}
-		if depth >= sc.maxDepth {
+		if depth >= maxDepth {
 			return fs.SkipDir
 		}
 
@@ -60,7 +54,7 @@ func (sc *GitProjectScanner) Scan(ws *Workspace) (projects []*Project, err error
 	return
 }
 
-func (sc *GitProjectScanner) checkPath(path string) (isProject bool, tags []string, err error) {
+func checkProjectPath(path string) (isProject bool, tags []string, err error) {
 	// 跳过特殊前缀的目录
 	var name = filepath.Base(path)
 	if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
@@ -74,9 +68,9 @@ func (sc *GitProjectScanner) checkPath(path string) (isProject bool, tags []stri
 	}
 	for _, entry := range dirEntries {
 		if entry.Name() == ".git" { // 若 .git 存在则认为是一个 project (常规仓库为 .git 目录，worktree 仓库为 .git 文件)
-			tags = append(tags, common.TagGit)
+			tags = append(tags, TagGit)
 		} else if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".godot") {
-			tags = append(tags, common.TagGodot)
+			tags = append(tags, TagGodot)
 		}
 	}
 	if len(tags) > 0 {

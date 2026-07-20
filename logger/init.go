@@ -73,7 +73,7 @@ func initFileHandler() slog.Handler {
 	conf := config.Default()
 
 	// path
-	path := conf.LogPath
+	path := conf.Log.Path
 	if path == "" {
 		path = config.ConfigPath()
 	}
@@ -89,10 +89,10 @@ func initFileHandler() slog.Handler {
 	}
 
 	// level
-	level := parseLogLevel(conf.LogLevel)
+	level := parseLogLevel(conf.Log.Level)
 
 	// format
-	format := conf.LogFormat
+	format := conf.Log.Format
 	if format == "" {
 		format = logFileFormat
 	}

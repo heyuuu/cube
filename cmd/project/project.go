@@ -3,9 +3,6 @@ package project
 import (
 	"errors"
 	"fmt"
-	"log"
-	"os"
-	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,19 +24,19 @@ var RootCmd = &easycobra.Command{
 		projectSearchCmd,
 		projectInfoCmd,
 		projectOpenCmd,
+		projectScanRulesCmd,
+		projectCloneRulesCmd,
 		projectCloneCmd,
 	},
 }
 
 // cmd `project search`
 var projectSearchCmd = &easycobra.Command{
-	Use:   "search {query?* : 项目名，支持模糊匹配} {--w|workspace= : 指定工作区，默认针对所有工作区} {--status : 分析项目}",
+	Use:   "search {query?* : 项目名，支持模糊匹配} {--status : 分析项目}",
 	Short: "搜索项目列表",
 	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
-		var workspaceName string
 		var showStatus bool
-		cmd.Flags().StringVarP(&workspaceName, "workspace", "w", "", "指定工作区，默认针对所有工作区")
 		cmd.Flags().BoolVar(&showStatus, "status", false, "分析项目")
 
 		// run
@@ -49,7 +46,7 @@ var projectSearchCmd = &easycobra.Command{
 
 			// 项目列表
 			service := app.Default().ProjectService()
-			projects := service.SearchInWorkspace(query, workspaceName)
+			projects := service.Search(query)
 
 			// 返回结果
 			if !showStatus {
@@ -106,20 +103,15 @@ var projectSearchCmd = &easycobra.Command{
 
 // cmd `project info`
 var projectInfoCmd = &easycobra.Command{
-	Use:   "info {project : 项目名，支持模糊匹配} {--w|workspace= : 指定工作区，默认针对所有工作区}",
+	Use:   "info {project : 项目名，支持模糊匹配}",
 	Short: "打开项目",
 	Args:  cobra.ExactArgs(1),
 	InitRun: func(cmd *cobra.Command) easycobra.Run {
-		// init flags
-		var workspaceName string
-		cmd.Flags().StringVarP(&workspaceName, "workspace", "w", "", "指定工作区，默认针对所有工作区")
-
-		// run
 		return func(args []string) error {
 			query := args[0]
 
 			// 匹配项目
-			proj := selectProject(query, workspaceName)
+			proj := selectProject(query)
 			if proj == nil {
 				return nil
 			}
@@ -135,14 +127,12 @@ var projectInfoCmd = &easycobra.Command{
 
 // cmd `project open`
 var projectOpenCmd = &easycobra.Command{
-	Use:   "open {project : 项目名} {--app= : 打开项目的App} {--w|workspace= : 指定工作区，仅交互模式有意义}",
+	Use:   "open {project : 项目名} {--app= : 打开项目的App}",
 	Short: "打开项目。非交互模式只支持准确项目名，非交互模式下支持模糊搜索",
 	Args:  cobra.ExactArgs(1),
 	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
-		var workspaceName string
 		var appName string
-		cmd.Flags().StringVarP(&workspaceName, "workspace", "w", "", "指定工作区，默认针对所有工作区")
 		cmd.Flags().StringVar(&appName, "app", "", "打开项目的App")
 
 		// run
@@ -157,7 +147,7 @@ var projectOpenCmd = &easycobra.Command{
 			}
 
 			// 匹配项目
-			proj := selectProject(query, workspaceName)
+			proj := selectProject(query)
 			if proj == nil {
 				return nil
 			}
@@ -173,9 +163,9 @@ var projectOpenCmd = &easycobra.Command{
 	},
 }
 
-func selectProject(query string, workspace string) *project.Project {
+func selectProject(query string) *project.Project {
 	service := app.Default().ProjectService()
-	projects := service.SearchInWorkspace(query, workspace)
+	projects := service.Search(query)
 	switch len(projects) {
 	case 0:
 		fmt.Println("没有匹配的项目")
@@ -190,6 +180,43 @@ func selectProject(query string, workspace string) *project.Project {
 		}
 		return proj
 	}
+}
+
+// cmd `project scan-rules`
+var projectScanRulesCmd = &easycobra.Command{
+	Use:   "scan-rules",
+	Short: "列出 scan 规则",
+	Run: func(args []string) error {
+		service := app.Default().ProjectService()
+		for _, rule := range service.ScanRules() {
+			fmt.Println(rule.Group)
+		}
+		return nil
+	},
+}
+
+// cmd `project clone-rules`
+var projectCloneRulesCmd = &easycobra.Command{
+	Use:   "clone-rules",
+	Short: "列出 clone 规则",
+	Run: func(args []string) error {
+		service := app.Default().ProjectService()
+		rules := service.CloneRules()
+
+		// 显示列表
+		console.PrintTableFunc(rules, []string{
+			fmt.Sprintf("RepoHost(%d)", len(rules)),
+			"RepoPrefix",
+			"LocalPath",
+		}, func(r project.CloneRule) []string {
+			return []string{
+				r.RepoHost,
+				r.RepoPrefix,
+				r.LocalPath,
+			}
+		})
+		return nil
+	},
 }
 
 // cmd `project clone`
@@ -211,49 +238,26 @@ var projectCloneCmd = &easycobra.Command{
 				depth = 1 // // 指定分支情况下，默认深度为1
 			}
 
-			// 解析 repoUrl
-			u, err := git.ParseRepoUrl(rawRepoUrl)
+			// 预检查 rawRepoUrl 是否为合法 git repoUrl
+			_, err := git.ParseRepoUrl(rawRepoUrl)
 			if err != nil {
 				return fmt.Errorf("repoUrl 不是合法地址: url=%s", rawRepoUrl)
 			}
 
-			// 匹配hub
+			// 匹配 CloneRule，获取对应本地路径
 			service := app.Default().ProjectService()
-			remote := service.FindRemoteByHost(u.Host)
-			if remote == nil {
-				return fmt.Errorf("repoUrl 没有对应 remote 配置: host=%s", u.Host)
-			}
-
-			// 匹配本地地址
-			localPath, ok := remote.MapDefaultPath(u)
+			_, localPath, ok := service.MatchCloneRule(rawRepoUrl)
 			if !ok {
-				return fmt.Errorf("对应 remote 未支持此路径: remote=%s, path=%s", remote.Name(), u.Path)
+				return fmt.Errorf("repoUrl 没有对应 clone 规则: url=%s", rawRepoUrl)
 			}
 
 			// 执行命令
 			err = passthruGitClone(localPath, rawRepoUrl, depth, branch)
 			if err != nil {
-				log.Fatalf("执行 clone 命令失败: " + err.Error())
+				return fmt.Errorf("执行 clone 命令失败: %s", err)
 			}
 
 			return nil
 		}
 	},
-}
-
-func passthruGitClone(localPath string, repoUrl string, depth int, branch string) error {
-	args := []string{"git", "clone", repoUrl, localPath}
-	if depth > 0 {
-		args = append(args, "--depth="+strconv.Itoa(depth))
-	}
-	if branch != "" {
-		args = append(args, "--branch="+branch)
-	}
-
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	log.Println("Run Cmd >>> " + cmd.String())
-	return cmd.Run()
 }

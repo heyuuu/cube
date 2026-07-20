@@ -29,7 +29,7 @@ func InitApp() *App {
 
 	configHandler := web.NewConfigHandler(conf)
 
-	projectService := project.NewProjectService(conf)
+	projectService := project.NewService(conf.Project)
 	projectHandler := web.NewProjectHandler(projectService)
 
 	openerService := opener.NewService(conf)

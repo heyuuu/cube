@@ -2,7 +2,7 @@ package opener
 
 import (
 	"github.com/heyuuu/cube/config"
-	"github.com/heyuuu/cube/util/matcher"
+	"github.com/heyuuu/cube/util/fuzzy"
 	"github.com/heyuuu/cube/util/slicekit"
 )
 
@@ -39,8 +39,7 @@ func (s *Service) Search(query string) []*Opener {
 	}
 
 	// match
-	m := matcher.NewKeywordMatcher(s.apps, func(app *Opener) string {
+	return fuzzy.MatchBy(query, s.apps, func(app *Opener) string {
 		return app.Name()
 	}, nil)
-	return m.Match(query)
 }

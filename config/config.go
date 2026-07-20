@@ -1,28 +1,32 @@
 package config
 
 type Config struct {
-	Workspaces []WorkspaceConfig `json:"workspaces"`
-	Remotes    []RemoteConfig    `json:"remotes"`
-	Openers    []OpenerConfig    `json:"openers"`
-
-	// 日志相关
-	LogPath   string `json:"logPath"`
-	LogLevel  string `json:"logLevel"`
-	LogFormat string `json:"logFormat"`
+	Log     LogConfig      `json:"log"`
+	Project ProjectConfig  `json:"project"`
+	Openers []OpenerConfig `json:"openers"`
 }
 
-type WorkspaceConfig struct {
-	Name       string   `json:"name"`
-	Path       string   `json:"path"`
-	MaxDepth   int      `json:"maxDepth"`
-	PreferApps []string `json:"preferApps"`
+type LogConfig struct {
+	Path   string `json:"path"`
+	Level  string `json:"level"`
+	Format string `json:"format"`
 }
 
-type RemoteConfig struct {
-	Name string `json:"name"`
-	Host string `json:"host"`
+type ProjectConfig struct {
+	Scan  []ScanRuleConfig  `json:"scan"`
+	Clone []CloneRuleConfig `json:"clone"`
+}
 
-	DefaultPath string `json:"defaultPath"`
+type ScanRuleConfig struct {
+	Group    string `json:"group"`
+	Path     string `json:"path"`
+	MaxDepth int    `json:"maxDepth"`
+}
+
+type CloneRuleConfig struct {
+	RepoHost   string `json:"repoHost"`
+	RepoPrefix string `json:"repoPrefix"`
+	LocalPath  string `json:"localPath"`
 }
 
 type OpenerConfig struct {
