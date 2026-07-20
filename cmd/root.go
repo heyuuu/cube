@@ -17,8 +17,8 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &easycobra.Command{
-	Use:   "go-cube",
-	Short: "go-cube " + version.Version,
+	Use:   "cube",
+	Short: "cube " + version.Version,
 	Children: []*easycobra.Command{
 		// group commands
 		project.RootCmd,
@@ -40,7 +40,7 @@ func rootPreExecute() error {
 	// persistent flags
 	var cfgPath string
 	var debug bool
-	cmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config folder path (default is ~/.go-cube/)")
+	cmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config folder path (default is ~/.cube/)")
 	cmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "open debug mode")
 	cmd.PersistentFlags().ParseErrorsAllowlist.UnknownFlags = true
 	err := cmd.PersistentFlags().Parse(args)
@@ -57,7 +57,7 @@ func rootPreExecute() error {
 		return err
 	}
 
-	// 初始化数据文件 data.db
+	// 初始化 DB
 	err = db.Init(config.Path(),
 		&history.ProjectSelectLog{},
 		&history.ProjectOpenLog{},

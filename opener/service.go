@@ -7,24 +7,24 @@ import (
 )
 
 type Service struct {
-	apps []*Opener
+	openers []*Opener
 }
 
 func NewService(conf config.Config) *Service {
 	// 读取配置
-	apps := slicekit.Map(conf.Openers, NewOpener)
+	openers := slicekit.Map(conf.Openers, NewOpener)
 
 	return &Service{
-		apps: apps,
+		openers: openers,
 	}
 }
 
 func (s *Service) Openers() []*Opener {
-	return s.apps
+	return s.openers
 }
 
 func (s *Service) FindByName(name string) *Opener {
-	for _, app := range s.apps {
+	for _, app := range s.openers {
 		if app.Name() == name {
 			return app
 		}
@@ -34,12 +34,5 @@ func (s *Service) FindByName(name string) *Opener {
 }
 
 func (s *Service) Search(query string) []*Opener {
-	if len(query) == 0 || len(s.apps) == 0 {
-		return s.apps
-	}
-
-	// match
-	return fuzzy.MatchBy(query, s.apps, func(app *Opener) string {
-		return app.Name()
-	}, nil)
+	return fuzzy.MatchBy(query, s.openers, (*Opener).Name, nil)
 }

@@ -12,7 +12,7 @@ var versionCmd = &easycobra.Command{
 	Use:   "version",
 	Short: "show version",
 	Run: func(args []string) error {
-		fmt.Println("go-cube " + version.Version)
+		fmt.Println("cube " + version.Version)
 		return nil
 	},
 }

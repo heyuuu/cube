@@ -16,5 +16,5 @@ func NewOpener(conf config.OpenerConfig) *Opener {
 	}
 }
 
-func (app *Opener) Name() string { return app.name }
-func (app *Opener) Bin() string  { return app.bin }
+func (o *Opener) Name() string { return o.name }
+func (o *Opener) Bin() string  { return o.bin }

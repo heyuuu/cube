@@ -41,7 +41,7 @@ func InitApp() *App {
 		openerHandler,
 	)
 
-	historyService := history.NewHistoryService(defaultDB)
+	historyService := history.NewService(defaultDB)
 
 	return &App{
 		server:         server,

@@ -12,7 +12,7 @@ type App struct {
 
 	projectService *project.Service
 	openerService  *opener.Service
-	historyService *history.HistoryService
+	historyService *history.Service
 }
 
 func (app *App) Server() *web.Server {
@@ -27,6 +27,6 @@ func (app *App) OpenerService() *opener.Service {
 	return app.openerService
 }
 
-func (app *App) HistoryService() *history.HistoryService {
+func (app *App) HistoryService() *history.Service {
 	return app.historyService
 }
