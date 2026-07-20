@@ -46,7 +46,7 @@ var projectSearchCmd = &easycobra.Command{
 			return Item{
 				Title:    proj.Name(),
 				SubTitle: proj.Path(),
-				Arg:      proj.Path(),
+				Arg:      proj.Name(),
 			}
 		})
 	},
