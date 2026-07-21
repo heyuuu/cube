@@ -3,6 +3,7 @@ package project
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strconv"
 
@@ -36,12 +37,13 @@ var RootCmd = &easycobra.Command{
 
 // 触发后台异步刷新（TTL 内会自动跳过，不阻塞当前命令）
 func triggerAsyncRefresh() {
+	slog.Info("triggerAsyncRefresh")
 	service := app.Default().ProjectService()
 	service.TriggerAsyncRefresh()
 }
 
 func init() {
-	RootCmd.CobraCommand().PostRun = func(cmd *cobra.Command, args []string) {
+	RootCmd.CobraCommand().PersistentPostRun = func(cmd *cobra.Command, args []string) {
 		if cmd != projectRefreshGitCacheCmd.CobraCommand() {
 			triggerAsyncRefresh()
 		}
@@ -80,9 +82,6 @@ var projectListCmd = &easycobra.Command{
 
 			// 展示项目列表
 			showProjects(projects, verbose)
-
-			// 触发后台异步刷新（TTL 内会自动跳过，不阻塞当前命令）
-			service.TriggerAsyncRefresh()
 
 			return nil
 		}
@@ -150,9 +149,6 @@ var projectInfoCmd = &easycobra.Command{
 			repoUrl = info.RepoUrl
 		}
 		fmt.Printf("git-url: %s\n", repoUrl)
-
-		// 触发后台异步刷新
-		app.Default().ProjectService().TriggerAsyncRefresh()
 
 		return nil
 	},
