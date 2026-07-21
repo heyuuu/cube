@@ -15,6 +15,7 @@ import (
 	"github.com/heyuuu/cube/project"
 	"github.com/heyuuu/cube/util/git"
 	"github.com/heyuuu/cube/util/pathkit"
+	"github.com/heyuuu/cube/util/slicekit"
 )
 
 // cmd group `project *`
@@ -29,7 +30,22 @@ var RootCmd = &easycobra.Command{
 		projectCloneRulesCmd,
 		projectCloneCmd,
 		projectRefreshGitCacheCmd,
+		projectCheckCmd,
 	},
+}
+
+// 触发后台异步刷新（TTL 内会自动跳过，不阻塞当前命令）
+func triggerAsyncRefresh() {
+	service := app.Default().ProjectService()
+	service.TriggerAsyncRefresh()
+}
+
+func init() {
+	RootCmd.CobraCommand().PostRun = func(cmd *cobra.Command, args []string) {
+		if cmd != projectRefreshGitCacheCmd.CobraCommand() {
+			triggerAsyncRefresh()
+		}
+	}
 }
 
 // cmd `project list`
@@ -219,17 +235,20 @@ var projectCloneRulesCmd = &easycobra.Command{
 		rules := service.CloneRules()
 
 		// 显示列表
-		console.PrintTableFunc(rules, []string{
-			fmt.Sprintf("RepoHost(%d)", len(rules)),
-			"RepoPrefix",
-			"LocalPath",
-		}, func(r project.CloneRule) []string {
-			return []string{
-				r.RepoHost,
-				r.RepoPrefix,
-				r.LocalPath,
-			}
-		})
+		console.PrintTable(
+			[]string{
+				fmt.Sprintf("RepoHost(%d)", len(rules)),
+				"RepoPrefix",
+				"LocalPath",
+			},
+			slicekit.Map(rules, func(r project.CloneRule) []string {
+				return []string{
+					r.RepoHost,
+					r.RepoPrefix,
+					r.LocalPath,
+				}
+			}),
+		)
 		return nil
 	},
 }

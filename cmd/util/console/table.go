@@ -3,45 +3,30 @@ package console
 import (
 	"fmt"
 	"strings"
-
-	"github.com/heyuuu/cube/util/slicekit"
 )
-
-func PrintTableFunc[T any](records []T, headers []string, rowGetter func(T) []string) {
-	rows := slicekit.Map(records, rowGetter)
-	PrintTable(headers, rows)
-}
 
 func PrintTable(headers []string, rows [][]string) {
 	// 计算列数
-	columnCount := len(headers)
+	colCount := len(headers)
 	for _, line := range rows {
-		if columnCount < len(line) {
-			columnCount = len(line)
-		}
+		colCount = max(colCount, len(line))
 	}
 
 	// 计算每列宽度
-	maxLen := make([]int, columnCount)
-	for index, field := range headers {
-		fieldWidth := unicodeWidth(field)
-		if maxLen[index] < fieldWidth {
-			maxLen[index] = fieldWidth
-		}
+	colWidths := make([]int, colCount)
+	for i, field := range headers {
+		colWidths[i] = unicodeWidth(field)
 	}
 	for _, line := range rows {
-		for index, field := range line {
-			fieldWidth := unicodeWidth(field)
-			if maxLen[index] < fieldWidth {
-				maxLen[index] = fieldWidth
-			}
+		for i, field := range line {
+			colWidths[i] = max(colWidths[i], unicodeWidth(field))
 		}
 	}
 
 	// 计算分隔线
 	splitLineBuilder := strings.Builder{}
 	splitLineBuilder.WriteString("+")
-	for _, fieldLen := range maxLen {
+	for _, fieldLen := range colWidths {
 		splitLineBuilder.WriteString(strings.Repeat("-", fieldLen+2))
 		splitLineBuilder.WriteString("+")
 	}
@@ -49,19 +34,22 @@ func PrintTable(headers []string, rows [][]string) {
 
 	// 绘制表格
 	fmt.Println(splitLine)
-	printTableLine(columnCount, headers, maxLen)
+	printTableLine(colCount, headers, colWidths)
 	fmt.Println(splitLine)
 	for _, line := range rows {
-		printTableLine(columnCount, line, maxLen)
+		printTableLine(colCount, line, colWidths)
 	}
 	fmt.Println(splitLine)
 }
 
-func printTableLine(columnCount int, fields []string, maxLen []int) {
+func printTableLine(colCount int, fields []string, maxLen []int) {
 	builder := strings.Builder{}
 	builder.WriteString("|")
-	for i := 0; i < columnCount; i++ {
-		field := fields[i]
+	for i := 0; i < colCount; i++ {
+		var field string
+		if i < len(fields) {
+			field = fields[i]
+		}
 		fieldWidth := unicodeWidth(field)
 		if fieldWidth < maxLen[i] {
 			field = field + strings.Repeat(" ", maxLen[i]-fieldWidth)

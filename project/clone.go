@@ -1,6 +1,7 @@
 package project
 
 import (
+	"path"
 	"strings"
 
 	"github.com/heyuuu/cube/util/git"
@@ -19,14 +20,14 @@ func MatchCloneRule(repoUrl string, rules []CloneRule) (rule CloneRule, localPat
 		return
 	}
 
-	host, path := u.Host, u.Path
 	for _, r := range rules {
 		// 匹配规则
-		if host == r.RepoHost && strings.HasPrefix(path, r.RepoPrefix) {
+		if u.Host == r.RepoHost && strings.HasPrefix(u.Path, r.RepoPrefix) {
 			// 仅第一次匹配，或新匹配规则的 Prefix 长度大于旧规则 Prefix 时，记录新规则
 			if !ok || (len(r.RepoPrefix) > len(rule.RepoPrefix)) {
 				ok = true
 				rule = r
+				localPath = path.Join(rule.LocalPath, strings.TrimSuffix(strings.TrimPrefix(u.Path, r.RepoPrefix), ".git"))
 			}
 		}
 	}
