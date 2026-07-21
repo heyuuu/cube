@@ -136,7 +136,7 @@ func RefreshSync(cacheDir string, paths []string) error {
 	if err != nil {
 		return fmt.Errorf("load cache: %w", err)
 	}
-	if err := cache.Refresh(paths, defaultWorkers); err != nil {
+	if err := cache.Refresh(paths); err != nil {
 		return fmt.Errorf("refresh cache: %w", err)
 	}
 

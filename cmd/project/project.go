@@ -66,7 +66,7 @@ var projectListCmd = &easycobra.Command{
 					fmt.Sprintf("项目(%d)", len(projects)),
 					"路径",
 					"当前分支",
-					"Master差异",
+					"默认分支差异",
 					"当前工作区是否干净",
 				}, func(p *project.Project) []string {
 					// 读 git 缓存（可能 stale，后台会异步刷新；未命中留空）

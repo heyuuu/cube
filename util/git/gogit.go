@@ -20,7 +20,6 @@ package git
 //   - 真实读取错误（损坏的 .git、IO 异常等）：返回零值 + error，由调用方决定是否记录。
 
 import (
-	"errors"
 	"strings"
 
 	gogit "github.com/go-git/go-git/v5"
@@ -100,6 +99,43 @@ func refShortName(name plumbing.ReferenceName) string {
 		}
 	}
 	return name.Short()
+}
+
+// DefaultBranch 返回 path 处仓库的默认分支短名（"master" / "main" 等）。
+// 用于 ahead/behind 比较「主分支本地 vs 主分支远程」。
+//
+// 判断顺序（可靠度递减）：
+//  1. origin/HEAD 指向的分支（远程仓库声明的 default branch；克隆时自动建立）
+//  2. 本地 master 分支存在 → master（兼容老仓库的常见情况）
+//  3. 本地 main 分支存在 → main（新仓库的常见情况）
+//  4. 都没有 → 返回空串（调用方应跳过 ahead/behind）
+func DefaultBranch(path string) (string, error) {
+	repo, err := openRepo(path)
+	if err != nil {
+		return "", nil
+	}
+	return resolveDefaultBranch(repo), nil
+}
+
+// resolveDefaultBranch 在已打开的 repo 上解析默认分支。
+// 抽出来便于未来在 collectEntry 复用 repo 实例时直接调用。
+func resolveDefaultBranch(repo *gogit.Repository) string {
+	// 1. origin/HEAD 是 symbolic ref，指向 refs/remotes/origin/{branch}
+	if ref, err := repo.Reference(plumbing.ReferenceName("refs/remotes/origin/HEAD"), false); err == nil {
+		// target 形如 refs/remotes/origin/master，折算成 master 这种本地短名
+		if target := ref.Target(); target.IsRemote() {
+			return stripRemotePrefix(target.Short()) // origin/master → master
+		}
+	}
+	// 2. fallback master
+	if ref, err := repo.Reference(plumbing.NewBranchReferenceName("master"), true); err == nil && ref != nil {
+		return "master"
+	}
+	// 3. fallback main
+	if ref, err := repo.Reference(plumbing.NewBranchReferenceName("main"), true); err == nil && ref != nil {
+		return "main"
+	}
+	return ""
 }
 
 // AheadBehind 计算本地分支 local 相对远程分支 remote 的领先 / 落后 commit 数。
@@ -212,6 +248,3 @@ func IsDirty(path string) (bool, error) {
 	}
 	return !status.IsClean(), nil
 }
-
-// ErrRepositoryNotExists 暴露 go-git 的非仓库错误，供上层做更细的判断（可选）。
-var ErrRepositoryNotExists = errors.New("repository does not exist")

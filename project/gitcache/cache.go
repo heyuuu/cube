@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -34,8 +33,9 @@ const cacheFileName = "git.json"
 type Entry struct {
 	RepoUrl       string    `json:"repoUrl"`       // origin remote URL
 	CurrentBranch string    `json:"currentBranch"` // HEAD 指向分支短名，detached 为空
+	DefaultBranch string    `json:"defaultBranch"` // 默认主分支名（master/main/...）
 	Branches      []string  `json:"branches"`      // 本地+远程分支短名列表
-	Ahead         int       `json:"ahead"`         // master 相对 origin/master 领先的 commit 数
+	Ahead         int       `json:"ahead"`         // 默认分支相对 origin 的领先 commit 数
 	Behind        int       `json:"behind"`        // 落后的 commit 数
 	Dirty         bool      `json:"dirty"`         // 工作区是否有改动
 	CollectedAt   time.Time `json:"collectedAt"`   // 本次采集时间
@@ -75,7 +75,7 @@ func Load(dir string) (*Cache, error) {
 	}
 
 	// 文件不存在：空缓存
-	path := c.Path()
+	path := c.path()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -98,8 +98,8 @@ func Load(dir string) (*Cache, error) {
 	return c, nil
 }
 
-// Path 返回缓存文件完整路径。
-func (c *Cache) Path() string { return filepath.Join(c.dir, cacheFileName) }
+// path 返回缓存文件完整路径（包内自用，对外只暴露 Dir）。
+func (c *Cache) path() string { return filepath.Join(c.dir, cacheFileName) }
 
 // Dir 返回缓存目录路径。供 refresh.go 的 TTL/flock 等调度逻辑使用。
 func (c *Cache) Dir() string { return c.dir }
@@ -110,13 +110,6 @@ func (c *Cache) Get(path string) (*Entry, bool) {
 	defer c.mu.RUnlock()
 	e, ok := c.entries[path]
 	return e, ok
-}
-
-// Entries 返回全部条目的浅拷贝 map（调用方可安全遍历，不受 Refresh 影响）。
-func (c *Cache) Entries() map[string]*Entry {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return maps.Clone(c.entries)
 }
 
 // Save 原子写入 git.json。
@@ -136,7 +129,7 @@ func (c *Cache) Save() error {
 		return fmt.Errorf("marshal cache failed: %w", err)
 	}
 
-	path := c.Path()
+	path := c.path()
 	tmpPath := path + ".tmp"
 	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
 		return fmt.Errorf("write cache tmp failed: %w", err)
@@ -152,12 +145,10 @@ func (c *Cache) Save() error {
 // 入参用 []string（项目绝对路径）而非 []*project.Project，刻意解耦对 project 包的依赖，
 // 避免 project → gitcache → project 的循环 import。
 //
-// workers 控制并发 goroutine 上限；<=0 时使用默认值。
+// 并发上限由包内 defaultWorkers 固定为 8（go-git 状态读取是 IO 密集型，过高并发
+// 会与系统其他 IO 抢资源）。
 // 单项目采集 panic 会被 recover 吞掉（该项目保留旧 entry）。
-func (c *Cache) Refresh(paths []string, workers int) error {
-	if workers <= 0 {
-		workers = defaultWorkers
-	}
+func (c *Cache) Refresh(paths []string) error {
 	if len(paths) == 0 {
 		return c.Save() // 无项目也刷一次 UpdatedAt
 	}
@@ -167,7 +158,7 @@ func (c *Cache) Refresh(paths []string, workers int) error {
 		path  string
 		entry *Entry
 	}
-	sem := make(chan struct{}, workers)
+	sem := make(chan struct{}, defaultWorkers)
 	results := make(chan result, len(paths))
 	var wg sync.WaitGroup
 
@@ -214,11 +205,17 @@ const defaultWorkers = 8
 func collectEntry(path string) *Entry {
 	repoUrl, _ := git.RemoteUrl(path)
 	branches, currBranch, _ := git.Branches(path)
-	ahead, behind, _ := git.AheadBehind(path, "master", "origin/master")
+	defaultBranch, _ := git.DefaultBranch(path)
+	// ahead/behind 用仓库的默认分支（master/main/...）做本地 vs 远程比较
+	var ahead, behind int
+	if defaultBranch != "" {
+		ahead, behind, _ = git.AheadBehind(path, defaultBranch, "origin/"+defaultBranch)
+	}
 	dirty, _ := git.IsDirty(path)
 	return &Entry{
 		RepoUrl:       repoUrl,
 		CurrentBranch: currBranch,
+		DefaultBranch: defaultBranch,
 		Branches:      branches,
 		Ahead:         ahead,
 		Behind:        behind,
