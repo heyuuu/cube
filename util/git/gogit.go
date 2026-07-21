@@ -30,7 +30,7 @@ import (
 
 // openRepo 在 path 处打开一个 git 仓库（DetectDotGit: 允许从子目录向上探测 .git）。
 func openRepo(path string) (*gogit.Repository, error) {
-	return gogit.PlainOpenWithOptions(path, &gogit.PlainOpenOptions{DetectDotGit: true})
+	return gogit.PlainOpenWithOptions(path, &gogit.PlainOpenOptions{DetectDotGit: false})
 }
 
 // RemoteUrl 返回 path 处仓库 origin remote 的 URL。

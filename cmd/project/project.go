@@ -260,7 +260,7 @@ var projectCloneCmd = &easycobra.Command{
 			}
 
 			// 执行命令
-			err = passthruGitClone(localPath, rawRepoUrl, depth, branch)
+			err = git.Clone(localPath, rawRepoUrl, depth, branch)
 			if err != nil {
 				return fmt.Errorf("执行 clone 命令失败: %s", err)
 			}

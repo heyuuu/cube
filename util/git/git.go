@@ -17,19 +17,38 @@ package git
 // 两个文件对外都暴露为 git 包；调用方按功能挑选即可，不需要关心底层实现。
 
 import (
+	"log/slog"
+	"os"
 	"os/exec"
-	"strings"
+	"strconv"
 )
 
-// gitCmdRun 在指定 path 下执行一次 git 命令，返回 stdout 内容。
-// 仅作为本包内部「写操作」类封装的共用底座；读操作请使用 gogit.go 中的封装。
-func gitCmdRun(path string, command string, args ...string) (string, error) {
-	realArgs := append([]string{"-C", path, command}, args...)
-	cmd := exec.Command("git", realArgs...)
+// Clone 使用系统 git 克隆仓库到 localPath，stdout/stderr 透传给当前终端。
+//
+// 为什么不用 go-git：
+//   - clone 需要交互式进度输出（传输速率、剩余时间）
+//   - 需要 SSH 凭据 / HTTPS 凭据助手 / git-credential-osxkeychain 等本地生态
+//   - 需要 respect 用户 ~/.gitconfig 的 hooks、alias、protocol 配置
+//   系统 git 都能原生复用，go-git 在这些场景下兼容性差、体验差。
+//
+// 参数：
+//   - localPath: 克隆目标目录（绝对路径）
+//   - repoUrl:   仓库地址（SSH 或 HTTPS）
+//   - depth:     克隆深度，<=0 表示不限制（完整克隆）
+//   - branch:    指定分支名，空串表示克隆默认分支
+func Clone(localPath string, repoUrl string, depth int, branch string) error {
+	args := []string{"clone", repoUrl, localPath}
+	if depth > 0 {
+		args = append(args, "--depth="+strconv.Itoa(depth))
+	}
+	if branch != "" {
+		args = append(args, "--branch="+branch)
+	}
 
-	var buf strings.Builder
-	cmd.Stdout = &buf
-	err := cmd.Run()
+	cmd := exec.Command("git", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-	return buf.String(), err
+	slog.Info("Run cmd", "cmd", cmd.String())
+	return cmd.Run()
 }
