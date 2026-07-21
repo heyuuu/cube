@@ -29,7 +29,7 @@ import (
 //   - clone 需要交互式进度输出（传输速率、剩余时间）
 //   - 需要 SSH 凭据 / HTTPS 凭据助手 / git-credential-osxkeychain 等本地生态
 //   - 需要 respect 用户 ~/.gitconfig 的 hooks、alias、protocol 配置
-//   系统 git 都能原生复用，go-git 在这些场景下兼容性差、体验差。
+//     系统 git 都能原生复用，go-git 在这些场景下兼容性差、体验差。
 //
 // 参数：
 //   - localPath: 克隆目标目录（绝对路径）

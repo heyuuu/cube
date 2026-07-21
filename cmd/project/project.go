@@ -10,6 +10,7 @@ import (
 	"github.com/heyuuu/cube/app"
 	"github.com/heyuuu/cube/cmd/util/console"
 	"github.com/heyuuu/cube/cmd/util/easycobra"
+	"github.com/heyuuu/cube/cmd/util/runner"
 	"github.com/heyuuu/cube/project"
 	"github.com/heyuuu/cube/util/git"
 )
@@ -161,7 +162,7 @@ var projectOpenCmd = &easycobra.Command{
 			}
 
 			// 打开项目
-			err := passthruRun(openApp.Bin(), proj.Path())
+			err := runner.Run(openApp.Bin(), proj.Path())
 			if err != nil {
 				return fmt.Errorf("打开失败: %w", err)
 			}

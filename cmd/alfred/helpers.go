@@ -3,8 +3,6 @@ package alfred
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 
 	"github.com/heyuuu/cube/util/slicekit"
 )
@@ -30,11 +28,4 @@ func PrintResult[T any](items []T, fn func(item T) Item) error {
 
 	fmt.Println(string(bytes))
 	return nil
-}
-
-func passthruRun(bin string, args ...string) error {
-	cmd := exec.Command(bin, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
 }
