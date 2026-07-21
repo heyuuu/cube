@@ -58,6 +58,9 @@ func rootPreExecute() error {
 		return err
 	}
 
+	// 初始化 Logger
+	logger.Init()
+
 	// 初始化 DB
 	err = db.Init(config.Path(),
 		&history.ProjectSelectLog{},
@@ -66,9 +69,6 @@ func rootPreExecute() error {
 	if err != nil {
 		return err
 	}
-
-	// 初始化 Logger
-	logger.Init()
 
 	// 记录启动日志
 	slog.Debug("command start", "debug", debug, "cfgPath", config.Path(), "args", args)
