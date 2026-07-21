@@ -1,10 +1,28 @@
 package git
 
+// 本文件封装「系统 git 命令」的调用，通过 exec.Command 启动 git 子进程完成操作。
+//
+// 设计原则：本包内将 git 操作按「读 / 写」拆分到两个文件：
+//   - git.go   —— 系统 git 命令封装。主要承载「写操作 / 需要透传输出的操作」。
+//                 子进程能复用用户本地的 git 配置（凭据、SSH agent、hooks 等），
+//                 并能直接把 stdout/stderr 透传给当前终端，体验明显优于纯 Go 实现。
+//                 典型场景：clone（需要交互式进度、SSH 凭据）。
+//   - gogit.go  —— go-git 纯 Go 实现。承载「读操作」。
+//                 读 repoUrl / branches / ahead-behind / status 这类高频、无副作用、
+//                 不需要凭据的操作时，起子进程的 fork/exec 开销会成为性能瓶颈
+//                 （典型场景：scan 出几十上百个项目，每个项目要起 3 次 git 子进程）。
+//                 go-git 直接读 .git 目录，零子进程，配合缓存层把采集从 3N 次子进程
+//                 降为零。
+//
+// 两个文件对外都暴露为 git 包；调用方按功能挑选即可，不需要关心底层实现。
+
 import (
 	"os/exec"
 	"strings"
 )
 
+// gitCmdRun 在指定 path 下执行一次 git 命令，返回 stdout 内容。
+// 仅作为本包内部「写操作」类封装的共用底座；读操作请使用 gogit.go 中的封装。
 func gitCmdRun(path string, command string, args ...string) (string, error) {
 	realArgs := append([]string{"-C", path, command}, args...)
 	cmd := exec.Command("git", realArgs...)
@@ -14,60 +32,4 @@ func gitCmdRun(path string, command string, args ...string) (string, error) {
 	err := cmd.Run()
 
 	return buf.String(), err
-}
-
-func Branches(path string, needLocal bool, needRemote bool) ([]string, string, error) {
-	output, err := gitCmdRun(path, "branch", "-a")
-	if err != nil {
-		return nil, "", err
-	}
-
-	var branchNames []string
-	var currBranchName string
-	for _, line := range strings.Split(output, "\n") {
-		if len(line) < 2 {
-			continue
-		}
-
-		branchName := strings.TrimSpace(line[2:])
-		remote := false
-		if strings.HasPrefix(branchName, "remotes/") {
-			branchName = branchName[8:]
-			remote = true
-		}
-
-		if needLocal && !remote || needRemote && remote {
-			branchNames = append(branchNames, branchName)
-		}
-
-		if line[0] == '*' {
-			currBranchName = branchName
-		}
-	}
-
-	return branchNames, currBranchName, nil
-}
-
-func LogBetween(path string, fromBranch string, toBranch string) (string, error) {
-	return gitCmdRun(path, "log", fromBranch+".."+toBranch, "-z")
-}
-
-func LogBetweenCount(path string, fromBranch string, toBranch string) (int, error) {
-	log, err := LogBetween(path, fromBranch, toBranch)
-	if err != nil {
-		return 0, err
-	}
-	if log == "" {
-		return 0, nil
-	}
-	return strings.Count(log, "\000") + 1, nil
-}
-
-func IsDirty(path string) (bool, error) {
-	status, err := gitCmdRun(path, "status", "--short")
-	if err != nil {
-		return false, err
-	}
-
-	return status != "", nil
 }

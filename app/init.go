@@ -1,6 +1,7 @@
 package app
 
 import (
+	"path/filepath"
 	"sync"
 
 	"github.com/heyuuu/cube/config"
@@ -29,7 +30,7 @@ func InitApp() *App {
 
 	configHandler := web.NewConfigHandler(conf)
 
-	projectService := project.NewService(conf.Project)
+	projectService := project.NewService(conf.Project, filepath.Join(config.Path(), "cache"))
 	projectHandler := web.NewProjectHandler(projectService)
 
 	openerService := opener.NewService(conf)

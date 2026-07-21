@@ -3,7 +3,6 @@ package project
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -26,6 +25,7 @@ var RootCmd = &easycobra.Command{
 		projectScanRulesCmd,
 		projectCloneRulesCmd,
 		projectCloneCmd,
+		projectRefreshGitCacheCmd,
 	},
 }
 
@@ -69,23 +69,21 @@ var projectListCmd = &easycobra.Command{
 					"Master差异",
 					"当前工作区是否干净",
 				}, func(p *project.Project) []string {
-					branches, currBranch, _ := git.Branches(p.Path(), true, true)
+					// 读 git 缓存（可能 stale，后台会异步刷新；未命中留空）
+					info, _ := service.GitInfo(p.Path())
 
-					var branchDiff string
-					if slices.Contains(branches, "master") && slices.Contains(branches, "origin/master") {
-						forward, _ := git.LogBetweenCount(p.Path(), "master", "origin/master")
-						backward, _ := git.LogBetweenCount(p.Path(), "origin/master", "master")
-						if forward != 0 {
-							branchDiff += "+" + strconv.Itoa(forward)
+					var currBranch, branchDiff, statusText string
+					if info != nil {
+						currBranch = info.CurrentBranch
+						if info.Ahead != 0 {
+							branchDiff += "+" + strconv.Itoa(info.Ahead)
 						}
-						if backward != 0 {
-							branchDiff += "-" + strconv.Itoa(backward)
+						if info.Behind != 0 {
+							branchDiff += "-" + strconv.Itoa(info.Behind)
 						}
-					}
-
-					var statusText string
-					if isDirty, _ := git.IsDirty(p.Path()); isDirty {
-						statusText = "dirty"
+						if info.Dirty {
+							statusText = "dirty"
+						}
 					}
 
 					return []string{
@@ -97,6 +95,9 @@ var projectListCmd = &easycobra.Command{
 					}
 				})
 			}
+
+			// 触发后台异步刷新（TTL 内会自动跳过，不阻塞当前命令）
+			service.TriggerAsyncRefresh()
 
 			return nil
 		}
@@ -119,7 +120,15 @@ var projectInfoCmd = &easycobra.Command{
 
 		fmt.Printf("project: %s\n", proj.Name())
 		fmt.Printf("path   : %s\n", proj.Path())
-		fmt.Printf("git-url: %s\n", proj.RepoUrl())
+		// repoUrl 读 git 缓存（Project.RepoUrl 字段已废弃）
+		var repoUrl string
+		if info, ok := app.Default().ProjectService().GitInfo(proj.Path()); ok {
+			repoUrl = info.RepoUrl
+		}
+		fmt.Printf("git-url: %s\n", repoUrl)
+
+		// 触发后台异步刷新
+		app.Default().ProjectService().TriggerAsyncRefresh()
 
 		return nil
 	},
