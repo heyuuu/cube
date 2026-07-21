@@ -20,9 +20,9 @@ const (
 	TagGodot = "godot"
 )
 
-func ScanProjects(r ScanRule) (projects []*Project, err error) {
+func scanProjects(r ScanRule, yield func(path string, tags []string)) error {
 	root, maxDepth := r.Path, r.MaxDepth
-	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -36,7 +36,7 @@ func ScanProjects(r ScanRule) (projects []*Project, err error) {
 		if checkErr != nil {
 			return checkErr
 		} else if isProject {
-			projects = append(projects, newProject(r, path, tags))
+			yield(path, tags)
 			return fs.SkipDir
 		}
 
@@ -51,7 +51,6 @@ func ScanProjects(r ScanRule) (projects []*Project, err error) {
 
 		return nil
 	})
-	return
 }
 
 func checkProjectPath(path string) (isProject bool, tags []string, err error) {

@@ -3,6 +3,7 @@ package project
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -13,6 +14,7 @@ import (
 	"github.com/heyuuu/cube/cmd/util/runner"
 	"github.com/heyuuu/cube/project"
 	"github.com/heyuuu/cube/util/git"
+	"github.com/heyuuu/cube/util/pathkit"
 )
 
 // cmd group `project *`
@@ -36,8 +38,10 @@ var projectListCmd = &easycobra.Command{
 	Short: "项目列表(支持模糊搜索)",
 	InitRun: func(cmd *cobra.Command) easycobra.Run {
 		// init flags
-		var showStatus bool
-		cmd.Flags().BoolVar(&showStatus, "status", false, "分析项目")
+		var verbose int
+		var group string
+		cmd.Flags().CountVarP(&verbose, "verbose", "v", "verbose level (-v, -vv, -vvv)")
+		cmd.Flags().StringVarP(&group, "group", "g", "", "限定分组 group")
 
 		// run
 		return func(args []string) error {
@@ -51,51 +55,15 @@ var projectListCmd = &easycobra.Command{
 			service := app.Default().ProjectService()
 			projects := service.Search(query)
 
-			// 返回结果
-			if !showStatus {
-				console.PrintTableFunc(projects, []string{
-					fmt.Sprintf("项目(%d)", len(projects)),
-					"路径",
-				}, func(p *project.Project) []string {
-					return []string{
-						p.Name(),
-						p.Path(),
-					}
-				})
-			} else {
-				console.PrintTableFunc(projects, []string{
-					fmt.Sprintf("项目(%d)", len(projects)),
-					"路径",
-					"当前分支",
-					"默认分支差异",
-					"当前工作区是否干净",
-				}, func(p *project.Project) []string {
-					// 读 git 缓存（可能 stale，后台会异步刷新；未命中留空）
-					info, _ := service.GitInfo(p.Path())
-
-					var currBranch, branchDiff, statusText string
-					if info != nil {
-						currBranch = info.CurrentBranch
-						if info.Ahead != 0 {
-							branchDiff += "+" + strconv.Itoa(info.Ahead)
-						}
-						if info.Behind != 0 {
-							branchDiff += "-" + strconv.Itoa(info.Behind)
-						}
-						if info.Dirty {
-							statusText = "dirty"
-						}
-					}
-
-					return []string{
-						p.Name(),
-						p.Path(),
-						currBranch,
-						branchDiff,
-						statusText,
-					}
+			// 按 group 过滤
+			if len(projects) > 0 {
+				projects = slices.DeleteFunc(projects, func(p *project.Project) bool {
+					return p.Group() != group
 				})
 			}
+
+			// 展示项目列表
+			showProjects(projects, verbose)
 
 			// 触发后台异步刷新（TTL 内会自动跳过，不阻塞当前命令）
 			service.TriggerAsyncRefresh()
@@ -103,6 +71,44 @@ var projectListCmd = &easycobra.Command{
 			return nil
 		}
 	},
+}
+
+func showProjects(projects []*project.Project, verbose int) {
+	var headers []string
+	rows := make([][]string, len(projects))
+
+	// verbose: 0
+	headers = append(headers, fmt.Sprintf("项目(%d)", len(projects)), "Path")
+	for i, p := range projects {
+		rows[i] = append(rows[i], p.Name(), pathkit.PrettyPath(p.Path()))
+	}
+
+	// verbose: 1
+	if verbose >= 1 {
+		headers = append(headers, "当前分支", "默认分支差异", "当前工作区是否干净")
+		for i, p := range projects {
+			info := p.GitInfo()
+
+			var currBranch, branchDiff, statusText string
+			if info != nil {
+				currBranch = info.CurrentBranch
+				if info.Ahead != 0 {
+					branchDiff += "+" + strconv.Itoa(info.Ahead)
+				}
+				if info.Behind != 0 {
+					branchDiff += "-" + strconv.Itoa(info.Behind)
+				}
+				if info.Dirty {
+					statusText = "dirty"
+				}
+			}
+
+			rows[i] = append(rows[i], currBranch, branchDiff, statusText)
+		}
+	}
+
+	// 输出表格
+	console.PrintTable(headers, rows)
 }
 
 // cmd `project info`

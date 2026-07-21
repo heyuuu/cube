@@ -113,11 +113,14 @@ func (s *Service) TriggerAsyncRefresh() {
 func (s *Service) loadProjects() []*Project {
 	var result []*Project
 	for _, rule := range s.scanRules {
-		projects, err := ScanProjects(rule)
+		err := scanProjects(rule, func(path string, tags []string) {
+			gitInfo, _ := s.gitCache.Get(path)
+			project := newProject(rule, path, tags, gitInfo)
+			result = append(result, project)
+		})
 		if err != nil {
 			log.Println(err)
 		}
-		result = append(result, projects...)
 	}
 	return result
 }
