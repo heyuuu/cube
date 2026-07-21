@@ -6,12 +6,17 @@ import (
 	"github.com/heyuuu/cube/app"
 	"github.com/heyuuu/cube/cmd/util/console"
 	"github.com/heyuuu/cube/cmd/util/easycobra"
+	"github.com/heyuuu/cube/project"
 	"github.com/heyuuu/cube/util/pathkit"
+	"github.com/heyuuu/cube/util/slicekit"
 )
 
-const checkItemCloneRules = "clone-rules"
+const (
+	checkItemCloneRules = "clone-rules"
+	checkItemGitDirty   = "git-dirty"
+)
 
-var allCheckItems = []string{checkItemCloneRules}
+var allCheckItems = []string{checkItemCloneRules, checkItemGitDirty}
 
 // cmd `project list`
 var projectCheckCmd = &easycobra.Command{
@@ -27,10 +32,13 @@ var projectCheckCmd = &easycobra.Command{
 			case checkItemCloneRules:
 				checkCloneRules()
 				break
+			case checkItemGitDirty:
+				checkGitDirty()
 			default:
 				return fmt.Errorf("未支持的 option: %s", option)
 			}
 		}
+		fmt.Print("\n\n")
 		return nil
 	},
 }
@@ -69,4 +77,37 @@ func checkCloneRules() {
 	fmt.Printf("> 不符合 clone rules 的项目 %d 个:\n", len(rows))
 
 	console.PrintTable(headers, rows)
+}
+
+// 过滤出所有 remote 但不与 remote 主分支保持一致的项目
+func checkGitDirty() {
+	service := app.Default().ProjectService()
+	projects := service.Projects()
+
+	targets := slicekit.Filter(projects, func(p *project.Project) bool {
+		info := p.GitInfo()
+		if info == nil || len(info.RepoUrl) == 0 {
+			return false
+		}
+
+		// 分支不对
+		if info.CurrentBranch != info.DefaultBranch {
+			return true
+		}
+
+		// 与 remote 有差异
+		if info.Ahead != 0 || info.Behind != 0 {
+			return true
+		}
+
+		// 工作区 dirty
+		if info.Dirty {
+			return true
+		}
+
+		return false
+	})
+
+	fmt.Printf("> github dirty 的项目 %d 个:\n", len(targets))
+	showProjects(targets, 1)
 }

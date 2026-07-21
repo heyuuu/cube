@@ -94,20 +94,21 @@ func showProjects(projects []*project.Project, verbose int) {
 	rows := make([][]string, len(projects))
 
 	// verbose: 0
-	headers = append(headers, fmt.Sprintf("项目(%d)", len(projects)), "Path")
+	headers = append(headers, fmt.Sprintf("项目(%d)", len(projects)), "Path", "RepoUrl")
 	for i, p := range projects {
-		rows[i] = append(rows[i], p.Name(), pathkit.PrettyPath(p.Path()))
+		rows[i] = append(rows[i], p.Name(), pathkit.PrettyPath(p.Path()), p.RepoUrl())
 	}
 
 	// verbose: 1
 	if verbose >= 1 {
-		headers = append(headers, "当前分支", "默认分支差异", "当前工作区是否干净")
+		headers = append(headers, "当前分支", "默认分支", "默认分支差异", "当前工作区是否干净")
 		for i, p := range projects {
 			info := p.GitInfo()
 
-			var currBranch, branchDiff, statusText string
+			var currBranch, defaultBranch, branchDiff, statusText string
 			if info != nil {
 				currBranch = info.CurrentBranch
+				defaultBranch = info.DefaultBranch
 				if info.Ahead != 0 {
 					branchDiff += "+" + strconv.Itoa(info.Ahead)
 				}
@@ -119,7 +120,7 @@ func showProjects(projects []*project.Project, verbose int) {
 				}
 			}
 
-			rows[i] = append(rows[i], currBranch, branchDiff, statusText)
+			rows[i] = append(rows[i], currBranch, defaultBranch, branchDiff, statusText)
 		}
 	}
 
