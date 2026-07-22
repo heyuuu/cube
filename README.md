@@ -16,5 +16,5 @@
 - **命名调整**：module path 改为 `github.com/heyuuu/cube`；`application` 更名为 `opener`
 - **Web 重构**：使用 `huma` 包重构 server，仅保留 http 支持，新增 `openapi.json` 文档输出；`server` 命令支持 `port` 参数，新增 `server openapi` 子命令
 - **模糊匹配升级**：`matcher` 更名为 `fuzzy` 包并重构，改用 DP 算法提升匹配效率，增加特殊 bonus 分值优化长路径搜索排序
-- **配置调整**：默认目录改为 `~/.cube/`
+- **配置调整**：默认目录改为 `~/.config/cube/`
 - **Go 版本**：提升至 1.25.0

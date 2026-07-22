@@ -41,7 +41,7 @@ func rootPreExecute() error {
 	// persistent flags
 	var cfgPath string
 	var debug bool
-	cmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config folder path (default is ~/.cube/)")
+	cmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config folder path (default is ~/.config/cube/)")
 	cmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "open debug mode")
 	cmd.PersistentFlags().ParseErrorsAllowlist.UnknownFlags = true
 	err := cmd.PersistentFlags().Parse(args)

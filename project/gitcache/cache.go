@@ -3,7 +3,7 @@
 // cube 是 CLI 模式执行，每次 `project list --status` 都要为每个 git 项目采集 git 信息。
 // 对几十个项目的全量采集仍是 IO 密集型操作，每次 CLI 调用都跑一遍会明显卡顿。
 //
-// 本包把这些信息缓存到 ~/.cube/cache/git.json：
+// 本包把这些信息缓存到 ~/.config/cube/cache/git.json：
 //   - 前台读命令（project list/info）从缓存读，几乎零开销；
 //   - 后台子进程（由 refresh.go 触发）异步采集并回写缓存。
 //
@@ -56,7 +56,7 @@ type cacheFile struct {
 //   - 跨进程：由 refresh.go 的 flock 保证同一时刻只有一个采集进程在写文件；
 //     读进程加载快照到内存后只读不改，不存在真并发修改。
 type Cache struct {
-	dir     string // 缓存目录（~/.cube/cache/）
+	dir     string // 缓存目录（~/.config/cube/cache/）
 	mu      sync.RWMutex
 	entries map[string]*Entry // key = 项目绝对路径
 }

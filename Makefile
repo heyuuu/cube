@@ -26,4 +26,4 @@ install: ## go install 到 GOBIN（默认 ~/go/bin）
 	@echo "==> installed cube ($(VERSION) @ $(COMMIT), $(BUILD_TIME))"
 
 install-zsh-completion:
-	cube completion zsh > ~/.cube/zsh.sh
+	cube completion zsh > ~/.config/cube/zsh.sh
