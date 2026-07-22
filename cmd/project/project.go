@@ -74,7 +74,7 @@ var projectListCmd = &easycobra.Command{
 			projects := service.Search(query)
 
 			// 按 group 过滤
-			if len(projects) > 0 {
+			if len(group) > 0 {
 				projects = slices.DeleteFunc(projects, func(p *project.Project) bool {
 					return p.Group() != group
 				})
