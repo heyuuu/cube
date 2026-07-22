@@ -10,7 +10,7 @@ import (
 )
 
 // 默认配置目录
-const defaultCfgPath = "~/.cube/"
+const defaultCfgPath = "~/.config/cube/"
 
 func Init(cfgPath string) error {
 	if len(cfgPath) == 0 {
