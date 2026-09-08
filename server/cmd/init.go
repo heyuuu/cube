@@ -85,7 +85,7 @@ func newInitCmd(env *env.Env) *cobra.Command {
 			}
 
 			// 打开逻辑同 cube open：用 dir 意图的默认 opener 打开目录
-			o, err := pickOpener(a.OpenerService(), opener.IntentDir, "")
+			o, err := pickOpener(env.App().OpenerService(), opener.IntentDir, "")
 			if err != nil {
 				return err
 			}
