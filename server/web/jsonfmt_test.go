@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-// TestReplaceNilSlices 覆盖 nil→empty 替换的所有边界。
+// TestReplaceNilCollections 覆盖 nil→empty 替换的所有边界。
 // 替换是构造新值（不改原对象），断言基于 reflect 检查 IsNil/Len。
-func TestReplaceNilSlices(t *testing.T) {
+func TestReplaceNilCollections(t *testing.T) {
 	t.Run("顶层 nil 切片", func(t *testing.T) {
 		var nilSlice []int
-		got := replaceNilSlices(nilSlice)
+		got := replaceNilCollections(nilSlice)
 		rv := reflect.ValueOf(got)
 		if rv.Kind() != reflect.Slice || rv.IsNil() || rv.Len() != 0 {
 			t.Fatalf("nil 切片应替换为非 nil 空切片, got %#v", got)
@@ -26,7 +26,7 @@ func TestReplaceNilSlices(t *testing.T) {
 			Name string   `json:"name"`
 		}
 		in := inner{Name: "x"} // Tags 为 nil
-		got := replaceNilSlices(in).(inner)
+		got := replaceNilCollections(in).(inner)
 		if got.Tags == nil || len(got.Tags) != 0 {
 			t.Errorf("Tags 应为非 nil 空切片, got %#v", got.Tags)
 		}
@@ -45,7 +45,7 @@ func TestReplaceNilSlices(t *testing.T) {
 		// Items 是非 nil 切片含 1 个元素；元素的 Tags 是 nil。
 		// 验证递归会进到切片元素内部，把 nil Tags 替换掉。
 		in := outer{Items: []item{{Tags: nil}}}
-		got := replaceNilSlices(in).(outer)
+		got := replaceNilCollections(in).(outer)
 		if len(got.Items) != 1 {
 			t.Fatalf("Items 长度应为 1, got %d", len(got.Items))
 		}
@@ -59,7 +59,7 @@ func TestReplaceNilSlices(t *testing.T) {
 			Tags []string `json:"tags"`
 		}
 		in := &s{Tags: nil}
-		got := replaceNilSlices(in).(*s)
+		got := replaceNilCollections(in).(*s)
 		if got.Tags == nil || len(got.Tags) != 0 {
 			t.Errorf("指针 struct 内 Tags 应为非 nil 空切片, got %#v", got.Tags)
 		}
@@ -70,7 +70,7 @@ func TestReplaceNilSlices(t *testing.T) {
 			M map[string]int `json:"m"`
 		}
 		in := s{} // M 为 nil
-		got := replaceNilSlices(in).(s)
+		got := replaceNilCollections(in).(s)
 		if got.M == nil || len(got.M) != 0 {
 			t.Errorf("nil map 应替换为非 nil 空 map, got %#v", got.M)
 		}
@@ -78,7 +78,7 @@ func TestReplaceNilSlices(t *testing.T) {
 
 	t.Run("非 nil 空切片保持不变", func(t *testing.T) {
 		in := []int{}
-		got := replaceNilSlices(in).([]int)
+		got := replaceNilCollections(in).([]int)
 		if got == nil || len(got) != 0 {
 			t.Errorf("空切片应保持非 nil, got %#v", got)
 		}
@@ -86,7 +86,7 @@ func TestReplaceNilSlices(t *testing.T) {
 
 	t.Run("非空切片内容保持不变", func(t *testing.T) {
 		in := []int{1, 2, 3}
-		got := replaceNilSlices(in).([]int)
+		got := replaceNilCollections(in).([]int)
 		if !reflect.DeepEqual(got, in) {
 			t.Errorf("非空切片内容应不变, got %#v want %#v", got, in)
 		}
@@ -99,7 +99,7 @@ func TestReplaceNilSlices(t *testing.T) {
 		}
 		in := s{Tags: nil}
 		// 主要验证不 panic；hidden 字段不替换。
-		got := replaceNilSlices(in).(s)
+		got := replaceNilCollections(in).(s)
 		if got.Tags == nil || len(got.Tags) != 0 {
 			t.Errorf("Tags 应被替换, got %#v", got.Tags)
 		}
@@ -115,7 +115,7 @@ func TestReplaceNilSlices(t *testing.T) {
 		}
 		now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.FixedZone("CST", 8*3600))
 		in := s{At: now, Sub: struct{ N int }{7}}
-		got := replaceNilSlices(in).(s)
+		got := replaceNilCollections(in).(s)
 		if !got.At.Equal(now) {
 			t.Errorf("At 应保持不变, got %#v want %#v", got.At, now)
 		}
@@ -130,7 +130,7 @@ func TestReplaceNilSlices(t *testing.T) {
 	t.Run("标量/字符串不变", func(t *testing.T) {
 		cases := []any{42, "hello", true, 3.14}
 		for _, in := range cases {
-			got := reflect.ValueOf(replaceNilSlices(in)).Interface()
+			got := reflect.ValueOf(replaceNilCollections(in)).Interface()
 			if !reflect.DeepEqual(got, in) {
 				t.Errorf("标量应不变, got %#v want %#v", got, in)
 			}
@@ -138,23 +138,23 @@ func TestReplaceNilSlices(t *testing.T) {
 	})
 
 	t.Run("nil 输入返回 nil", func(t *testing.T) {
-		got := replaceNilSlices(nil)
+		got := replaceNilCollections(nil)
 		if got != nil {
 			t.Errorf("nil 输入应返回 nil, got %#v", got)
 		}
 	})
 }
 
-// TestNilSliceJSONFormatMarshal 验证自定义 Format 的 Marshal 输出形态：
-// nil 切片 → []，nil map → {}，与标准库 Encoder 行为对齐。
-func TestNilSliceJSONFormatMarshal(t *testing.T) {
+// TestNilCollectionsJSONFormatMarshal 验证自定义 Format 的 Marshal 输出形态：
+// nil 切片 → []，nil map → {}，与 encoding/json/v2 的默认集合语义一致。
+func TestNilCollectionsJSONFormatMarshal(t *testing.T) {
 	type s struct {
 		Tags []string       `json:"tags"`
 		M    map[string]int `json:"m"`
 	}
 
 	var buf bytes.Buffer
-	if err := nilSliceJSONFormat.Marshal(&buf, s{}); err != nil {
+	if err := nilCollectionsJSONFormat.Marshal(&buf, s{}); err != nil {
 		t.Fatalf("Marshal 失败: %v", err)
 	}
 

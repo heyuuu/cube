@@ -42,7 +42,7 @@ func TestProjectList(t *testing.T) {
 	if got.List[p1].Group != "g1" || got.List[p1].Path != env.proj1Path() {
 		t.Errorf("g1:proj1 字段不符: %+v", got.List[p1])
 	}
-	// nil tags 序列化为 []（nilSliceJSONFormat 契约），gitInfo 未采集为 null
+	// nil tags 序列化为 []（nilCollectionsJSONFormat 契约），gitInfo 未采集为 null
 	if got.List[p1].Tags == nil {
 		t.Error("nil tags 应序列化为 [] 而非 null")
 	}
