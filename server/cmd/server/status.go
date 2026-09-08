@@ -6,18 +6,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/app"
+	"cube/cmd/env"
 	"cube/serve"
 	"cube/util/tui"
 )
 
 // newStatusCmd `cube server status` —— 探活（GET /api/system/whoami）。
-func newStatusCmd(a *app.App) *cobra.Command {
+func newStatusCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "查看 server 运行状态",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runStatus(a)
+			return runStatus(env.App())
 		},
 	}
 	return cmd

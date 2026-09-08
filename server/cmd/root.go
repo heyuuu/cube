@@ -8,17 +8,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
 	"cube/cmd/alfred"
 	"cube/cmd/dev"
+	"cube/cmd/env"
 	"cube/cmd/server"
 	"cube/cmd/ui"
-	"cube/config"
-	"cube/logger"
 	"cube/version"
 )
 
-func newRootCmd(a *app.App) *cobra.Command {
+func newRootCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   version.AppName,
 		Short: version.AppName + " " + version.Version(),
@@ -35,43 +33,43 @@ func newRootCmd(a *app.App) *cobra.Command {
 等同在命令末尾补 query 为 "."。`,
 	}
 
-	cmd.AddCommand(newVersionCmd(a))
+	cmd.AddCommand(newVersionCmd(env))
 
 	// web server 相关
-	cmd.AddCommand(server.NewCmd(a))
-	cmd.AddCommand(ui.NewCmd(a))
-	cmd.AddCommand(newOpenapiCmd(a))
+	cmd.AddCommand(server.NewCmd(env))
+	cmd.AddCommand(ui.NewCmd(env))
+	cmd.AddCommand(newOpenapiCmd(env))
 
 	// project 相关
-	cmd.AddCommand(newListCmd(a))      // 项目列表
-	cmd.AddCommand(newInfoCmd(a))      // 项目信息
-	cmd.AddCommand(newOpenCmd(a))      // 打开项目
-	cmd.AddCommand(newPathCmd(a))      // 输出项目路径（供 shell 包装函数 cd）
-	cmd.AddCommand(newInitCmd(a))      // 初始化空项目
-	cmd.AddCommand(newCreateCmd(a))    // 使用模板初始化项目
-	cmd.AddCommand(newCloneCmd(a))     // 使用 RepoUrl 初始化项目
-	cmd.AddCommand(newWorkspaceCmd(a)) // monorepo workspace 声明管理
+	cmd.AddCommand(newListCmd(env))      // 项目列表
+	cmd.AddCommand(newInfoCmd(env))      // 项目信息
+	cmd.AddCommand(newOpenCmd(env))      // 打开项目
+	cmd.AddCommand(newPathCmd(env))      // 输出项目路径（供 shell 包装函数 cd）
+	cmd.AddCommand(newInitCmd(env))      // 初始化空项目
+	cmd.AddCommand(newCreateCmd(env))    // 使用模板初始化项目
+	cmd.AddCommand(newCloneCmd(env))     // 使用 RepoUrl 初始化项目
+	cmd.AddCommand(newWorkspaceCmd(env)) // monorepo workspace 声明管理
 
 	// open 相关
-	cmd.AddCommand(newOpenersCmd(a))
-	cmd.AddCommand(newOpenPathCmd(a))
-	cmd.AddCommand(newDiffCmd(a))
+	cmd.AddCommand(newOpenersCmd(env))
+	cmd.AddCommand(newOpenPathCmd(env))
+	cmd.AddCommand(newDiffCmd(env))
 
 	// forge（git 托管平台配置，1040）
-	cmd.AddCommand(newForgeCmd(a))
+	cmd.AddCommand(newForgeCmd(env))
 
 	// git 相关
-	cmd.AddCommand(newPushCmd(a))
-	cmd.AddCommand(newPullCmd(a))
+	cmd.AddCommand(newPushCmd(env))
+	cmd.AddCommand(newPullCmd(env))
 
 	// 内部命令
-	cmd.AddCommand(alfred.NewCmd(a))
-	cmd.AddCommand(dev.NewCmd(a))
+	cmd.AddCommand(alfred.NewCmd(env))
+	cmd.AddCommand(dev.NewCmd(env))
 
-	cmd.AddCommand(newDoctorCmd(a)) // 环境体检
+	cmd.AddCommand(newDoctorCmd(env)) // 环境体检
 
 	// 待整理命令
-	cmd.AddCommand(newCheckCmd(a))
+	cmd.AddCommand(newCheckCmd(env))
 
 	return cmd
 }
@@ -93,20 +91,12 @@ func Execute() {
 	cfgFile, debug, local, remaining := extractGlobalFlags(os.Args[1:], defaultConfigPath())
 	localMode = local
 
-	// 初始化配置
-	cfg, err := config.Load(cfgFile)
-	checkError(err, "加载配置文件失败")
-
-	// 尽量在其他行为前初始化 Logger
-	logger.Init(cfg.Log, debug)
-	slog.Info("初始化 logger", "debug", debug)
-
-	// 初始化 App
-	a, err := app.New(cfg)
-	checkError(err, "App 初始化失败")
+	env := env.New()
+	err := env.Init(cfgFile, debug, local)
+	checkError(err, "env.Init 失败")
 
 	// 构建 cmd
-	cmd := newRootCmd(a)
+	cmd := newRootCmd(env)
 	cmd.SetArgs(remaining)
 
 	// cmd 上绑定全局 flag，仅用于生成 help 提示(此时 --config/--debug/--local 早解析完了)

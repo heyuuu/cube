@@ -11,23 +11,23 @@ package server
 import (
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 )
 
 // NewCmd 构建 `cube server` 父命令及其子命令。
-func NewCmd(a *app.App) *cobra.Command {
+func NewCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "server",
 		Short: "管理本地 web server（start / stop / status）",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runStatus(a)
+			return runStatus(env.App())
 		},
 	}
 
-	cmd.AddCommand(newStartCmd(a))
-	cmd.AddCommand(newStopCmd(a))
-	cmd.AddCommand(newStatusCmd(a))
+	cmd.AddCommand(newStartCmd(env))
+	cmd.AddCommand(newStopCmd(env))
+	cmd.AddCommand(newStatusCmd(env))
 
 	return cmd
 }

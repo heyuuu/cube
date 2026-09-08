@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/app"
+	"cube/cmd/env"
 	"cube/version"
 )
 
@@ -14,13 +15,13 @@ import (
 //
 // 不提供后台 detach 形态：常驻由系统级保活承担（prod launchd / dev air），
 // 自 fork 曾有 argv 不透传与启动失败无声的结构性问题，已移除（1036）。
-func newStartCmd(a *app.App) *cobra.Command {
+func newStartCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "前台启动 server（Ctrl+C 退出）",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return startServer(a)
+			return startServer(env.App())
 		},
 	}
 	return cmd

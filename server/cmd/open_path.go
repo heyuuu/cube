@@ -5,11 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/opener"
 )
 
-func newOpenPathCmd(a *app.App) *cobra.Command {
+func newOpenPathCmd(env *env.Env) *cobra.Command {
 	var openerName string
 	cmd := &cobra.Command{
 		Use:   "open-path <path> [-o|--opener=打开工具名]",
@@ -32,7 +32,7 @@ func newOpenPathCmd(a *app.App) *cobra.Command {
 			if isDir {
 				intent, role = opener.IntentDir, opener.RoleOpenDir
 			}
-			pick, err := pickOpener(a.OpenerService(), intent, openerName)
+			pick, err := pickOpener(env.App().OpenerService(), intent, openerName)
 			if err != nil {
 				return err
 			}

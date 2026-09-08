@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/opener"
 	"cube/util/git"
 	"cube/util/pathkit"
@@ -15,7 +15,7 @@ import (
 )
 
 // cmd `cube init`
-func newInitCmd(a *app.App) *cobra.Command {
+func newInitCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init <path>",
 		Short: "在指定目录初始化一个项目(本质是初始化 git 仓库)",
@@ -39,7 +39,7 @@ func newInitCmd(a *app.App) *cobra.Command {
 			}
 
 			// 检查：路径能被 scan 规则收录为新项目（init 出一个 cube 看不见的目录没有意义）
-			_, projName, ok := a.ProjectService().MatchScanRule(absPath)
+			_, projName, ok := env.App().ProjectService().MatchScanRule(absPath)
 			if !ok {
 				return fmt.Errorf("路径 %s 无法被 scan 收录为项目：需位于某条 scan 规则目录的 maxDepth 层级内，且各级目录名不以 . 或 _ 开头",
 					pathkit.PrettyPath(absPath))

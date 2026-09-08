@@ -8,19 +8,19 @@ package alfred
 import (
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 )
 
 // NewCmd 是 `cube alfred` 命令组入口，纯分发。
-func NewCmd(a *app.App) *cobra.Command {
+func NewCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "alfred",
 		Hidden: true,
 	}
 
-	cmd.AddCommand(newProjectSearchCmd(a))
-	cmd.AddCommand(newProjectOpenCmd(a))
-	cmd.AddCommand(newOpenerSearchCmd(a))
+	cmd.AddCommand(newProjectSearchCmd(env))
+	cmd.AddCommand(newProjectOpenCmd(env))
+	cmd.AddCommand(newOpenerSearchCmd(env))
 
 	return cmd
 }

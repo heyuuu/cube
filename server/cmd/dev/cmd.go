@@ -8,20 +8,20 @@ package dev
 import (
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 )
 
 // `cube dev`
 
-func NewCmd(a *app.App) *cobra.Command {
+func NewCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "dev",
 		Hidden: true,
 		Short:  "内部调试命令（开发期测试用）",
 	}
-	cmd.AddCommand(newTuiCmd(a))
-	cmd.AddCommand(newCommandsCmd(a))
-	cmd.AddCommand(newLoggerCmd(a))
-	cmd.AddCommand(newRefreshGitCacheCmd(a))
+	cmd.AddCommand(newTuiCmd(env))
+	cmd.AddCommand(newCommandsCmd(env))
+	cmd.AddCommand(newLoggerCmd(env))
+	cmd.AddCommand(newRefreshGitCacheCmd(env))
 	return cmd
 }

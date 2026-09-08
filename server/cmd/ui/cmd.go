@@ -15,22 +15,23 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/app"
+	"cube/cmd/env"
 	"cube/serve"
 )
 
 // NewCmd 构建 `cube ui` 父命令及其子命令。
-func NewCmd(a *app.App) *cobra.Command {
+func NewCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ui",
 		Short: "打开 cube Web UI（首页 / md 页）",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWeb(a)
+			return runWeb(env.App())
 		},
 	}
 
-	cmd.AddCommand(newMdCmd(a))
-	cmd.AddCommand(newWorkbenchCmd(a))
+	cmd.AddCommand(newMdCmd(env))
+	cmd.AddCommand(newWorkbenchCmd(env))
 
 	return cmd
 }

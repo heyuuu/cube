@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/util/git"
 	"cube/util/tui"
 )
@@ -21,7 +21,7 @@ import (
 //
 // 非 TTY 环境（脚本）下可改用 flag 显式指定：--remote（可多次）/ --ref（可多次），
 // 此时跳过对应交互；--force 启用 --force-with-lease。
-func newPushCmd(a *app.App) *cobra.Command {
+func newPushCmd(env *env.Env) *cobra.Command {
 	var (
 		remotes []string
 		refs    []string
@@ -46,7 +46,7 @@ ref 默认勾选当前分支；执行前展示推送计划并二次确认。
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// 定位项目：query 匹配（规则同 info），以项目根为仓库
 			query := getArg(args, 0)
-			proj, err := pickProject(a.ProjectService(), query)
+			proj, err := pickProject(env.App().ProjectService(), query)
 			if err != nil {
 				return err
 			}

@@ -6,13 +6,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/opener"
 	"cube/util/slicekit"
 )
 
 // cmd `alfred opener-search`
-func newOpenerSearchCmd(a *app.App) *cobra.Command {
+func newOpenerSearchCmd(env *env.Env) *cobra.Command {
 	var projectPath string
 	cmd := &cobra.Command{
 		Use:   "opener-search [query]",
@@ -21,16 +21,16 @@ func newOpenerSearchCmd(a *app.App) *cobra.Command {
 			query := args
 
 			// 获取匹配的命令列表
-			openers := a.OpenerService().SearchFor(opener.RoleOpenDir, strings.Join(query, " "))
+			openers := env.App().OpenerService().SearchFor(opener.RoleOpenDir, strings.Join(query, " "))
 
 			// 若指定项目，且该项目有 opener 使用偏好，则按最近使用排序。
 			// 传入的可能是目标目录路径（project-search 平铺 worktree 条目的 Arg，1032），
 			// usage 按主项目路径聚合，先归一再查
 			if len(projectPath) > 0 {
-				if proj := a.ProjectService().ResolveProject(projectPath); proj != nil {
+				if proj := env.App().ProjectService().ResolveProject(projectPath); proj != nil {
 					projectPath = proj.Path()
 				}
-				history := a.UsageService().LatestOpeners(projectPath, 3)
+				history := env.App().UsageService().LatestOpeners(projectPath, 3)
 				openers = sortOpeners(openers, history)
 			}
 

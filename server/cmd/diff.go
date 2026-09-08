@@ -6,13 +6,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/opener"
 	"cube/util/tui"
 )
 
 // newDiffCmd 是 `cube diff` 命令入口。
-func newDiffCmd(a *app.App) *cobra.Command {
+func newDiffCmd(env *env.Env) *cobra.Command {
 	var openerName string
 	cmd := &cobra.Command{
 		Use:   "diff <path1> <path2> [-o|--opener=打开工具名]",
@@ -48,7 +48,7 @@ func newDiffCmd(a *app.App) *cobra.Command {
 			}
 
 			// 选 opener（不带 -o 时用该 intent 的默认）
-			pick, err := pickOpener(a.OpenerService(), intent, openerName)
+			pick, err := pickOpener(env.App().OpenerService(), intent, openerName)
 			if err != nil {
 				if errors.Is(err, tui.ErrUserAborted) {
 					return nil

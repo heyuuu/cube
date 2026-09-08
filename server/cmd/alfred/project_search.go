@@ -5,12 +5,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/project"
 )
 
 // cmd `alfred project-search`
-func newProjectSearchCmd(a *app.App) *cobra.Command {
+func newProjectSearchCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "project-search {query?* : 项目名，支持模糊匹配}",
 		Short: "搜索项目列表",
@@ -19,10 +19,10 @@ func newProjectSearchCmd(a *app.App) *cobra.Command {
 			query := strings.Join(args, " ")
 
 			// 项目列表
-			projects := a.ProjectService().SearchByName(query)
+			projects := env.App().ProjectService().SearchByName(query)
 
 			// 最近使用的项目置顶
-			latest := a.UsageService().LatestByProject()
+			latest := env.App().UsageService().LatestByProject()
 			projects = project.SortByRecentUsage(projects, latest, 10)
 
 			// 平铺直达（1032）：每个项目展开为「根目录 + worktrees + workspaces」多个条目，
@@ -34,7 +34,7 @@ func newProjectSearchCmd(a *app.App) *cobra.Command {
 					SubTitle: proj.Path(),
 					Arg:      proj.Path(),
 				})
-				for _, target := range a.ProjectService().OpenTargets(proj.Path())[1:] { // 跳过根目录（上面已输出）
+				for _, target := range env.App().ProjectService().OpenTargets(proj.Path())[1:] { // 跳过根目录（上面已输出）
 					items = append(items, Item{
 						Title:    proj.Name() + " (" + target.Label + ")",
 						SubTitle: target.Path,

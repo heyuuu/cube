@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 )
 
 // cmd `cube create`（模板引擎：本地目录 / git 仓库，单模板或模板集）
@@ -14,7 +14,7 @@ import (
 // 两种主用法，其余是边缘校验：
 //  1. cube create <目标路径> —— 交互式逐步创建（来源/模板名/变量缺啥问啥）；
 //  2. cube create <目标路径> --tpl ... --tpl-name ... --var k=v ... —— 非交互一步生成。
-func newCreateCmd(a *app.App) *cobra.Command {
+func newCreateCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <目标路径> [--tpl 模板来源] [--tpl-name 模板名] [--var key=value ...]",
 		Short: "使用模板生成项目（本地目录或 git 仓库）",
@@ -48,7 +48,7 @@ func newCreateCmd(a *app.App) *cobra.Command {
 			}
 			tpl, _ := cmd.Flags().GetString("tpl")
 			tplName, _ := cmd.Flags().GetString("tpl-name")
-			return a.CreateService().Create(tpl, tplName, args[0], vars)
+			return env.App().CreateService().Create(tpl, tplName, args[0], vars)
 		},
 	}
 

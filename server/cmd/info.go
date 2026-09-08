@@ -8,7 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/util/git"
 	"cube/util/pathkit"
 	"cube/util/tui"
@@ -28,7 +28,7 @@ var (
 // infoKeyWidth 是键名列宽度（含对齐），多行值的续行缩进也依赖它。
 const infoKeyWidth = 13
 
-func newInfoCmd(a *app.App) *cobra.Command {
+func newInfoCmd(env *env.Env) *cobra.Command {
 	var verbose bool
 	cmd := &cobra.Command{
 		Use:   "info [query]",
@@ -49,7 +49,7 @@ query 支持两种搜索模式：
 			query := getArg(args, 0)
 
 			// 匹配项目
-			proj, err := pickProject(a.ProjectService(), query)
+			proj, err := pickProject(env.App().ProjectService(), query)
 			if err != nil {
 				return err
 			}
@@ -74,7 +74,7 @@ query 支持两种搜索模式：
 			}
 
 			// git 缓存快照（branch/dirty 等基础字段）；remote 列表走本地实时读
-			info, hasCache := a.ProjectService().GitInfo(proj.Path())
+			info, hasCache := env.App().ProjectService().GitInfo(proj.Path())
 			cacheUrl := ""
 			if hasCache {
 				cacheUrl = info.RepoUrl

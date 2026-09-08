@@ -5,18 +5,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/serve"
 )
 
 // newStopCmd `cube server stop` —— 触发后台 server 平滑关闭（POST /api/system/shutdown）。
-func newStopCmd(a *app.App) *cobra.Command {
+func newStopCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
 		Short: "停止后台 server",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			stopped, replaced, err := serve.Stop(a.Server().Port())
+			stopped, replaced, err := serve.Stop(env.App().Server().Port())
 			if err != nil {
 				return err
 			}

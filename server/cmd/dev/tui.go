@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/util/tui"
 )
 
@@ -16,7 +16,7 @@ import (
 // 逐个演示 tui 包的组件，便于开发期调整样式 / 新增封装时快速看效果。
 //   - 不带参数：交互式选择「全部」或某个具体组件；
 //   - 带参数：直接演示匹配名称的组件（匹配不上则报错）。
-func newTuiCmd(a *app.App) *cobra.Command {
+func newTuiCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tui [component]",
 		Short: "演示 tui 包各组件（交互 / 渲染 / 错误语义）",

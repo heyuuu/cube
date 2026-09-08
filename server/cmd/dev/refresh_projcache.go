@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 )
 
 // cmd `cube dev refresh-projcache`
@@ -17,14 +17,14 @@ import (
 // CLI 平时只读缓存不写（单写者模型：server 是唯一写方），本命令是刻意的
 // 例外，用于开发期实测全量采集的时间成本、验证采集结果。落盘走原子
 // rename，与正在运行的 server 并发写也不会产生损坏文件（至多相互覆盖）。
-func newRefreshGitCacheCmd(a *app.App) *cobra.Command {
+func newRefreshGitCacheCmd(env *env.Env) *cobra.Command {
 	return &cobra.Command{
 		Use:   "refresh-projcache",
 		Short: "手动触发 projcache 全量采集（重扫项目 + 刷新 git.json，实测耗时）",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Println("开始采集全部项目 git 信息 ...")
 			start := time.Now()
-			total, collected, err := a.ProjectService().Refresh()
+			total, collected, err := env.App().ProjectService().Refresh()
 			cost := time.Since(start).Round(time.Millisecond)
 			if err != nil {
 				return fmt.Errorf("采集失败: %w（项目 %d / 成功 %d / 耗时 %s）", err, total, collected, cost)

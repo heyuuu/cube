@@ -7,14 +7,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/opener"
 	"cube/project"
 	"cube/util/tui"
 )
 
 // cmd `cube open`
-func newOpenCmd(a *app.App) *cobra.Command {
+func newOpenCmd(env *env.Env) *cobra.Command {
 	var openerName string
 	cmd := &cobra.Command{
 		Use:   "open [query] [-o|--opener[=打开工具名]]",
@@ -29,19 +29,19 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 			query := getArg(args, 0)
 
 			// 匹配项目
-			proj, err := pickProject(a.ProjectService(), query)
+			proj, err := pickProject(env.App().ProjectService(), query)
 			if err != nil {
 				return err
 			}
 
 			// 选 opener（intent: dir，不带 -o 时用默认）
-			o, err := pickOpener(a.OpenerService(), opener.IntentDir, openerName)
+			o, err := pickOpener(env.App().OpenerService(), opener.IntentDir, openerName)
 			if err != nil {
 				return err
 			}
 
 			// 选打开目标（1032 worktree / 1030 workspace 归并为项目打开目标）：多目标时交互选择，单目标流程不变
-			target, err := pickOpenTarget(a.ProjectService(), proj)
+			target, err := pickOpenTarget(env.App().ProjectService(), proj)
 			if err != nil {
 				return err
 			}
@@ -54,7 +54,7 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 
 			// 记录使用信号（best-effort：失败不影响打开结果）；project 恒记主项目路径，
 			// dir 直接传实际打开的目标目录（等于根时由 RecordOpen 归一为空）
-			if err := a.UsageService().RecordOpen(proj.Path(), o.Name(), target); err != nil {
+			if err := env.App().UsageService().RecordOpen(proj.Path(), o.Name(), target); err != nil {
 				slog.Warn("记录 usage 失败", "err", err)
 			}
 

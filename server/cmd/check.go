@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/project"
 	"cube/util/pathkit"
 	"cube/util/slicekit"
@@ -20,7 +20,7 @@ const (
 var allCheckItems = []string{checkItemCloneRules, checkItemGitDirty}
 
 // cmd `cube check`
-func newCheckCmd(a *app.App) *cobra.Command {
+func newCheckCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "check [options...]",
 		Short: "检查项目状态（正常业务状态：开发中/未推送等；异常损坏类检查见 cube doctor）",
@@ -42,10 +42,10 @@ func newCheckCmd(a *app.App) *cobra.Command {
 			for _, option := range options {
 				switch option {
 				case checkItemCloneRules:
-					checkCloneRules(a.ProjectService())
+					checkCloneRules(env.App().ProjectService())
 					break
 				case checkItemGitDirty:
-					checkGitDirty(a.ProjectService())
+					checkGitDirty(env.App().ProjectService())
 				default:
 					return fmt.Errorf("未支持的 option: %s", option)
 				}

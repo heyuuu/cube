@@ -5,12 +5,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/util/git"
 )
 
 // cmd `cube clone`
-func newCloneCmd(a *app.App) *cobra.Command {
+func newCloneCmd(env *env.Env) *cobra.Command {
 	var depth int
 	var branch string
 	cmd := &cobra.Command{
@@ -36,7 +36,7 @@ repoUrl 必须是合法的 git 仓库地址，且能匹配到一条 clone 规则
 			}
 
 			// 匹配 CloneRule，获取对应本地路径
-			service := a.ProjectService()
+			service := env.App().ProjectService()
 			_, localPath, ok := service.MatchCloneRule(rawRepoUrl)
 			if !ok {
 				return fmt.Errorf("repoUrl 没有对应 clone 规则: url=%s", rawRepoUrl)

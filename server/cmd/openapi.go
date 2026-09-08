@@ -10,9 +10,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/app"
+	"cube/cmd/env"
 )
 
-func newOpenapiCmd(a *app.App) *cobra.Command {
+func newOpenapiCmd(env *env.Env) *cobra.Command {
 	var outPath string
 	cmd := &cobra.Command{
 		Use:     "openapi",
@@ -26,7 +27,7 @@ func newOpenapiCmd(a *app.App) *cobra.Command {
 -o 可指定输出路径（所在目录不存在会自动创建）。`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return writeOpenAPIFile(a, outPath)
+			return writeOpenAPIFile(env.App(), outPath)
 		},
 	}
 

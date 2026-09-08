@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/app"
+	"cube/cmd/env"
 	"cube/project"
 	"cube/util/git"
 	"cube/util/pathkit"
@@ -47,7 +47,7 @@ var allDoctorChecks = []doctorCheck{
 }
 
 // cmd `cube doctor`
-func newDoctorCmd(a *app.App) *cobra.Command {
+func newDoctorCmd(env *env.Env) *cobra.Command {
 	var fix bool
 	cmd := &cobra.Command{
 		Use:   "doctor [items...]",
@@ -89,7 +89,7 @@ func newDoctorCmd(a *app.App) *cobra.Command {
 				}
 			}
 
-			service := a.ProjectService()
+			service := env.App().ProjectService()
 			total := 0
 			for _, c := range checks {
 				findings := c.run(service)
