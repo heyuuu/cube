@@ -81,7 +81,7 @@ func searchProjects(service *project.Service, query string, up bool) ([]*project
 //
 // 路径 query 命中 worktree 目录时归并到主项目（1032：worktree 不再是独立项目，
 // pull / push / info 等在 worktree 内执行等同于操作主仓库根目录）。
-func pickProject(service *project.Service, query string) (*project.Project, error) {
+func pickProject(service *project.Service, query string, localMode bool) (*project.Project, error) {
 	if localMode && query == "" {
 		query = "."
 	}

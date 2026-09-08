@@ -24,7 +24,7 @@ func newPathCmd(env *env.Env) *cobra.Command {
 			query := getArg(args, 0)
 
 			// 匹配项目（与 open 一致）
-			proj, err := pickProject(env.App().ProjectService(), query)
+			proj, err := pickProject(env.App().ProjectService(), query, env.Local())
 			if err != nil {
 				return err
 			}

@@ -46,7 +46,7 @@ ref 默认勾选当前分支；执行前展示推送计划并二次确认。
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// 定位项目：query 匹配（规则同 info），以项目根为仓库
 			query := getArg(args, 0)
-			proj, err := pickProject(env.App().ProjectService(), query)
+			proj, err := pickProject(env.App().ProjectService(), query, env.Local())
 			if err != nil {
 				return err
 			}

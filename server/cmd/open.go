@@ -29,7 +29,7 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 			query := getArg(args, 0)
 
 			// 匹配项目
-			proj, err := pickProject(env.App().ProjectService(), query)
+			proj, err := pickProject(env.App().ProjectService(), query, env.Local())
 			if err != nil {
 				return err
 			}

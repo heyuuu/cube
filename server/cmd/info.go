@@ -49,7 +49,7 @@ query 支持两种搜索模式：
 			query := getArg(args, 0)
 
 			// 匹配项目
-			proj, err := pickProject(env.App().ProjectService(), query)
+			proj, err := pickProject(env.App().ProjectService(), query, env.Local())
 			if err != nil {
 				return err
 			}

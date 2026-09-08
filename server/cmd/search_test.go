@@ -67,20 +67,15 @@ func TestPickProject_LocalMode(t *testing.T) {
 	repoA := ws.MakeProjectDir(path.Join("root", "projA"))
 	repoB := ws.MakeProjectDir(path.Join("root", "projB"))
 	s := newCmdServiceAt(t, root, "g1", 5)
-
-	orig := localMode
-	defer func() { localMode = orig }()
-
+	
 	// 非 local：query 空匹配两个项目，走交互选择，非 TTY 下报错
-	localMode = false
-	if _, err := pickProject(s, ""); err == nil {
+	if _, err := pickProject(s, "", false); err == nil {
 		t.Fatalf("非 local 模式下 query 空应因多项匹配无法交互而报错")
 	}
 
 	// local：query 缺省以 cwd 定位，在 projA 子目录内向上命中唯一项目
-	localMode = true
 	t.Chdir(ws.Mkdir(path.Join("root", "projA", "sub")))
-	proj, err := pickProject(s, "")
+	proj, err := pickProject(s, "", true)
 	if err != nil {
 		t.Fatalf("local 模式下 pickProject(\"\") 出错: %v", err)
 	}
@@ -89,7 +84,7 @@ func TestPickProject_LocalMode(t *testing.T) {
 	}
 
 	// local 下显式 query 不干预：仍按名称搜索命中 projB
-	proj, err = pickProject(s, "projB")
+	proj, err = pickProject(s, "projB", true)
 	if err != nil {
 		t.Fatalf("pickProject(\"projB\") 出错: %v", err)
 	}

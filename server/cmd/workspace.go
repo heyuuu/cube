@@ -34,7 +34,7 @@ func newWorkspaceInitCmd(env *env.Env) *cobra.Command {
 query 支持项目名模糊搜索，规则同 open 命令。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			proj, err := pickProject(env.App().ProjectService(), getArg(args, 0))
+			proj, err := pickProject(env.App().ProjectService(), getArg(args, 0), env.Local())
 			if err != nil {
 				return err
 			}

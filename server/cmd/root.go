@@ -84,12 +84,10 @@ func defaultConfigPath() string {
 
 // localMode 是 --local 全局 flag 的落点：query 缺省的命令（info/pull/push/open）
 // 在此模式下以 cwd 为起点定位项目（等同 query="."）。由 Execute 在预解析后赋值。
-var localMode bool
 
 func Execute() {
 	// 在 cobra 初始化之前，使用 Go 原生 flag 包预解析全局 flag（--config, --debug, --local）
 	cfgFile, debug, local, remaining := extractGlobalFlags(os.Args[1:], defaultConfigPath())
-	localMode = local
 
 	env := env.New()
 	err := env.Init(cfgFile, debug, local)
