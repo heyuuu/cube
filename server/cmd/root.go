@@ -61,7 +61,7 @@ func newRootCmd(env *env.Env) *cobra.Command {
 
 	// 全局 flag 走 cobra 真解析，值经 StringVar 注入闭包变量，供 PersistentPreRunE 读取
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", defaultConfigPath(), "config file")
-	cmd.PersistentFlags().BoolVarP(&debug, "debug", "D", false, "enable debug mode")
+	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug mode")
 	cmd.PersistentFlags().BoolVar(&local, "local", false, "query 缺省时以当前目录定位项目（shell 函数 p 即此模式）")
 
 	registerSubCommands(cmd, env)
