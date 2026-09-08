@@ -48,7 +48,7 @@ func newRootCmd(env *env.Env) *cobra.Command {
   - git：push(批量推送) pull(批量拉取)
   - Web：server(本地服务) ui(打开 Web UI) openapi(导出 API spec)
 
-配置默认在 ~/.config/cube/（dev 为 cube-dev），全局 flag --config 可覆盖配置文件路径，--debug(-D) 开 debug 日志。
+配置默认在 ~/.config/cube/（dev 为 cube-dev），全局 flag --config 可覆盖配置文件路径，--debug 开 debug 日志。
 --local 让 query 缺省的命令（info/pull/push/open）以当前目录定位项目，
 等同在命令末尾补 query 为 "."。`,
 		// 惰性装配：命令真正执行前才 Init（config→logger→app），
