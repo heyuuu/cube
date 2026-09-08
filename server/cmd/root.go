@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -16,11 +15,9 @@ import (
 )
 
 func Execute() {
-	// 构建 cmd
 	env := env.New()
 	cmd := newRootCmd(env)
 
-	// 执行命令
 	if err := cmd.Execute(); err != nil {
 		slog.Error("命令执行失败", "err", err)
 		os.Exit(1)
@@ -51,21 +48,22 @@ func newRootCmd(env *env.Env) *cobra.Command {
   - git：push(批量推送) pull(批量拉取)
   - Web：server(本地服务) ui(打开 Web UI) openapi(导出 API spec)
 
-配置默认在 ~/.config/cube/，全局 flag -c 可覆盖配置目录，-d 开 debug 日志。
+配置默认在 ~/.config/cube/（dev 为 cube-dev），全局 flag --config 可覆盖配置文件路径，--debug(-D) 开 debug 日志。
 --local 让 query 缺省的命令（info/pull/push/open）以当前目录定位项目，
 等同在命令末尾补 query 为 "."。`,
+		// 惰性装配：命令真正执行前才 Init（config→logger→app），
+		// --help / 未知命令等不触发 RunE 的路径全程零装配。
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true // 钩子之前发生的输入类错误仍附 usage；运行期错误不再附 usage
 			return env.Init(cfgFile, debug, local)
 		},
 	}
 
-	// cmd 上绑定全局 flag，仅用于生成 help 提示(此时 --config/--debug/--local 早解析完了)
-	cmd.PersistentFlags().StringVar(&cfgFile, "config", defaultConfigPath(), fmt.Sprintf("config file (default is %s)", defaultConfigPath()))
+	// 全局 flag 走 cobra 真解析，值经 StringVar 注入闭包变量，供 PersistentPreRunE 读取
+	cmd.PersistentFlags().StringVar(&cfgFile, "config", defaultConfigPath(), "config file")
 	cmd.PersistentFlags().BoolVarP(&debug, "debug", "D", false, "enable debug mode")
 	cmd.PersistentFlags().BoolVar(&local, "local", false, "query 缺省时以当前目录定位项目（shell 函数 p 即此模式）")
 
-	// 绑定子命令
 	registerSubCommands(cmd, env)
 
 	return cmd
