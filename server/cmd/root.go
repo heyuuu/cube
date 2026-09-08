@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -16,7 +15,31 @@ import (
 	"cube/version"
 )
 
+func Execute() {
+	// 构建 cmd
+	env := env.New()
+	cmd := newRootCmd(env)
+
+	// 执行命令
+	if err := cmd.Execute(); err != nil {
+		slog.Error("命令执行失败", "err", err)
+		os.Exit(1)
+	}
+}
+
+// 默认配置文件路径，区分开发环境、正式环境
+func defaultConfigPath() string {
+	if version.IsDev() {
+		return "~/.config/" + version.AppName + "-dev/config.json"
+	}
+	return "~/.config/" + version.AppName + "/config.json"
+}
+
 func newRootCmd(env *env.Env) *cobra.Command {
+	var cfgFile string
+	var debug bool
+	var local bool
+
 	cmd := &cobra.Command{
 		Use:   version.AppName,
 		Short: version.AppName + " " + version.Version(),
@@ -31,8 +54,24 @@ func newRootCmd(env *env.Env) *cobra.Command {
 配置默认在 ~/.config/cube/，全局 flag -c 可覆盖配置目录，-d 开 debug 日志。
 --local 让 query 缺省的命令（info/pull/push/open）以当前目录定位项目，
 等同在命令末尾补 query 为 "."。`,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true // 钩子之前发生的输入类错误仍附 usage；运行期错误不再附 usage
+			return env.Init(cfgFile, debug, local)
+		},
 	}
 
+	// cmd 上绑定全局 flag，仅用于生成 help 提示(此时 --config/--debug/--local 早解析完了)
+	cmd.PersistentFlags().StringVar(&cfgFile, "config", defaultConfigPath(), fmt.Sprintf("config file (default is %s)", defaultConfigPath()))
+	cmd.PersistentFlags().BoolVarP(&debug, "debug", "D", false, "enable debug mode")
+	cmd.PersistentFlags().BoolVar(&local, "local", false, "query 缺省时以当前目录定位项目（shell 函数 p 即此模式）")
+
+	// 绑定子命令
+	registerSubCommands(cmd, env)
+
+	return cmd
+}
+
+func registerSubCommands(cmd *cobra.Command, env *env.Env) {
 	cmd.AddCommand(newVersionCmd(env))
 
 	// web server 相关
@@ -70,74 +109,4 @@ func newRootCmd(env *env.Env) *cobra.Command {
 
 	// 待整理命令
 	cmd.AddCommand(newCheckCmd(env))
-
-	return cmd
-}
-
-// 默认配置文件路径，区分开发环境、正式环境
-func defaultConfigPath() string {
-	if version.IsDev() {
-		return "~/.config/" + version.AppName + "-dev/config.json"
-	}
-	return "~/.config/" + version.AppName + "/config.json"
-}
-
-// localMode 是 --local 全局 flag 的落点：query 缺省的命令（info/pull/push/open）
-// 在此模式下以 cwd 为起点定位项目（等同 query="."）。由 Execute 在预解析后赋值。
-
-func Execute() {
-	// 在 cobra 初始化之前，使用 Go 原生 flag 包预解析全局 flag（--config, --debug, --local）
-	cfgFile, debug, local, remaining := extractGlobalFlags(os.Args[1:], defaultConfigPath())
-
-	env := env.New()
-	err := env.Init(cfgFile, debug, local)
-	checkError(err, "env.Init 失败")
-
-	// 构建 cmd
-	cmd := newRootCmd(env)
-	cmd.SetArgs(remaining)
-
-	// cmd 上绑定全局 flag，仅用于生成 help 提示(此时 --config/--debug/--local 早解析完了)
-	cmd.PersistentFlags().String("config", defaultConfigPath(), fmt.Sprintf("config file (default is %s)", defaultConfigPath()))
-	cmd.PersistentFlags().BoolP("debug", "D", false, "enable debug mode")
-	cmd.PersistentFlags().Bool("local", false, "query 缺省时以当前目录定位项目（shell 函数 p 即此模式）")
-
-	// 执行命令
-	err = cmd.Execute()
-	checkError(err, "命令执行失败")
-}
-
-func checkError(err error, msg string) {
-	if err != nil {
-		slog.Error(msg, "err", err)
-		// exit 前的错误信息，直接输出方便排查问题
-		fmt.Printf("%s: %v", msg, err)
-		os.Exit(1)
-	}
-}
-
-// extractGlobalFlags 从 args 任意位置摘出 --debug / --config / --local，
-// 返回 (cfgFile, debug, local, 剩余 args)。
-// 不识别的 token（含子命令、子命令自己的 flag、位置参数）原样留在 remaining 里。
-func extractGlobalFlags(args []string, defaultCfg string) (cfgFile string, debug, local bool, remaining []string) {
-	cfgFile = defaultCfg
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch {
-		case arg == "--debug" || arg == "-D":
-			debug = true
-		case arg == "--local":
-			local = true
-		case arg == "--config":
-			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-				cfgFile = args[i+1]
-				i++
-			}
-		case strings.HasPrefix(arg, "--config="):
-			cfgFile = strings.TrimPrefix(arg, "--config=")
-		default:
-			remaining = append(remaining, arg)
-		}
-	}
-	return
 }

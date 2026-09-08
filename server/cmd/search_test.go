@@ -67,7 +67,7 @@ func TestPickProject_LocalMode(t *testing.T) {
 	repoA := ws.MakeProjectDir(path.Join("root", "projA"))
 	repoB := ws.MakeProjectDir(path.Join("root", "projB"))
 	s := newCmdServiceAt(t, root, "g1", 5)
-	
+
 	// 非 local：query 空匹配两个项目，走交互选择，非 TTY 下报错
 	if _, err := pickProject(s, "", false); err == nil {
 		t.Fatalf("非 local 模式下 query 空应因多项匹配无法交互而报错")
