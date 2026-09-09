@@ -1,10 +1,6 @@
 package handlers
 
 import (
-	"net/http"
-
-	"github.com/danielgtaylor/huma/v2"
-
 	"cube/forge"
 	"cube/project"
 	"cube/util/iconkit"
@@ -22,22 +18,22 @@ func NewForgeHandler(forgeService *forge.Service, projectService *project.Servic
 	return &ForgeHandler{forgeService: forgeService, projectService: projectService}
 }
 
-func (h *ForgeHandler) Register(api huma.API, mux *http.ServeMux) {
-	web.ApiGet(api, "/api/forge/list", "获取 forge 列表", h.forgeList)
-	web.ApiPost(api, "/api/forge/save", "新增或按 host 替换 forge", h.forgeSave)
-	web.ApiPost(api, "/api/forge/delete", "按 host 删除 forge", h.forgeDelete)
-	web.ApiPost(api, "/api/forge/reorder", "按 host 重排 forge 顺序", h.forgeReorder)
+func (h *ForgeHandler) Register(r *web.Routes) {
+	r.Get("/api/forge/list", "获取 forge 列表", web.JsonHandler(h.forgeList))
+	r.Post("/api/forge/save", "新增或按 host 替换 forge", web.JsonHandler(h.forgeSave))
+	r.Post("/api/forge/delete", "按 host 删除 forge", web.JsonHandler(h.forgeDelete))
+	r.Post("/api/forge/reorder", "按 host 重排 forge 顺序", web.JsonHandler(h.forgeReorder))
 
-	web.ApiGet(api, "/api/forge/account/list", "获取 forge account 列表（token 打码）", h.accountList)
-	web.ApiPost(api, "/api/forge/account/save", "新增或按 forgeHost+username 替换 account", h.accountSave)
-	web.ApiPost(api, "/api/forge/account/delete", "按 forgeHost+username 删除 account", h.accountDelete)
-	web.ApiPost(api, "/api/forge/account/reorder", "按键（host/username）重排 account 顺序", h.accountReorder)
-	web.ApiPost(api, "/api/forge/account/fetch", "拉取 account 名下全部远端仓库", h.accountFetch)
+	r.Get("/api/forge/account/list", "获取 forge account 列表（token 打码）", web.JsonHandler(h.accountList))
+	r.Post("/api/forge/account/save", "新增或按 forgeHost+username 替换 account", web.JsonHandler(h.accountSave))
+	r.Post("/api/forge/account/delete", "按 forgeHost+username 删除 account", web.JsonHandler(h.accountDelete))
+	r.Post("/api/forge/account/reorder", "按键（host/username）重排 account 顺序", web.JsonHandler(h.accountReorder))
+	r.Post("/api/forge/account/fetch", "拉取 account 名下全部远端仓库", web.JsonHandler(h.accountFetch))
 
-	web.ApiGet(api, "/api/forge/overview", "forge 页聚合：全部 account 对账行 + 拉取元信息（只读缓存不外呼）", h.forgeOverview)
+	r.Get("/api/forge/overview", "forge 页聚合：全部 account 对账行 + 拉取元信息（只读缓存不外呼）", web.JsonHandler(h.forgeOverview))
 }
 
-func (h *ForgeHandler) forgeList(_ struct{}) (web.ListResult[forge.Forge], error) {
+func (h *ForgeHandler) forgeList(_ struct{}) (ListResult[forge.Forge], error) {
 	return listResult(h.forgeService.Forges()), nil
 }
 
@@ -91,7 +87,7 @@ func (h *ForgeHandler) forgeReorder(input ForgeReorderInput) (map[string]any, er
 
 // --- account（token 只以打码形态出 API；save 提交掩码值 = 未修改） ---
 
-func (h *ForgeHandler) accountList(_ struct{}) (web.ListResult[forge.Account], error) {
+func (h *ForgeHandler) accountList(_ struct{}) (ListResult[forge.Account], error) {
 	accounts := h.forgeService.Accounts()
 	for i := range accounts {
 		if accounts[i].Token != "" {

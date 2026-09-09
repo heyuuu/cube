@@ -103,11 +103,16 @@ func TestStop_ShutdownAndConfirm(t *testing.T) {
 	})
 	mux.HandleFunc("/api/system/shutdown", func(w http.ResponseWriter, r *http.Request) {
 		// 校验鉴权 header（复用 web.VerifyShutdownToken）
-		if err := web.VerifyShutdownToken(r.Header.Get(web.ShutdownTokenHeader), time.Now()); err != nil {
+		var req struct {
+			Token string `json:"token"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if err := web.VerifyShutdownToken(req.Token, time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true,"message":"","data":"shutting down"}`))
 		alive = false // 模拟 shutdown 生效
 	})
 	srv := httptest.NewServer(mux)
@@ -139,11 +144,16 @@ func TestStop_ReplacedByNewInstance(t *testing.T) {
 		_, _ = w.Write([]byte(fmt.Sprintf(`{"ok":true,"data":{"app":"cube","version":"v1","instance":%q}}`, instance)))
 	})
 	mux.HandleFunc("/api/system/shutdown", func(w http.ResponseWriter, r *http.Request) {
-		if err := web.VerifyShutdownToken(r.Header.Get(web.ShutdownTokenHeader), time.Now()); err != nil {
+		var req struct {
+			Token string `json:"token"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if err := web.VerifyShutdownToken(req.Token, time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true,"message":"","data":"shutting down"}`))
 		instance = "new-inst" // 模拟新进程接管端口
 	})
 	srv := httptest.NewServer(mux)

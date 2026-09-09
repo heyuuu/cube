@@ -6,8 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-
-	"github.com/danielgtaylor/huma/v2"
 )
 
 // uiFS 前端构建产物（make build-ui 把 web/dist 的内容拷到这里，go:embed 嵌入）。
@@ -25,13 +23,15 @@ func newStaticHandler() *staticHandler {
 	return &staticHandler{}
 }
 
-// Register 挂载前端静态资源与 SPA fallback：
+// Register 挂载前端静态资源与 SPA fallback（Raw 路由，不进 OpenAPI）：
 //   - GET /assets/*   → Vite 构建产物（文件名带内容 hash，设 immutable 长缓存）
 //   - GET /<文件>     → dist 根级文件（favicon.svg 等），存在即返回
 //   - GET 其它路径    → index.html（history 路由 fallback，支持 /projects 直达/刷新）
 //   - /api/*、/docs、/openapi.json 的未命中**不走 fallback**，按 404 处理——
 //     否则 API 打错路径会拿到 HTML 200，错误被吞成莫名的解析失败
-func (h *staticHandler) Register(api huma.API, mux *http.ServeMux) {
+//
+// pattern 用 "GET ..." 前缀限定方法，非 GET/HEAD 请求由 mux 直接回 405。
+func (h *staticHandler) Register(r *Routes) {
 	rootFS, err := fs.Sub(uiFS, "ui")
 	if err != nil {
 		slog.Error("无法进入 ui 子目录", "err", err)
@@ -42,39 +42,39 @@ func (h *staticHandler) Register(api huma.API, mux *http.ServeMux) {
 	indexFile, err := fs.ReadFile(rootFS, "index.html")
 	if err != nil {
 		slog.Info("web/ui 未构建，前端未嵌入，仅提供 API（需要前端执行 make build-ui 后重启）")
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			if isNonFallbackPath(r.URL.Path) || !(r.Method == http.MethodGet || r.Method == http.MethodHead) {
-				http.NotFound(w, r)
+		r.Raw("GET /", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if isNonFallbackPath(req.URL.Path) {
+				http.NotFound(w, req)
 				return
 			}
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			_, _ = w.Write([]byte(placeholderText))
-		})
+		}))
 		return
 	}
 
 	// /assets/* —— Vite 产物文件名带内容 hash，可不可变长缓存
 	// （FileServer 不剥挂载前缀，须 StripPrefix 把 /assets/ 映射到 assetsFS 根）
 	if assetsFS, err := fs.Sub(rootFS, "assets"); err == nil {
-		mux.Handle("/assets/", cacheImmutable(http.StripPrefix("/assets/", http.FileServer(http.FS(assetsFS)))))
+		r.Raw("GET /assets/", cacheImmutable(http.StripPrefix("/assets/", http.FileServer(http.FS(assetsFS)))))
 	} else {
 		slog.Error("ui/assets 目录缺失，静态资源未挂载", "err", err)
 	}
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if isNonFallbackPath(r.URL.Path) || !(r.Method == http.MethodGet || r.Method == http.MethodHead) {
-			http.NotFound(w, r)
+	r.Raw("GET /", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if isNonFallbackPath(req.URL.Path) {
+			http.NotFound(w, req)
 			return
 		}
 		// dist 根级文件（favicon.svg 等）存在则返回原文件，否则按 SPA 路由回 index.html
-		if f, err := rootFS.Open(strings.TrimPrefix(r.URL.Path, "/")); err == nil {
+		if f, err := rootFS.Open(strings.TrimPrefix(req.URL.Path, "/")); err == nil {
 			f.Close()
-			http.FileServer(http.FS(rootFS)).ServeHTTP(w, r)
+			http.FileServer(http.FS(rootFS)).ServeHTTP(w, req)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(indexFile)
-	})
+	}))
 }
 
 // isNonFallbackPath 判定不参与 SPA fallback 的路径：API 与文档端点（未命中应 404 而非回退页面）

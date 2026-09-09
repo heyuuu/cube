@@ -24,19 +24,16 @@ const shutdownToken = version.AppName + "-local-shutdown-v1"
 // 本机调用毫秒级往返，5 秒窗口够宽裕又能防重放（抓包过 5 秒就作废）。
 const shutdownTokenWindow = 5 * time.Second
 
-// ShutdownTokenHeader HTTP header 名，值为 "<unix秒>.<hex(hmac-sha256(token, unix秒))>"。
-const ShutdownTokenHeader = "X-Shutdown-Token"
-
-// GenShutdownToken 生成 shutdown 鉴权 header 值：时间戳 + HMAC 签名。
+// GenShutdownToken 生成 shutdown 鉴权 token 值：时间戳 + HMAC 签名。
 //
-// 供 CLI 端（serve.Stop）构造请求时调用。返回格式 "payload.sig"。
+// 供 CLI 端（serve.Stop）构造请求时调用，token 经 shutdown body 参数提交。返回格式 "payload.sig"。
 func GenShutdownToken(now time.Time) string {
 	payload := strconv.FormatInt(now.Unix(), 10)
 	sig := hmacHex([]byte(shutdownToken), []byte(payload))
 	return payload + "." + sig
 }
 
-// VerifyShutdownToken 校验 shutdown 鉴权 header 值。
+// VerifyShutdownToken 校验 shutdown 鉴权 token 值。
 //
 // 双重校验：
 //  1. HMAC 比对（证明调用方持有 token）

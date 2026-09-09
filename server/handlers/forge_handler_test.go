@@ -7,14 +7,13 @@ import (
 	"testing"
 
 	"cube/forge"
-	"cube/web"
 )
 
 // TestForgeListEmpty 空配置时 list 返回空数组（nil 切片序列化为 []）。
 func TestForgeListEmpty(t *testing.T) {
 	env := newTestEnv(t)
 	got := getJSON(t, env.url("/api/forge/list"))
-	var out web.ListResult[forge.Forge]
+	var out ListResult[forge.Forge]
 	decodeData(t, got, &out)
 	if out.List == nil || len(out.List) != 0 {
 		t.Fatalf("空配置应返回 []（nil 序列化）, got %#v", out.List)
@@ -31,7 +30,7 @@ func TestForgeWrite(t *testing.T) {
 		t.Fatalf("save 应成功, message=%q", r.Message)
 	}
 	got := getJSON(t, env.url("/api/forge/list"))
-	var out web.ListResult[forge.Forge]
+	var out ListResult[forge.Forge]
 	decodeData(t, got, &out)
 	if len(out.List) != 1 || out.List[0].Host != "github.com" || out.List[0].Kind != "github" {
 		t.Fatalf("保存后 forge 字段不符: %+v", out.List)
@@ -86,7 +85,7 @@ func TestForgeReorder(t *testing.T) {
 		t.Fatalf("reorder 应成功, message=%q", r.Message)
 	}
 	got := getJSON(t, env.url("/api/forge/list"))
-	var out web.ListResult[forge.Forge]
+	var out ListResult[forge.Forge]
 	decodeData(t, got, &out)
 	if len(out.List) != 2 || out.List[0].Host != "gitee.com" {
 		t.Fatalf("重排后顺序不符: %+v", out.List)
@@ -107,7 +106,7 @@ func TestForgeAccountApi(t *testing.T) {
 	if !r.Ok {
 		t.Fatalf("保存应成功: %s", r.Message)
 	}
-	var accounts web.ListResult[forge.Account]
+	var accounts ListResult[forge.Account]
 	decodeData(t, getJSON(t, env.url("/api/forge/account/list")), &accounts)
 	acctList := accounts.List
 	if len(acctList) != 1 || acctList[0].Token != forge.TokenMasked {

@@ -1,10 +1,6 @@
 package handlers
 
 import (
-	"net/http"
-
-	"github.com/danielgtaylor/huma/v2"
-
 	"cube/config"
 	"cube/web"
 )
@@ -18,8 +14,8 @@ func NewConfigHandler(cfg *config.Config) *ConfigHandler {
 	return &ConfigHandler{cfg: cfg}
 }
 
-func (h *ConfigHandler) Register(api huma.API, mux *http.ServeMux) {
-	web.ApiGet(api, "/api/config", "获取配置信息", h.getConfig)
+func (h *ConfigHandler) Register(r *web.Routes) {
+	r.Get("/api/config", "获取配置信息", web.JsonHandler(h.getConfig))
 }
 
 func (h *ConfigHandler) getConfig(_ struct{}) (config.Config, error) {

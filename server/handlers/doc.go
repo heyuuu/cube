@@ -2,5 +2,7 @@
 //
 // 组织方式：同包按 domain 分文件（<domain>_handler.go），不按 domain 分子包——
 // handler 之间无共享状态，横向扩展只加文件。服务端框架（路由 / envelope /
-// 静态资源 / system 端点）在 cube/web，注册统一走 web.ApiGet / web.ApiPost。
+// 静态资源 / system 端点）在 cube/web，注册统一走 Register(r *web.Routes)：
+// 标准端点 r.Get / r.Post + web.JsonHandler（envelope）或 web.RawHandler（透传），
+// 需要原始控制 ResponseWriter 的端点（WebSocket / 二进制流）走 r.Raw。
 package handlers

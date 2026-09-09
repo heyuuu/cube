@@ -3,11 +3,8 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/danielgtaylor/huma/v2"
 
 	"cube/opener"
 	"cube/util/slicekit"
@@ -61,19 +58,19 @@ func NewOpenerHandler(service *opener.Service) *OpenerHandler {
 	}
 }
 
-func (h *OpenerHandler) Register(api huma.API, mux *http.ServeMux) {
-	web.ApiGet(api, "/api/opener/list", "获取 opener 列表", h.openerList)
-	web.ApiGet(api, "/api/opener/intents", "获取打开意图清单（intent → 默认 opener + 候选）", h.openerIntents)
-	web.ApiPost(api, "/api/opener/open", "用指定 opener 打开任意文件或目录", h.openerOpen)
-	web.ApiPost(api, "/api/opener/diff-open", "用指定 opener 对比两个路径（diff-dir/diff-file）", h.openerDiffOpen)
-	web.ApiPost(api, "/api/opener/save", "新增或更新 opener（按 name 替换）", h.openerSave)
-	web.ApiPost(api, "/api/opener/delete", "按名删除 opener", h.openerDelete)
-	web.ApiPost(api, "/api/opener/reorder", "按名重排 opener 顺序", h.openerReorder)
-	web.ApiPost(api, "/api/opener/intent-default/save", "设置某 intent 的默认 opener", h.intentDefaultSave)
-	web.ApiPost(api, "/api/opener/intent-default/delete", "清除某 intent 的默认 opener", h.intentDefaultDelete)
+func (h *OpenerHandler) Register(r *web.Routes) {
+	r.Get("/api/opener/list", "获取 opener 列表", web.JsonHandler(h.openerList))
+	r.Get("/api/opener/intents", "获取打开意图清单（intent → 默认 opener + 候选）", web.JsonHandler(h.openerIntents))
+	r.Post("/api/opener/open", "用指定 opener 打开任意文件或目录", web.JsonHandler(h.openerOpen))
+	r.Post("/api/opener/diff-open", "用指定 opener 对比两个路径（diff-dir/diff-file）", web.JsonHandler(h.openerDiffOpen))
+	r.Post("/api/opener/save", "新增或更新 opener（按 name 替换）", web.JsonHandler(h.openerSave))
+	r.Post("/api/opener/delete", "按名删除 opener", web.JsonHandler(h.openerDelete))
+	r.Post("/api/opener/reorder", "按名重排 opener 顺序", web.JsonHandler(h.openerReorder))
+	r.Post("/api/opener/intent-default/save", "设置某 intent 的默认 opener", web.JsonHandler(h.intentDefaultSave))
+	r.Post("/api/opener/intent-default/delete", "清除某 intent 的默认 opener", web.JsonHandler(h.intentDefaultDelete))
 }
 
-func (h *OpenerHandler) openerList(_ struct{}) (web.ListResult[*OpenerDTO], error) {
+func (h *OpenerHandler) openerList(_ struct{}) (ListResult[*OpenerDTO], error) {
 	openers := h.service.AllOpeners()
 	list := slicekit.Map(openers, toOpenerDTO)
 	return listResult(list), nil
@@ -86,7 +83,7 @@ type OpenerIntentDTO struct {
 	Openers       []string `json:"openers"` // 候选清单（缺省 = 声明了对应 role 的全部 opener，读侧合成）
 }
 
-func (h *OpenerHandler) openerIntents(_ struct{}) (web.ListResult[*OpenerIntentDTO], error) {
+func (h *OpenerHandler) openerIntents(_ struct{}) (ListResult[*OpenerIntentDTO], error) {
 	list := slicekit.Map(h.service.Intents(), func(i opener.IntentInfo) *OpenerIntentDTO {
 		return &OpenerIntentDTO{
 			Intent:        string(i.Intent),

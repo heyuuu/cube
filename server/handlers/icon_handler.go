@@ -2,9 +2,6 @@ package handlers
 
 import (
 	"encoding/base64"
-	"net/http"
-
-	"github.com/danielgtaylor/huma/v2"
 
 	"cube/util/iconkit"
 	"cube/web"
@@ -18,8 +15,8 @@ func NewIconHandler() *IconHandler {
 	return &IconHandler{}
 }
 
-func (h *IconHandler) Register(api huma.API, mux *http.ServeMux) {
-	web.ApiPost(api, "/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", h.iconExtract)
+func (h *IconHandler) Register(r *web.Routes) {
+	r.Post("/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", web.JsonHandler(h.iconExtract))
 }
 
 // IconExtractInput icon/extract 接口入参。source 由后端按形态分发：

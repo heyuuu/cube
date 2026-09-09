@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/danielgtaylor/huma/v2"
 
 	"cube/util/git"
 	"cube/web"
@@ -39,9 +36,9 @@ func NewMdHandler() *MdHandler {
 	return &MdHandler{}
 }
 
-func (h *MdHandler) Register(api huma.API, mux *http.ServeMux) {
-	web.ApiGet(api, "/api/md/content", "读取 markdown 文件原文", h.mdContent)
-	web.ApiGet(api, "/api/md/list", "列出目录下的 markdown 文件", h.mdList)
+func (h *MdHandler) Register(r *web.Routes) {
+	r.Get("/api/md/content", "读取 markdown 文件原文", web.JsonHandler(h.mdContent))
+	r.Get("/api/md/list", "列出目录下的 markdown 文件", web.JsonHandler(h.mdList))
 }
 
 func (h *MdHandler) mdContent(input struct {

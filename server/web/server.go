@@ -12,16 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humago"
-
 	"cube/config"
-	"cube/version"
 )
 
 // Handler 接口
 type Handler interface {
-	Register(api huma.API, mux *http.ServeMux)
+	Register(r *Routes)
 }
 
 // Server 服务器，响应 api 请求
@@ -29,8 +25,7 @@ type Server struct {
 	// config
 	port int
 	// runtime
-	mux *http.ServeMux
-	api huma.API
+	routes *Routes
 }
 
 func NewServer(c config.ServerConfig, handlers []Handler) *Server {
@@ -46,37 +41,27 @@ func NewServer(c config.ServerConfig, handlers []Handler) *Server {
 		handlers...,
 	)
 
-	mux := http.NewServeMux()
-
-	cfg := huma.DefaultConfig(version.AppTitle, version.Version())
-	cfg.DocsRenderer = huma.DocsRendererScalar // 切换 /docs 页面风格为 Scalar 渲染器
-	cfg.Formats = map[string]huma.Format{
-		"application/json": nilCollectionsJSONFormat, // nil 切片/map → []/{}，避免前端拿到 null 崩溃
-	}
-	api := humago.New(mux, cfg)
+	routes := newRoutes()
 
 	// 各 domain 注册自己的路由
 	for _, handler := range handlers {
-		handler.Register(api, mux)
+		handler.Register(routes)
 	}
 
 	return &Server{
-		// config
-		port: c.Port,
-		// runtime
-		mux: mux,
-		api: api,
+		port:   c.Port,
+		routes: routes,
 	}
 }
 
 func (s *Server) Port() int { return s.port }
 
 // Handler 返回底层 http.Handler，供 httptest 拉起真实路由做集成测试。
-func (s *Server) Handler() http.Handler { return s.mux }
+func (s *Server) Handler() http.Handler { return s.routes.Handler() }
 
 // OpenAPIJSON 返回 OpenAPI 3.1 spec 的 JSON 字节。供 generate 命令或 /openapi.json 端点使用。
 func (s *Server) OpenAPIJSON() ([]byte, error) {
-	return s.api.OpenAPI().MarshalJSON()
+	return s.routes.OpenAPIJSON()
 }
 
 // serverHost server 绑定的主机名——全仓 http 地址拼接的唯一事实源（web.BaseURL），
@@ -103,7 +88,7 @@ func (s *Server) Start() error {
 
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           s.mux,
+		Handler:           s.routes.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		// 不设 Read/WriteTimeout：PTY WebSocket 与大文件上传都是长连接，
 		// 整体超时会把合法会话掐断（慢客户端由 IdleTimeout 兜底）

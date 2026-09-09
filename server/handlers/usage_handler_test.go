@@ -3,8 +3,6 @@ package handlers
 import (
 	"strings"
 	"testing"
-
-	"cube/web"
 )
 
 // TestUsageRecentPaths record 后 recent-paths 去重取最新、limit 生效、缺省 5。
@@ -19,7 +17,7 @@ func TestUsageRecentPaths(t *testing.T) {
 	postJSON(t, env.url("/api/usage/record"), `{"project":"/p/a"}`) // 同路径去重取最新
 
 	got := getJSON(t, env.url("/api/usage/recent-paths?limit=1"))
-	var out web.ListResult[struct {
+	var out ListResult[struct {
 		Path string `json:"path"`
 	}]
 	decodeData(t, got, &out)
@@ -49,7 +47,7 @@ func TestUsageRecentPaths_DefaultLimit(t *testing.T) {
 		postJSON(t, env.url("/api/usage/record"), `{"project":"`+p+`"}`)
 	}
 	got := getJSON(t, env.url("/api/usage/recent-paths"))
-	var out web.ListResult[struct {
+	var out ListResult[struct {
 		Path string `json:"path"`
 	}]
 	decodeData(t, got, &out)

@@ -15,18 +15,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"cube/config"
 )
 
 // testHandler 框架自测用的最小 handler：一条 GET 路由，覆盖注册链路与 envelope。
 type testHandler struct{}
 
-func (testHandler) Register(api huma.API, mux *http.ServeMux) {
-	ApiGet(api, "/api/test/ping", "测试探活", func(_ struct{}) (string, error) {
+func (testHandler) Register(r *Routes) {
+	r.Get("/api/test/ping", "测试探活", JsonHandler(func(_ struct{}) (string, error) {
 		return "pong", nil
-	})
+	}))
 }
 
 func newTestServer(t *testing.T) *httptest.Server {
@@ -39,7 +37,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 
 // --- HTTP 断言辅助 ---
 
-// envelope 与 ApiOutput 的 JSON 形态对应；data 延迟到调用方按需解码。
+// envelope 与 JsonOutput 的 JSON 形态对应；data 延迟到调用方按需解码。
 type envelope struct {
 	Ok      bool            `json:"ok"`
 	Message string          `json:"message"`
@@ -107,17 +105,33 @@ func TestWhoami(t *testing.T) {
 	}
 }
 
-// TestShutdownUnauthorized shutdown 鉴权失败回 401。
+// TestShutdownUnauthorized shutdown 缺 body 参数被 huma 校验拒绝（400），
+// 非法 token 走 envelope（200 + ok:false）。
 // 鉴权通过路径会给本进程发 SIGTERM，无法在测试里安全覆盖（shutdown_token_test 已单测 token 逻辑）。
 func TestShutdownUnauthorized(t *testing.T) {
 	ts := newTestServer(t)
+
 	resp, err := http.Post(ts.URL+"/api/system/shutdown", "", nil)
 	if err != nil {
 		t.Fatalf("POST shutdown 失败: %v", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("无 token 的 shutdown 应为 401, got %d", resp.StatusCode)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("无 body 的 shutdown 应为 400, got %d", resp.StatusCode)
+	}
+
+	resp2, err := http.Post(ts.URL+"/api/system/shutdown", "application/json",
+		strings.NewReader(`{"token":"0.deadbeef"}`))
+	if err != nil {
+		t.Fatalf("POST shutdown 失败: %v", err)
+	}
+	defer resp2.Body.Close()
+	var env envelope
+	if err := json.NewDecoder(resp2.Body).Decode(&env); err != nil {
+		t.Fatalf("非法 token 应返回 envelope: %v", err)
+	}
+	if resp2.StatusCode != http.StatusOK || env.Ok {
+		t.Fatalf("非法 token 应为 200 + ok:false, got %d %+v", resp2.StatusCode, env)
 	}
 }
 

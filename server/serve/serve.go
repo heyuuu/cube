@@ -1,9 +1,9 @@
 package serve
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -41,7 +41,7 @@ func Status(port int) StatusInfo {
 		return StatusInfo{}
 	}
 
-	// whoami 经 ApiOutput envelope 包装：{ok, message, data:{app, version, instance}}
+	// whoami 经 JsonOutput envelope 包装：{ok, message, data:{app, version, instance}}
 	var out struct {
 		Ok   bool `json:"ok"`
 		Data struct {
@@ -78,21 +78,29 @@ func Stop(port int) (stopped bool, replaced bool, err error) {
 	}
 	old := st.Instance
 
-	// 构造带 HMAC 鉴权的 shutdown 请求
+	// 构造带 HMAC 鉴权的 shutdown 请求（token 走 body，同其他 POST 动作惯例）
 	url := web.BaseURL(port) + "/api/system/shutdown"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	body, err := json.Marshal(map[string]string{"token": web.GenShutdownToken(time.Now())})
 	if err != nil {
 		return false, false, fmt.Errorf("构造 shutdown 请求失败: %w", err)
 	}
-	req.Header.Set(web.ShutdownTokenHeader, web.GenShutdownToken(time.Now()))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return false, false, fmt.Errorf("构造 shutdown 请求失败: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false, false, fmt.Errorf("发送 shutdown 请求失败: %w", err)
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-	if resp.StatusCode != http.StatusOK {
+	// shutdown 响应走标准 envelope（鉴权失败 = 200 + ok:false），解析 envelope 判定
+	var out struct {
+		Ok      bool   `json:"ok"`
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || !out.Ok {
 		return false, false, fmt.Errorf("shutdown 请求被拒（status=%d，可能鉴权失败）", resp.StatusCode)
 	}
 

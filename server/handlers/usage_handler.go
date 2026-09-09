@@ -2,10 +2,7 @@ package handlers
 
 import (
 	"errors"
-	"net/http"
 	"path/filepath"
-
-	"github.com/danielgtaylor/huma/v2"
 
 	"cube/usage"
 	"cube/web"
@@ -23,14 +20,14 @@ func NewUsageHandler(service *usage.Service) *UsageHandler {
 	return &UsageHandler{service: service}
 }
 
-func (h *UsageHandler) Register(api huma.API, mux *http.ServeMux) {
-	web.ApiGet(api, "/api/usage/recent-paths", "获取最近使用的路径清单（去重取最新，最近使用倒序）", h.recentPaths)
-	web.ApiPost(api, "/api/usage/record", "补记一条使用记录（web 直开不经过后端记录的场景，如 url 型 opener 动作、workbench 进入）", h.record)
+func (h *UsageHandler) Register(r *web.Routes) {
+	r.Get("/api/usage/recent-paths", "获取最近使用的路径清单（去重取最新，最近使用倒序）", web.JsonHandler(h.recentPaths))
+	r.Post("/api/usage/record", "补记一条使用记录（web 直开不经过后端记录的场景，如 url 型 opener 动作、workbench 进入）", web.JsonHandler(h.record))
 }
 
 func (h *UsageHandler) recentPaths(input struct {
 	Limit int `query:"limit" doc:"返回条数上限，缺省 5"`
-}) (web.ListResult[usage.PathUsage], error) {
+}) (ListResult[usage.PathUsage], error) {
 	limit := input.Limit
 	if limit <= 0 {
 		limit = 5

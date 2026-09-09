@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"mime"
@@ -10,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/coder/websocket"
-
 	"github.com/danielgtaylor/huma/v2"
 
 	"cube/util/git"
@@ -29,31 +29,32 @@ func NewWorkbenchHandler(workbenchService *workbench.Service) *WorkbenchHandler 
 	return &WorkbenchHandler{workbenchService: workbenchService}
 }
 
-func (h *WorkbenchHandler) Register(api huma.API, mux *http.ServeMux) {
-	web.ApiGet(api, "/api/workbench/info", "获取工作台仓库信息", h.info)
-	web.ApiGet(api, "/api/workbench/refs", "获取工作台分支与tag列表", h.refs)
-	web.ApiGet(api, "/api/workbench/remotes", "获取工作台 remote 列表", h.remotes)
-	web.ApiGet(api, "/api/workbench/commits", "拉取工作台 commit 图（分页）", h.commits)
-	web.ApiGet(api, "/api/workbench/worktrees", "全部工作副本的状态快照", h.worktrees)
-	web.ApiGet(api, "/api/workbench/commit", "获取 TreeSource（ref/commit）指向提交的完整信息", h.commitInfo)
-	web.ApiGet(api, "/api/workbench/tree", "列出 TreeSource 下的目录树", h.tree)
-	web.ApiGet(api, "/api/workbench/file", "读取 TreeSource 下的文件内容", h.file)
-	web.ApiPost(api, "/api/workbench/file/save", "保存工作副本文件（唯一写路径）", h.saveFile)
-	web.ApiGet(api, "/api/workbench/diff", "双 TreeSource 目录级对比", h.diff)
-	web.ApiGet(api, "/api/workbench/file-diff", "双 TreeSource 单文件 diff", h.fileDiff)
-	web.ApiGet(api, "/api/workbench/changes", "列出源相对上一版本的变更文件", h.changes)
-	web.ApiPost(api, "/api/workbench/worktree/add", "新增 worktree", h.worktreeAdd)
-	web.ApiPost(api, "/api/workbench/worktree/remove", "删除 worktree（非 force 预检拒绝返回 denied+reasons）", h.worktreeRemove)
-	web.ApiPost(api, "/api/workbench/worktree/reset", "重置 worktree 到指定分支/commit（可选 hard）", h.worktreeReset)
-	web.ApiPost(api, "/api/workbench/worktree/prune", "清理失效的 worktree 管理记录", h.worktreePrune)
-	web.ApiPost(api, "/api/workbench/branch/add", "新建本地分支（不检出）", h.branchAdd)
-	web.ApiPost(api, "/api/workbench/branch/delete", "删除本地分支", h.branchDelete)
+func (h *WorkbenchHandler) Register(r *web.Routes) {
+	r.Get("/api/workbench/info", "获取工作台仓库信息", web.JsonHandler(h.info))
+	r.Get("/api/workbench/refs", "获取工作台分支与tag列表", web.JsonHandler(h.refs))
+	r.Get("/api/workbench/remotes", "获取工作台 remote 列表", web.JsonHandler(h.remotes))
+	r.Get("/api/workbench/commits", "拉取工作台 commit 图（分页）", web.JsonHandler(h.commits))
+	r.Get("/api/workbench/worktrees", "全部工作副本的状态快照", web.JsonHandler(h.worktrees))
+	r.Get("/api/workbench/commit", "获取 TreeSource（ref/commit）指向提交的完整信息", web.JsonHandler(h.commitInfo))
+	r.Get("/api/workbench/tree", "列出 TreeSource 下的目录树", web.JsonHandler(h.tree))
+	r.Get("/api/workbench/file", "读取 TreeSource 下的文件内容", web.JsonHandler(h.file))
+	r.Post("/api/workbench/file/save", "保存工作副本文件（唯一写路径）", web.JsonHandler(h.saveFile))
+	r.Get("/api/workbench/diff", "双 TreeSource 目录级对比", web.JsonHandler(h.diff))
+	r.Get("/api/workbench/file-diff", "双 TreeSource 单文件 diff", web.JsonHandler(h.fileDiff))
+	r.Get("/api/workbench/changes", "列出源相对上一版本的变更文件", web.JsonHandler(h.changes))
+	r.Post("/api/workbench/worktree/add", "新增 worktree", web.JsonHandler(h.worktreeAdd))
+	r.Post("/api/workbench/worktree/remove", "删除 worktree（非 force 预检拒绝返回 denied+reasons）", web.JsonHandler(h.worktreeRemove))
+	r.Post("/api/workbench/worktree/reset", "重置 worktree 到指定分支/commit（可选 hard）", web.JsonHandler(h.worktreeReset))
+	r.Post("/api/workbench/worktree/prune", "清理失效的 worktree 管理记录", web.JsonHandler(h.worktreePrune))
+	r.Post("/api/workbench/branch/add", "新建本地分支（不检出）", web.JsonHandler(h.branchAdd))
+	r.Post("/api/workbench/branch/delete", "删除本地分支", web.JsonHandler(h.branchDelete))
 
-	// 注册 WebSocket 路由（upgrade 不走 huma）
-	mux.HandleFunc("GET /api/workbench/pty", h.ptyWs)
 	// raw 文件读取：响应是原始字节 + 按扩展名的 Content-Type（图片预览用），
-	// 不套 ApiOutput envelope，故同 pty 一样直挂 mux 不走 huma
-	mux.HandleFunc("GET /api/workbench/file/raw", h.fileRaw)
+	// 不套 JsonOutput envelope，透传输出走 RawHandler（Body []byte 直写）
+	r.Get("/api/workbench/file/raw", "读取文件原始内容", web.RawHandler(h.fileRaw))
+
+	// WebSocket：连接升级，需要原始控制 ResponseWriter，走 Raw（不进文档）
+	r.Raw("GET /api/workbench/pty", http.HandlerFunc(h.ptyWs))
 }
 
 func (h *WorkbenchHandler) info(input struct {
@@ -269,27 +270,41 @@ func (h *WorkbenchHandler) branchDelete(input struct {
 	return map[string]any{"ok": true}, nil
 }
 
+// FileRawInput file/raw 接口入参。
+type FileRawInput struct {
+	Source string `query:"source" required:"true"`
+	Path   string `query:"path" required:"true"`
+	File   string `query:"file" required:"true"`
+}
+
+// FileRawOutput file/raw 输出：Body []byte 绕过序列化原始字节直写，
+// Content-Type 按文件扩展名动态决定（图片预览用），内容随源实时变不缓存。
+type FileRawOutput struct {
+	Body         []byte `contentType:"application/octet-stream"`
+	ContentType  string `header:"Content-Type"`
+	CacheControl string `header:"Cache-Control"`
+}
+
 // fileRaw 直挂 mux 的原始字节读取：Content-Type 按扩展名推导（mime 包），
 // 未知扩展名兜底 application/octet-stream（浏览器按下载处理，不至于误渲染）。
-func (h *WorkbenchHandler) fileRaw(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	src, err := workbench.ParseTreeSource(q.Get("source"))
+func (h *WorkbenchHandler) fileRaw(_ context.Context, input *FileRawInput) (*FileRawOutput, error) {
+	src, err := workbench.ParseTreeSource(input.Source)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return nil, huma.Error400BadRequest(err.Error(), err)
 	}
-	data, err := h.workbenchService.ReadFileRaw(q.Get("path"), src, q.Get("file"))
+	data, err := h.workbenchService.ReadFileRaw(input.Path, src, input.File)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return nil, huma.Error400BadRequest(err.Error(), err)
 	}
-	ctype := mime.TypeByExtension(strings.ToLower(filepath.Ext(q.Get("file"))))
+	ctype := mime.TypeByExtension(strings.ToLower(filepath.Ext(input.File)))
 	if ctype == "" {
 		ctype = "application/octet-stream"
 	}
-	w.Header().Set("Content-Type", ctype)
-	w.Header().Set("Cache-Control", "no-store") // 内容随源切换实时变，不做缓存
-	_, _ = w.Write(data)
+	return &FileRawOutput{
+		Body:         data,
+		ContentType:  ctype,
+		CacheControl: "no-store", // 内容随源切换实时变，不做缓存
+	}, nil
 }
 
 func (h *WorkbenchHandler) ptyWs(w http.ResponseWriter, r *http.Request) {
