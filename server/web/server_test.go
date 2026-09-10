@@ -209,10 +209,10 @@ func TestStaticRootFileAndAssets(t *testing.T) {
 		t.Errorf("/favicon.svg 应为 200, got %d", resp.StatusCode)
 	}
 
-	// /assets/* 带 immutable 长缓存（文件名含内容 hash）
+	// /assets/* 构建产物按普通静态文件返回（不走 FileServer，须自带 Content-Type）
 	asset := firstAssetName(t)
 	if asset == "" {
-		t.Skip("ui/assets 为空（未构建前端），跳过 assets 缓存断言")
+		t.Skip("ui/assets 为空（未构建前端），跳过 assets 断言")
 	}
 	resp2, err := http.Get(ts.URL + "/assets/" + asset)
 	if err != nil {
@@ -222,8 +222,8 @@ func TestStaticRootFileAndAssets(t *testing.T) {
 	if resp2.StatusCode != http.StatusOK {
 		t.Errorf("/assets/%s 应为 200, got %d", asset, resp2.StatusCode)
 	}
-	if cc := resp2.Header.Get("Cache-Control"); !contains(cc, "immutable") {
-		t.Errorf("/assets/* 应带 immutable 缓存头, got %q", cc)
+	if ct := resp2.Header.Get("Content-Type"); ct == "" {
+		t.Errorf("/assets/%s 应带 Content-Type（按扩展名识别）", asset)
 	}
 }
 

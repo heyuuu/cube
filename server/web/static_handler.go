@@ -1,11 +1,13 @@
 package web
 
 import (
+	"bytes"
 	"embed"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // uiFS 前端构建产物（make build-ui 把 web/dist 的内容拷到这里，go:embed 嵌入）。
@@ -14,19 +16,16 @@ import (
 //go:embed all:ui
 var uiFS embed.FS
 
-// placeholderText 纯后端模式的页面响应文案（ui 无构建产物时兜底，纯提示不需要完整 HTML）
-const placeholderText = "纯后端模式：web/ui 未构建，未嵌入前端 UI，API 正常可用。\n需要前端请执行 make build-ui 后重启。\n"
-
 type staticHandler struct{}
 
 func newStaticHandler() *staticHandler {
 	return &staticHandler{}
 }
 
-// Register 挂载前端静态资源与 SPA fallback（Raw 路由，不进 OpenAPI）：
-//   - GET /assets/*   → Vite 构建产物（文件名带内容 hash，设 immutable 长缓存）
-//   - GET /<文件>     → dist 根级文件（favicon.svg 等），存在即返回
-//   - GET 其它路径    → index.html（history 路由 fallback，支持 /projects 直达/刷新）
+// Register 挂载前端静态资源（Raw 路由，不进 OpenAPI），页面请求按回退链线性解析：
+//   - 路径在 ui 产物中存在 → 原样返回（含 /assets/* 构建产物与 favicon.svg 等根级文件）
+//   - 不存在 → index.html（history 路由 fallback，支持 /projects 直达/刷新）
+//   - index.html 未嵌入（纯后端模式）→ 404
 //   - /api/*、/docs、/openapi.json 的未命中**不走 fallback**，按 404 处理——
 //     否则 API 打错路径会拿到 HTML 200，错误被吞成莫名的解析失败
 //
@@ -38,27 +37,10 @@ func (h *staticHandler) Register(r *Routes) {
 		return
 	}
 
-	// 纯后端模式（ui 只有 .keep）：不挂静态资源，所有页面路径回纯文本提示
-	indexFile, err := fs.ReadFile(rootFS, "index.html")
-	if err != nil {
+	// index.html 启动时读一次即可（embed 内容恒定）；读不到即纯后端模式，页面路径按 404 处理
+	indexFile, _ := fs.ReadFile(rootFS, "index.html")
+	if indexFile == nil {
 		slog.Info("web/ui 未构建，前端未嵌入，仅提供 API（需要前端执行 make build-ui 后重启）")
-		r.Raw("GET /", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			if isNonFallbackPath(req.URL.Path) {
-				http.NotFound(w, req)
-				return
-			}
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			_, _ = w.Write([]byte(placeholderText))
-		}))
-		return
-	}
-
-	// /assets/* —— Vite 产物文件名带内容 hash，可不可变长缓存
-	// （FileServer 不剥挂载前缀，须 StripPrefix 把 /assets/ 映射到 assetsFS 根）
-	if assetsFS, err := fs.Sub(rootFS, "assets"); err == nil {
-		r.Raw("GET /assets/", cacheImmutable(http.StripPrefix("/assets/", http.FileServer(http.FS(assetsFS)))))
-	} else {
-		slog.Error("ui/assets 目录缺失，静态资源未挂载", "err", err)
 	}
 
 	r.Raw("GET /", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -66,10 +48,14 @@ func (h *staticHandler) Register(r *Routes) {
 			http.NotFound(w, req)
 			return
 		}
-		// dist 根级文件（favicon.svg 等）存在则返回原文件，否则按 SPA 路由回 index.html
-		if f, err := rootFS.Open(strings.TrimPrefix(req.URL.Path, "/")); err == nil {
-			f.Close()
-			http.FileServer(http.FS(rootFS)).ServeHTTP(w, req)
+		if name := strings.TrimPrefix(req.URL.Path, "/"); name != "" {
+			if data, err := fs.ReadFile(rootFS, name); err == nil {
+				http.ServeContent(w, req, name, time.Time{}, bytes.NewReader(data))
+				return
+			}
+		}
+		if indexFile == nil {
+			http.NotFound(w, req)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -82,12 +68,4 @@ func isNonFallbackPath(p string) bool {
 	return strings.HasPrefix(p, "/api/") ||
 		p == "/docs" || strings.HasPrefix(p, "/docs/") ||
 		p == "/openapi.json"
-}
-
-// cacheImmutable 包装 immutable 长缓存（仅用于文件名带内容 hash 的资源响应）
-func cacheImmutable(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		next.ServeHTTP(w, r)
-	})
 }
