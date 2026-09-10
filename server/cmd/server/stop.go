@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/cmd/env"
-	"cube/serve"
+	"cube/core/serve"
 )
 
 // newStopCmd `cube server stop` —— 触发后台 server 平滑关闭（POST /api/system/shutdown）。

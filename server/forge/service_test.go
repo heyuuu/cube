@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"cube/core/settings"
 	"cube/internal/testfixture"
-	"cube/settings"
 	"cube/util/gitapi"
 	"cube/util/iconkit"
 )

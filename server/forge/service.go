@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"cube/settings"
+	"cube/core/settings"
 	"cube/util/gitapi"
 	"cube/util/iconkit"
 )

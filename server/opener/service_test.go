@@ -3,8 +3,8 @@ package opener
 import (
 	"testing"
 
+	"cube/core/settings"
 	"cube/internal/testfixture"
-	"cube/settings"
 )
 
 // newServiceAt 建一个指向测试专属 settings.json 的 Service（注入 fakeExecutor）。

@@ -8,7 +8,7 @@ import (
 
 	"cube/app"
 	"cube/cmd/env"
-	"cube/version"
+	"cube/core/version"
 )
 
 // newStartCmd `cube server start` —— 前台启动 server（Ctrl+C 退出）。

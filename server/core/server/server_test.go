@@ -1,4 +1,4 @@
-package web
+package server
 
 // web 框架集成测试：拉起真实 Server（huma 路由 + envelope + nil 序列化 + 静态资源），
 // 打真实 HTTP 请求验证框架自身的契约（system 端点 / openapi / SPA fallback / 缓存头 / 端口）。
@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"cube/config"
+	"cube/core/config"
 )
 
 // testHandler 框架自测用的最小 handler：一条 GET 路由，覆盖注册链路与 envelope。

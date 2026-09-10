@@ -1,7 +1,7 @@
 package create
 
 import (
-	"cube/config"
+	"cube/core/config"
 
 	"os"
 	"os/exec"

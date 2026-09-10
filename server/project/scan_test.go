@@ -5,8 +5,8 @@ import (
 	"path"
 	"testing"
 
+	"cube/core/settings"
 	"cube/internal/testfixture"
-	"cube/settings"
 )
 
 // newServiceAt 为测试构造一个扫描指定根目录的 Service。

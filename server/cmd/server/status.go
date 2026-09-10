@@ -7,7 +7,7 @@ import (
 
 	"cube/app"
 	"cube/cmd/env"
-	"cube/serve"
+	"cube/core/serve"
 	"cube/util/tui"
 )
 

@@ -1,4 +1,4 @@
-package web
+package server
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"cube/config"
+	"cube/core/config"
 )
 
 // Handler 接口

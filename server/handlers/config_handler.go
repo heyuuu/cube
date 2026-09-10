@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"cube/config"
-	"cube/web"
+	"cube/core/config"
+	web "cube/core/server"
 )
 
 type ConfigHandler struct {

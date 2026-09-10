@@ -11,7 +11,7 @@ import (
 	"cube/cmd/env"
 	"cube/cmd/server"
 	"cube/cmd/ui"
-	"cube/version"
+	"cube/core/version"
 )
 
 func Execute() {

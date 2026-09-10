@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"cube/web"
+	web "cube/core/server"
 )
 
 // startMockCubeServer 起一个 httptest server 模拟 cube 的 whoami 端点。

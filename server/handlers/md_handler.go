@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	web "cube/core/server"
 	"cube/util/git"
-	"cube/web"
 )
 
 // md 渲染提案（docs/proposals/260811-md渲染）定稿：后端不做任何模板渲染，

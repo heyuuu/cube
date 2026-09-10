@@ -15,14 +15,14 @@ import (
 	"sync"
 	"testing"
 
-	"cube/config"
+	"cube/core/config"
+	web "cube/core/server"
+	"cube/core/settings"
 	"cube/forge"
 	"cube/internal/testfixture"
 	"cube/opener"
 	"cube/project"
-	"cube/settings"
 	"cube/usage"
-	"cube/web"
 	"cube/workbench"
 )
 

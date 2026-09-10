@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	web "cube/core/server"
 	"cube/opener"
 	"cube/project"
 	"cube/project/cubefile"
@@ -16,7 +17,6 @@ import (
 	"cube/usage"
 	"cube/util/iconkit"
 	"cube/util/slicekit"
-	"cube/web"
 )
 
 // --- dto ---

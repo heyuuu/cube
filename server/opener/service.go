@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"cube/settings"
+	"cube/core/settings"
 	"cube/util/fuzzy"
 	"cube/util/slicekit"
 )

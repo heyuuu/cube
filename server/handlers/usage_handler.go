@@ -4,8 +4,8 @@ import (
 	"errors"
 	"path/filepath"
 
+	web "cube/core/server"
 	"cube/usage"
-	"cube/web"
 )
 
 // --- handler ---

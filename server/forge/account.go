@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"cube/settings"
+	"cube/core/settings"
 )
 
 // settings.json 中的 account 域节名。

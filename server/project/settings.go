@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"cube/settings"
+	"cube/core/settings"
 	"cube/util/iconkit"
 	"cube/util/pathkit"
 )

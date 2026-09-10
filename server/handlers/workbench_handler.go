@@ -13,8 +13,8 @@ import (
 	"github.com/coder/websocket"
 	"github.com/danielgtaylor/huma/v2"
 
+	web "cube/core/server"
 	"cube/util/git"
-	"cube/web"
 	"cube/workbench"
 )
 

@@ -4,9 +4,9 @@ import (
 	"path"
 	"testing"
 
+	"cube/core/settings"
 	"cube/internal/testfixture"
 	"cube/project"
-	"cube/settings"
 )
 
 // newCmdServiceAt 为测试构造一个扫描指定根目录的 project.Service。

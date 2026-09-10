@@ -3,7 +3,7 @@ package create
 import (
 	"strings"
 
-	"cube/config"
+	"cube/core/config"
 
 	"os"
 	"path/filepath"

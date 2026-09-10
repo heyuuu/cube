@@ -10,7 +10,7 @@ import (
 
 	"github.com/lmittmann/tint"
 
-	"cube/config"
+	"cube/core/config"
 	"cube/util/tui"
 )
 

@@ -1,4 +1,4 @@
-package web
+package server
 
 import (
 	"crypto/rand"
@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"cube/version"
+	"cube/core/version"
 )
 
 // SystemHandler 提供 /api/system/* 端点：服务自身的内部管理 API。

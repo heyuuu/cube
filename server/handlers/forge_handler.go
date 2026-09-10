@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	web "cube/core/server"
 	"cube/forge"
 	"cube/project"
 	"cube/util/iconkit"
-	"cube/web"
 )
 
 // ForgeHandler forge 配置管理的 HTTP 出口（1040 forge / 1041 account / 1042 forge 页）。

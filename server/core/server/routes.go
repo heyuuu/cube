@@ -1,4 +1,4 @@
-package web
+package server
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 
-	"cube/version"
+	"cube/core/version"
 )
 
 // Routes 路由注册器：持有 huma API 与底层 http mux，二者不对 handler 层暴露。

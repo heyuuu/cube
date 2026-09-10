@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"cube/app"
-	"cube/serve"
+	"cube/core/serve"
 	"cube/util/pathkit"
 )
 

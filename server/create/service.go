@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 
-	"cube/config"
+	"cube/core/config"
 	"cube/util/pathkit"
 	"cube/util/tui"
 )

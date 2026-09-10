@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/cmd/env"
-	"cube/version"
+	"cube/core/version"
 )
 
 func newVersionCmd(env *env.Env) *cobra.Command {

@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"cube/version"
-	"cube/web"
+	web "cube/core/server"
+	"cube/core/version"
 )
 
 // 端口轮询参数。

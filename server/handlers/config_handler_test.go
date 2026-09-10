@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	"cube/config"
+	"cube/core/config"
 )
 
 func TestConfigGet(t *testing.T) {

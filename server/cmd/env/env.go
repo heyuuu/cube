@@ -13,8 +13,8 @@ import (
 	"fmt"
 
 	"cube/app"
-	"cube/config"
-	"cube/logger"
+	"cube/core/config"
+	"cube/core/logger"
 )
 
 type Env struct {

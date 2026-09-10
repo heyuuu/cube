@@ -16,7 +16,7 @@ import (
 
 	"cube/app"
 	"cube/cmd/env"
-	"cube/serve"
+	"cube/core/serve"
 )
 
 // NewCmd 构建 `cube ui` 父命令及其子命令。

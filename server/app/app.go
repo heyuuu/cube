@@ -3,14 +3,14 @@ package app
 import (
 	"path/filepath"
 
-	"cube/config"
+	"cube/core/config"
+	web "cube/core/server"
 	"cube/create"
 	"cube/forge"
 	"cube/handlers"
 	"cube/opener"
 	"cube/project"
 	"cube/usage"
-	"cube/web"
 	"cube/workbench"
 )
 

@@ -1,4 +1,4 @@
-package web
+package server
 
 import (
 	"crypto/hmac"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"cube/version"
+	"cube/core/version"
 )
 
 // shutdownToken server 与 CLI 共享的鉴权密钥，编译进二进制。

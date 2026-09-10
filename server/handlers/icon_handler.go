@@ -3,8 +3,8 @@ package handlers
 import (
 	"encoding/base64"
 
+	web "cube/core/server"
 	"cube/util/iconkit"
-	"cube/web"
 )
 
 // IconHandler icon 声明的通用辅助出口（提取图标）。icon 语义属 util/iconkit
