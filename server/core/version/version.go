@@ -1,5 +1,5 @@
 // Package version 暴露构建期信息。默认值用于 dev；正式构建用 ldflags 注入。
-// e.g. go build -ldflags "-X 'cube/version.version=v3.0.0'"
+// e.g. go build -ldflags "-X 'cube/core/version.version=v3.0.0'"
 
 package version
 

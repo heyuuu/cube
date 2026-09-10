@@ -20,7 +20,8 @@ type CreateConfig struct {
 }
 
 type ServerConfig struct {
-	Port int `json:"port"`
+	Host string `json:"host"`
+	Port int    `json:"port"`
 }
 
 // Load 从 path 读取 JSON 配置。

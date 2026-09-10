@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"cube/core/config"
-	web "cube/core/server"
+	"cube/core/server"
 )
 
 type ConfigHandler struct {
@@ -14,8 +14,8 @@ func NewConfigHandler(cfg *config.Config) *ConfigHandler {
 	return &ConfigHandler{cfg: cfg}
 }
 
-func (h *ConfigHandler) Register(r *web.Routes) {
-	r.Get("/api/config", "获取配置信息", web.JsonHandler(h.getConfig))
+func (h *ConfigHandler) Register(r *server.Routes) {
+	r.Get("/api/config", "获取配置信息", server.JsonHandler(h.getConfig))
 }
 
 func (h *ConfigHandler) getConfig(_ struct{}) (config.Config, error) {

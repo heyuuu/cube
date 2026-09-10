@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	web "cube/core/server"
+	"cube/core/server"
 	"cube/util/git"
 )
 
@@ -36,9 +36,9 @@ func NewMdHandler() *MdHandler {
 	return &MdHandler{}
 }
 
-func (h *MdHandler) Register(r *web.Routes) {
-	r.Get("/api/md/content", "读取 markdown 文件原文", web.JsonHandler(h.mdContent))
-	r.Get("/api/md/list", "列出目录下的 markdown 文件", web.JsonHandler(h.mdList))
+func (h *MdHandler) Register(r *server.Routes) {
+	r.Get("/api/md/content", "读取 markdown 文件原文", server.JsonHandler(h.mdContent))
+	r.Get("/api/md/list", "列出目录下的 markdown 文件", server.JsonHandler(h.mdList))
 }
 
 func (h *MdHandler) mdContent(input struct {

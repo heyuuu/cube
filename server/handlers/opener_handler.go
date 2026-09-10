@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	web "cube/core/server"
+	"cube/core/server"
 	"cube/opener"
 	"cube/util/slicekit"
 )
@@ -58,16 +58,16 @@ func NewOpenerHandler(service *opener.Service) *OpenerHandler {
 	}
 }
 
-func (h *OpenerHandler) Register(r *web.Routes) {
-	r.Get("/api/opener/list", "获取 opener 列表", web.JsonHandler(h.openerList))
-	r.Get("/api/opener/intents", "获取打开意图清单（intent → 默认 opener + 候选）", web.JsonHandler(h.openerIntents))
-	r.Post("/api/opener/open", "用指定 opener 打开任意文件或目录", web.JsonHandler(h.openerOpen))
-	r.Post("/api/opener/diff-open", "用指定 opener 对比两个路径（diff-dir/diff-file）", web.JsonHandler(h.openerDiffOpen))
-	r.Post("/api/opener/save", "新增或更新 opener（按 name 替换）", web.JsonHandler(h.openerSave))
-	r.Post("/api/opener/delete", "按名删除 opener", web.JsonHandler(h.openerDelete))
-	r.Post("/api/opener/reorder", "按名重排 opener 顺序", web.JsonHandler(h.openerReorder))
-	r.Post("/api/opener/intent-default/save", "设置某 intent 的默认 opener", web.JsonHandler(h.intentDefaultSave))
-	r.Post("/api/opener/intent-default/delete", "清除某 intent 的默认 opener", web.JsonHandler(h.intentDefaultDelete))
+func (h *OpenerHandler) Register(r *server.Routes) {
+	r.Get("/api/opener/list", "获取 opener 列表", server.JsonHandler(h.openerList))
+	r.Get("/api/opener/intents", "获取打开意图清单（intent → 默认 opener + 候选）", server.JsonHandler(h.openerIntents))
+	r.Post("/api/opener/open", "用指定 opener 打开任意文件或目录", server.JsonHandler(h.openerOpen))
+	r.Post("/api/opener/diff-open", "用指定 opener 对比两个路径（diff-dir/diff-file）", server.JsonHandler(h.openerDiffOpen))
+	r.Post("/api/opener/save", "新增或更新 opener（按 name 替换）", server.JsonHandler(h.openerSave))
+	r.Post("/api/opener/delete", "按名删除 opener", server.JsonHandler(h.openerDelete))
+	r.Post("/api/opener/reorder", "按名重排 opener 顺序", server.JsonHandler(h.openerReorder))
+	r.Post("/api/opener/intent-default/save", "设置某 intent 的默认 opener", server.JsonHandler(h.intentDefaultSave))
+	r.Post("/api/opener/intent-default/delete", "清除某 intent 的默认 opener", server.JsonHandler(h.intentDefaultDelete))
 }
 
 func (h *OpenerHandler) openerList(_ struct{}) (ListResult[*OpenerDTO], error) {

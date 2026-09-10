@@ -27,7 +27,7 @@ type SystemHandler struct {
 	instance string
 }
 
-func newSystemHandler() *SystemHandler {
+func NewSystemHandler() *SystemHandler {
 	return &SystemHandler{instance: newInstanceID()}
 }
 

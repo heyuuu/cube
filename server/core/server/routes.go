@@ -29,7 +29,7 @@ type Routes struct {
 func newRoutes() *Routes {
 	mux := http.NewServeMux()
 
-	cfg := huma.DefaultConfig(version.AppTitle, version.Version())
+	cfg := huma.DefaultConfig(version.AppName+" api", version.Version())
 	cfg.DocsRenderer = huma.DocsRendererScalar // 切换 /docs 页面风格为 Scalar 渲染器
 	cfg.Formats = map[string]huma.Format{
 		"application/json": nilCollectionsJSONFormat, // nil 切片/map → []/{}，避免前端拿到 null 崩溃
@@ -104,11 +104,13 @@ func RawHandler[I, O any](h func(context.Context, *I) (*O, error)) TypedHandler 
 
 // JsonOutput api 标准输出结构
 type JsonOutput[T any] struct {
-	Body struct {
-		Ok      bool   `json:"ok"`
-		Message string `json:"message"`
-		Data    *T     `json:"data"`
-	}
+	Body Envelope[T]
+}
+
+type Envelope[T any] struct {
+	Ok      bool   `json:"ok"`
+	Message string `json:"message"`
+	Data    *T     `json:"data"`
 }
 
 // JsonHandler 包装 handler 并包 JsonOutput envelope——标准 JSON 端点的默认形态：

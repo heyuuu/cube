@@ -65,6 +65,11 @@ func Init(cfgFile string, debug bool) (*App, error) {
 	server := server.NewServer(
 		cfg.Server,
 		[]server.Handler{
+			// system 端点（whoami / shutdown）
+			server.NewSystemHandler(),
+			// 静态前端资源路由（/assets/* 与 SPA fallback）
+			server.NewStaticHandler(),
+
 			configHandler,
 			projectHandler,
 			openerHandler,

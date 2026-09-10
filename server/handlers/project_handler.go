@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	web "cube/core/server"
+	"cube/core/server"
 	"cube/opener"
 	"cube/project"
 	"cube/project/cubefile"
@@ -52,19 +52,19 @@ func NewProjectHandler(projectService *project.Service, openerService *opener.Se
 	}
 }
 
-func (h *ProjectHandler) Register(r *web.Routes) {
-	r.Get("/api/project/list", "获取项目列表", web.JsonHandler(h.projectList))
-	r.Post("/api/project/open", "用指定 opener 打开已收录项目（记 usage；目标目录选择为 1030/1032 预留）", web.JsonHandler(h.projectOpen))
-	r.Get("/api/project/workspace/get", "获取项目 workspace 状态（生效清单 / 显式声明 / 探测候选）", web.JsonHandler(h.workspaceGet))
-	r.Post("/api/project/workspace/save", "保存显式 workspaces 声明（.cube/cube.json）并即时重采集", web.JsonHandler(h.workspaceSave))
-	r.Get("/api/project/scan-rules", "获取扫描规则", web.JsonHandler(h.scanRules))
-	r.Get("/api/project/clone-rules", "获取 clone 规则", web.JsonHandler(h.cloneRules))
-	r.Post("/api/project/scan-rule/save", "新增或按 path 替换扫描规则", web.JsonHandler(h.scanRuleSave))
-	r.Post("/api/project/scan-rule/delete", "按 path 删除扫描规则", web.JsonHandler(h.scanRuleDelete))
-	r.Post("/api/project/scan-rule/reorder", "按 path 重排扫描规则顺序", web.JsonHandler(h.scanRuleReorder))
-	r.Post("/api/project/clone-rule/save", "新增或按 host+prefix 替换 clone 规则", web.JsonHandler(h.cloneRuleSave))
-	r.Post("/api/project/clone-rule/delete", "按 host+prefix 删除 clone 规则", web.JsonHandler(h.cloneRuleDelete))
-	r.Post("/api/project/clone-rule/reorder", "按键重排 clone 规则顺序", web.JsonHandler(h.cloneRuleReorder))
+func (h *ProjectHandler) Register(r *server.Routes) {
+	r.Get("/api/project/list", "获取项目列表", server.JsonHandler(h.projectList))
+	r.Post("/api/project/open", "用指定 opener 打开已收录项目（记 usage；目标目录选择为 1030/1032 预留）", server.JsonHandler(h.projectOpen))
+	r.Get("/api/project/workspace/get", "获取项目 workspace 状态（生效清单 / 显式声明 / 探测候选）", server.JsonHandler(h.workspaceGet))
+	r.Post("/api/project/workspace/save", "保存显式 workspaces 声明（.cube/cube.json）并即时重采集", server.JsonHandler(h.workspaceSave))
+	r.Get("/api/project/scan-rules", "获取扫描规则", server.JsonHandler(h.scanRules))
+	r.Get("/api/project/clone-rules", "获取 clone 规则", server.JsonHandler(h.cloneRules))
+	r.Post("/api/project/scan-rule/save", "新增或按 path 替换扫描规则", server.JsonHandler(h.scanRuleSave))
+	r.Post("/api/project/scan-rule/delete", "按 path 删除扫描规则", server.JsonHandler(h.scanRuleDelete))
+	r.Post("/api/project/scan-rule/reorder", "按 path 重排扫描规则顺序", server.JsonHandler(h.scanRuleReorder))
+	r.Post("/api/project/clone-rule/save", "新增或按 host+prefix 替换 clone 规则", server.JsonHandler(h.cloneRuleSave))
+	r.Post("/api/project/clone-rule/delete", "按 host+prefix 删除 clone 规则", server.JsonHandler(h.cloneRuleDelete))
+	r.Post("/api/project/clone-rule/reorder", "按键重排 clone 规则顺序", server.JsonHandler(h.cloneRuleReorder))
 }
 
 func (h *ProjectHandler) projectList(_ struct{}) (ProjectListResult, error) {

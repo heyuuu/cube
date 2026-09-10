@@ -13,7 +13,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/danielgtaylor/huma/v2"
 
-	web "cube/core/server"
+	"cube/core/server"
 	"cube/util/git"
 	"cube/workbench"
 )
@@ -29,29 +29,29 @@ func NewWorkbenchHandler(workbenchService *workbench.Service) *WorkbenchHandler 
 	return &WorkbenchHandler{workbenchService: workbenchService}
 }
 
-func (h *WorkbenchHandler) Register(r *web.Routes) {
-	r.Get("/api/workbench/info", "获取工作台仓库信息", web.JsonHandler(h.info))
-	r.Get("/api/workbench/refs", "获取工作台分支与tag列表", web.JsonHandler(h.refs))
-	r.Get("/api/workbench/remotes", "获取工作台 remote 列表", web.JsonHandler(h.remotes))
-	r.Get("/api/workbench/commits", "拉取工作台 commit 图（分页）", web.JsonHandler(h.commits))
-	r.Get("/api/workbench/worktrees", "全部工作副本的状态快照", web.JsonHandler(h.worktrees))
-	r.Get("/api/workbench/commit", "获取 TreeSource（ref/commit）指向提交的完整信息", web.JsonHandler(h.commitInfo))
-	r.Get("/api/workbench/tree", "列出 TreeSource 下的目录树", web.JsonHandler(h.tree))
-	r.Get("/api/workbench/file", "读取 TreeSource 下的文件内容", web.JsonHandler(h.file))
-	r.Post("/api/workbench/file/save", "保存工作副本文件（唯一写路径）", web.JsonHandler(h.saveFile))
-	r.Get("/api/workbench/diff", "双 TreeSource 目录级对比", web.JsonHandler(h.diff))
-	r.Get("/api/workbench/file-diff", "双 TreeSource 单文件 diff", web.JsonHandler(h.fileDiff))
-	r.Get("/api/workbench/changes", "列出源相对上一版本的变更文件", web.JsonHandler(h.changes))
-	r.Post("/api/workbench/worktree/add", "新增 worktree", web.JsonHandler(h.worktreeAdd))
-	r.Post("/api/workbench/worktree/remove", "删除 worktree（非 force 预检拒绝返回 denied+reasons）", web.JsonHandler(h.worktreeRemove))
-	r.Post("/api/workbench/worktree/reset", "重置 worktree 到指定分支/commit（可选 hard）", web.JsonHandler(h.worktreeReset))
-	r.Post("/api/workbench/worktree/prune", "清理失效的 worktree 管理记录", web.JsonHandler(h.worktreePrune))
-	r.Post("/api/workbench/branch/add", "新建本地分支（不检出）", web.JsonHandler(h.branchAdd))
-	r.Post("/api/workbench/branch/delete", "删除本地分支", web.JsonHandler(h.branchDelete))
+func (h *WorkbenchHandler) Register(r *server.Routes) {
+	r.Get("/api/workbench/info", "获取工作台仓库信息", server.JsonHandler(h.info))
+	r.Get("/api/workbench/refs", "获取工作台分支与tag列表", server.JsonHandler(h.refs))
+	r.Get("/api/workbench/remotes", "获取工作台 remote 列表", server.JsonHandler(h.remotes))
+	r.Get("/api/workbench/commits", "拉取工作台 commit 图（分页）", server.JsonHandler(h.commits))
+	r.Get("/api/workbench/worktrees", "全部工作副本的状态快照", server.JsonHandler(h.worktrees))
+	r.Get("/api/workbench/commit", "获取 TreeSource（ref/commit）指向提交的完整信息", server.JsonHandler(h.commitInfo))
+	r.Get("/api/workbench/tree", "列出 TreeSource 下的目录树", server.JsonHandler(h.tree))
+	r.Get("/api/workbench/file", "读取 TreeSource 下的文件内容", server.JsonHandler(h.file))
+	r.Post("/api/workbench/file/save", "保存工作副本文件（唯一写路径）", server.JsonHandler(h.saveFile))
+	r.Get("/api/workbench/diff", "双 TreeSource 目录级对比", server.JsonHandler(h.diff))
+	r.Get("/api/workbench/file-diff", "双 TreeSource 单文件 diff", server.JsonHandler(h.fileDiff))
+	r.Get("/api/workbench/changes", "列出源相对上一版本的变更文件", server.JsonHandler(h.changes))
+	r.Post("/api/workbench/worktree/add", "新增 worktree", server.JsonHandler(h.worktreeAdd))
+	r.Post("/api/workbench/worktree/remove", "删除 worktree（非 force 预检拒绝返回 denied+reasons）", server.JsonHandler(h.worktreeRemove))
+	r.Post("/api/workbench/worktree/reset", "重置 worktree 到指定分支/commit（可选 hard）", server.JsonHandler(h.worktreeReset))
+	r.Post("/api/workbench/worktree/prune", "清理失效的 worktree 管理记录", server.JsonHandler(h.worktreePrune))
+	r.Post("/api/workbench/branch/add", "新建本地分支（不检出）", server.JsonHandler(h.branchAdd))
+	r.Post("/api/workbench/branch/delete", "删除本地分支", server.JsonHandler(h.branchDelete))
 
 	// raw 文件读取：响应是原始字节 + 按扩展名的 Content-Type（图片预览用），
 	// 不套 JsonOutput envelope，透传输出走 RawHandler（Body []byte 直写）
-	r.Get("/api/workbench/file/raw", "读取文件原始内容", web.RawHandler(h.fileRaw))
+	r.Get("/api/workbench/file/raw", "读取文件原始内容", server.RawHandler(h.fileRaw))
 
 	// WebSocket：连接升级，需要原始控制 ResponseWriter，走 Raw（不进文档）
 	r.Raw("GET /api/workbench/pty", http.HandlerFunc(h.ptyWs))

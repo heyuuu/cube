@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	web "cube/core/server"
+	"cube/core/server"
 )
 
 // startMockCubeServer 起一个 httptest server 模拟 cube 的 whoami 端点。
@@ -107,7 +107,7 @@ func TestStop_ShutdownAndConfirm(t *testing.T) {
 			Token string `json:"token"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		if err := web.VerifyShutdownToken(req.Token, time.Now()); err != nil {
+		if err := server.VerifyShutdownToken(req.Token, time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -148,7 +148,7 @@ func TestStop_ReplacedByNewInstance(t *testing.T) {
 			Token string `json:"token"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		if err := web.VerifyShutdownToken(req.Token, time.Now()); err != nil {
+		if err := server.VerifyShutdownToken(req.Token, time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

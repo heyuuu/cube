@@ -22,25 +22,12 @@ type Handler interface {
 
 // Server 服务器，响应 api 请求
 type Server struct {
-	// config
-	port int
-	// runtime
+	host   string
+	port   int
 	routes *Routes
 }
 
 func NewServer(c config.ServerConfig, handlers []Handler) *Server {
-	// 添加默认 Handler
-	handlers = append(
-		// 内置 handlers
-		[]Handler{
-			// system 端点（whoami / shutdown）
-			newSystemHandler(),
-			// 静态前端资源路由（/assets/* 与 SPA fallback）
-			newStaticHandler(),
-		},
-		handlers...,
-	)
-
 	routes := newRoutes()
 
 	// 各 domain 注册自己的路由
@@ -48,7 +35,12 @@ func NewServer(c config.ServerConfig, handlers []Handler) *Server {
 		handler.Register(routes)
 	}
 
+	host := c.Host
+	if host == "" {
+		host = "localhost"
+	}
 	return &Server{
+		host:   host,
 		port:   c.Port,
 		routes: routes,
 	}
@@ -75,7 +67,7 @@ func BaseURL(port int) string {
 
 // ServerURL 访问地址
 func (s *Server) ServerURL() string {
-	return BaseURL(s.port) + "/"
+	return fmt.Sprintf("http://%s:%d/", s.host, s.port)
 }
 
 // Start 启动 server，收到 SIGINT/SIGTERM 时优雅关闭。
@@ -84,8 +76,7 @@ func (s *Server) Start() error {
 		return fmt.Errorf("未配置服务端口号(配置项 config.Server.Port)")
 	}
 
-	addr := fmt.Sprintf(":%d", s.port)
-
+	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           s.routes.Handler(),

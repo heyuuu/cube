@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/base64"
 
-	web "cube/core/server"
+	"cube/core/server"
 	"cube/util/iconkit"
 )
 
@@ -15,8 +15,8 @@ func NewIconHandler() *IconHandler {
 	return &IconHandler{}
 }
 
-func (h *IconHandler) Register(r *web.Routes) {
-	r.Post("/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", web.JsonHandler(h.iconExtract))
+func (h *IconHandler) Register(r *server.Routes) {
+	r.Post("/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", server.JsonHandler(h.iconExtract))
 }
 
 // IconExtractInput icon/extract 接口入参。source 由后端按形态分发：

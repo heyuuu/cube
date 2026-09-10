@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"cube/core/config"
-	web "cube/core/server"
+	"cube/core/server"
 	"cube/core/settings"
 	"cube/forge"
 	"cube/internal/testfixture"
@@ -73,9 +73,9 @@ func newTestEnv(t *testing.T) *testEnv {
 		DataDir: ws.Join("data"),
 	}
 
-	srv := web.NewServer(
+	srv := server.NewServer(
 		config.ServerConfig{Port: 6101},
-		[]web.Handler{
+		[]server.Handler{
 			NewProjectHandler(projSvc, openerSvc, usageSvc),
 			NewOpenerHandler(openerSvc),
 			NewConfigHandler(cfg),

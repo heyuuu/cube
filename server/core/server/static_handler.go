@@ -16,10 +16,10 @@ import (
 //go:embed all:ui
 var uiFS embed.FS
 
-type staticHandler struct{}
+type StaticHandler struct{}
 
-func newStaticHandler() *staticHandler {
-	return &staticHandler{}
+func NewStaticHandler() *StaticHandler {
+	return &StaticHandler{}
 }
 
 // Register 挂载前端静态资源（Raw 路由，不进 OpenAPI），页面请求按回退链线性解析：
@@ -30,7 +30,7 @@ func newStaticHandler() *staticHandler {
 //     否则 API 打错路径会拿到 HTML 200，错误被吞成莫名的解析失败
 //
 // pattern 用 "GET ..." 前缀限定方法，非 GET/HEAD 请求由 mux 直接回 405。
-func (h *staticHandler) Register(r *Routes) {
+func (h *StaticHandler) Register(r *Routes) {
 	rootFS, err := fs.Sub(uiFS, "ui")
 	if err != nil {
 		slog.Error("无法进入 ui 子目录", "err", err)
