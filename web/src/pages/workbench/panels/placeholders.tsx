@@ -7,4 +7,3 @@ export function ContentPanelPlaceholder({ title }: { title: React.ReactNode }) {
     </div>
   );
 }
-

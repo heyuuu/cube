@@ -5,16 +5,9 @@ export default defineConfig({
   rules: {
     'react/react-compiler': 'error',
     'react/rules-of-hooks': 'error',
-    'react/only-export-components': ['warn', { allowConstantExport: true }],
+    // off：hook / 常量 / 工具与组件同文件导出是本仓库刻意布局（如 useTreePanePrefs、
+    // md 主题表、previewKindOf），代价仅是编辑时 fast refresh 粒度变粗，不值得拆文件；
+    // shadcn vendored 组件（src/components/ui）同理。
+    'react/only-export-components': 'off',
   },
-  overrides: [
-    {
-      files: ['src/components/ui/**'],
-      rules: {
-        // shadcn CLI 的 vendored 组件：cva variants 与组件同文件导出是官方模式，
-        // 未来每次 shadcn add 都会带来新的，不为它改生成代码，仅此目录关闭
-        'react/only-export-components': 'off',
-      },
-    },
-  ],
 });

@@ -8,12 +8,7 @@ import { useWorktreeVisibility } from '../worktree-visibility';
 
 import { CommitGraphSection } from './commit-graph';
 import { WorktreeSection } from './worktree-section';
-import {
-  BranchAddDialog,
-  BranchDeleteDialog,
-  WorktreeAddDialog,
-  WorktreeRemoveDialog,
-} from './worktree-write';
+import { BranchAddDialog, BranchDeleteDialog, WorktreeAddDialog, WorktreeRemoveDialog } from './worktree-write';
 
 export function GitTreePanel({ params }: { params: WorkbenchParams }) {
   const { path } = params;

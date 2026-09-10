@@ -109,7 +109,9 @@ export function CycleSortHead<M extends string>({
       label={label}
       className={className}
       state={state}
-      onCycle={() => onSet(state === null ? (first === 'asc' ? asc : desc) : state === first ? (first === 'asc' ? desc : asc) : null)}
+      onCycle={() =>
+        onSet(state === null ? (first === 'asc' ? asc : desc) : state === first ? (first === 'asc' ? desc : asc) : null)
+      }
     />
   );
 }

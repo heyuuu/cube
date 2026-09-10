@@ -16,7 +16,13 @@ export function CopyPathItem({ path }: { path: string }) {
   );
 }
 
-export function OpenWithGroup({ openerList, renderItem }: { openerList: Opener[]; renderItem: (op: Opener) => ReactNode }) {
+export function OpenWithGroup({
+  openerList,
+  renderItem,
+}: {
+  openerList: Opener[];
+  renderItem: (op: Opener) => ReactNode;
+}) {
   return (
     <DropdownMenuGroup>
       <DropdownMenuLabel>打开方式</DropdownMenuLabel>

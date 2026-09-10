@@ -786,6 +786,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/workbench/file/raw': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 读取文件原始内容 */
+    get: operations['workbench.fileRaw'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/workbench/file/save': {
     parameters: {
       query?: never;
@@ -1018,316 +1035,6 @@ export interface components {
       /** Format: int64 */
       repoCount: number;
       username: string;
-    };
-    ApiOutputCommitDetailBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputCommitDetailBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['CommitDetail'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputCommitsPageResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputCommitsPageResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['CommitsPageResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputConfigBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputConfigBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['Config'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputDiffTreesResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputDiffTreesResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['DiffTreesResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputFileDiffResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputFileDiffResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['FileDiffResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputFileResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputFileResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['FileResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputIconExtractResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputIconExtractResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['IconExtractResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputInfoBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputInfoBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['Info'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputListRemoteEntryBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputListRemoteEntryBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['RemoteEntry'][] | null;
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputListResultAccountBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputListResultAccountBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['ListResultAccount'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputListResultCloneRuleBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputListResultCloneRuleBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['ListResultCloneRule'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputListResultForgeBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputListResultForgeBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['ListResultForge'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputListResultOpenerDTOBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputListResultOpenerDTOBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['ListResultOpenerDTO'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputListResultOpenerIntentDTOBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputListResultOpenerIntentDTOBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['ListResultOpenerIntentDTO'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputListResultPathUsageBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputListResultPathUsageBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['ListResultPathUsage'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputListResultScanRuleBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputListResultScanRuleBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['ListResultScanRule'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputListWorktreeStatusBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputListWorktreeStatusBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['WorktreeStatus'][] | null;
-      message: string;
-      ok: boolean;
-    };
-    'ApiOutputMapStringInterface {}Body': {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputMapStringInterface {}Body.json
-       */
-      readonly $schema?: string;
-      data: {
-        [key: string]: unknown;
-      };
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputMdContentResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputMdContentResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['MdContentResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputMdListResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputMdListResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['MdListResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputOverviewBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputOverviewBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['Overview'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputProjectListResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputProjectListResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['ProjectListResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputRefsBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputRefsBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['Refs'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputTreeListResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputTreeListResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['TreeListResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputWhoamiResponseBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputWhoamiResponseBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['WhoamiResponse'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputWorkspaceStateResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputWorkspaceStateResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['WorkspaceStateResult'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputWorktreeCreatedBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputWorktreeCreatedBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['WorktreeCreated'];
-      message: string;
-      ok: boolean;
-    };
-    ApiOutputWorktreeRemoveResultBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ApiOutputWorktreeRemoveResultBody.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['WorktreeRemoveResult'];
-      message: string;
-      ok: boolean;
     };
     BranchAddRequest: {
       /**
@@ -1637,6 +1344,316 @@ export interface components {
       intent: string;
       /** @description opener 名称（须声明该 intent 对应的 role） */
       opener: string;
+    };
+    JsonOutputCommitDetailBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputCommitDetailBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['CommitDetail'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputCommitsPageResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputCommitsPageResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['CommitsPageResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputConfigBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputConfigBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['Config'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputDiffTreesResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputDiffTreesResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['DiffTreesResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputFileDiffResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputFileDiffResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['FileDiffResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputFileResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputFileResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['FileResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputIconExtractResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputIconExtractResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['IconExtractResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputInfoBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputInfoBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['Info'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputListRemoteEntryBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputListRemoteEntryBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['RemoteEntry'][] | null;
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputListResultAccountBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputListResultAccountBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['ListResultAccount'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputListResultCloneRuleBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputListResultCloneRuleBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['ListResultCloneRule'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputListResultForgeBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputListResultForgeBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['ListResultForge'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputListResultOpenerDTOBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputListResultOpenerDTOBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['ListResultOpenerDTO'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputListResultOpenerIntentDTOBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputListResultOpenerIntentDTOBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['ListResultOpenerIntentDTO'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputListResultPathUsageBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputListResultPathUsageBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['ListResultPathUsage'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputListResultScanRuleBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputListResultScanRuleBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['ListResultScanRule'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputListWorktreeStatusBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputListWorktreeStatusBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['WorktreeStatus'][] | null;
+      message: string;
+      ok: boolean;
+    };
+    'JsonOutputMapStringInterface {}Body': {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputMapStringInterface {}Body.json
+       */
+      readonly $schema?: string;
+      data: {
+        [key: string]: unknown;
+      };
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputMdContentResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputMdContentResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['MdContentResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputMdListResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputMdListResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['MdListResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputOverviewBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputOverviewBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['Overview'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputProjectListResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputProjectListResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['ProjectListResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputRefsBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputRefsBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['Refs'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputTreeListResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputTreeListResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['TreeListResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputWhoamiResponseBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputWhoamiResponseBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['WhoamiResponse'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputWorkspaceStateResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputWorkspaceStateResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['WorkspaceStateResult'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputWorktreeCreatedBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputWorktreeCreatedBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['WorktreeCreated'];
+      message: string;
+      ok: boolean;
+    };
+    JsonOutputWorktreeRemoveResultBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/JsonOutputWorktreeRemoveResultBody.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['WorktreeRemoveResult'];
+      message: string;
+      ok: boolean;
     };
     ListResultAccount: {
       list: components['schemas']['Account'][] | null;
@@ -2028,7 +2045,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputConfigBody'];
+          'application/json': components['schemas']['JsonOutputConfigBody'];
         };
       };
       /** @description Error */
@@ -2061,7 +2078,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2094,7 +2111,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2123,7 +2140,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputListResultAccountBody'];
+          'application/json': components['schemas']['JsonOutputListResultAccountBody'];
         };
       };
       /** @description Error */
@@ -2156,7 +2173,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2189,7 +2206,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2222,7 +2239,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2251,7 +2268,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputListResultForgeBody'];
+          'application/json': components['schemas']['JsonOutputListResultForgeBody'];
         };
       };
       /** @description Error */
@@ -2280,7 +2297,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputOverviewBody'];
+          'application/json': components['schemas']['JsonOutputOverviewBody'];
         };
       };
       /** @description Error */
@@ -2313,7 +2330,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2346,7 +2363,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2379,7 +2396,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputIconExtractResultBody'];
+          'application/json': components['schemas']['JsonOutputIconExtractResultBody'];
         };
       };
       /** @description Error */
@@ -2410,7 +2427,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMdContentResultBody'];
+          'application/json': components['schemas']['JsonOutputMdContentResultBody'];
         };
       };
       /** @description Error */
@@ -2441,7 +2458,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMdListResultBody'];
+          'application/json': components['schemas']['JsonOutputMdListResultBody'];
         };
       };
       /** @description Error */
@@ -2474,7 +2491,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2507,7 +2524,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2540,7 +2557,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2573,7 +2590,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2602,7 +2619,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputListResultOpenerIntentDTOBody'];
+          'application/json': components['schemas']['JsonOutputListResultOpenerIntentDTOBody'];
         };
       };
       /** @description Error */
@@ -2631,7 +2648,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputListResultOpenerDTOBody'];
+          'application/json': components['schemas']['JsonOutputListResultOpenerDTOBody'];
         };
       };
       /** @description Error */
@@ -2664,7 +2681,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2697,7 +2714,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2730,7 +2747,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2763,7 +2780,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2796,7 +2813,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2829,7 +2846,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2858,7 +2875,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputListResultCloneRuleBody'];
+          'application/json': components['schemas']['JsonOutputListResultCloneRuleBody'];
         };
       };
       /** @description Error */
@@ -2887,7 +2904,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputProjectListResultBody'];
+          'application/json': components['schemas']['JsonOutputProjectListResultBody'];
         };
       };
       /** @description Error */
@@ -2920,7 +2937,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2953,7 +2970,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -2986,7 +3003,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -3019,7 +3036,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -3048,7 +3065,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputListResultScanRuleBody'];
+          'application/json': components['schemas']['JsonOutputListResultScanRuleBody'];
         };
       };
       /** @description Error */
@@ -3079,7 +3096,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputWorkspaceStateResultBody'];
+          'application/json': components['schemas']['JsonOutputWorkspaceStateResultBody'];
         };
       };
       /** @description Error */
@@ -3112,7 +3129,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -3141,7 +3158,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputWhoamiResponseBody'];
+          'application/json': components['schemas']['JsonOutputWhoamiResponseBody'];
         };
       };
       /** @description Error */
@@ -3173,7 +3190,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputListResultPathUsageBody'];
+          'application/json': components['schemas']['JsonOutputListResultPathUsageBody'];
         };
       };
       /** @description Error */
@@ -3206,7 +3223,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -3239,7 +3256,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -3272,7 +3289,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -3304,7 +3321,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputDiffTreesResultBody'];
+          'application/json': components['schemas']['JsonOutputDiffTreesResultBody'];
         };
       };
       /** @description Error */
@@ -3336,7 +3353,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputCommitDetailBody'];
+          'application/json': components['schemas']['JsonOutputCommitDetailBody'];
         };
       };
       /** @description Error */
@@ -3369,7 +3386,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputCommitsPageResultBody'];
+          'application/json': components['schemas']['JsonOutputCommitsPageResultBody'];
         };
       };
       /** @description Error */
@@ -3402,7 +3419,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputDiffTreesResultBody'];
+          'application/json': components['schemas']['JsonOutputDiffTreesResultBody'];
         };
       };
       /** @description Error */
@@ -3435,7 +3452,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputFileResultBody'];
+          'application/json': components['schemas']['JsonOutputFileResultBody'];
         };
       };
       /** @description Error */
@@ -3470,7 +3487,42 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputFileDiffResultBody'];
+          'application/json': components['schemas']['JsonOutputFileDiffResultBody'];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel'];
+        };
+      };
+    };
+  };
+  'workbench.fileRaw': {
+    parameters: {
+      query: {
+        source: string;
+        path: string;
+        file: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          'Cache-Control'?: string;
+          'Content-Type'?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': string;
         };
       };
       /** @description Error */
@@ -3503,7 +3555,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputFileResultBody'];
+          'application/json': components['schemas']['JsonOutputFileResultBody'];
         };
       };
       /** @description Error */
@@ -3534,7 +3586,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputInfoBody'];
+          'application/json': components['schemas']['JsonOutputInfoBody'];
         };
       };
       /** @description Error */
@@ -3565,7 +3617,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputRefsBody'];
+          'application/json': components['schemas']['JsonOutputRefsBody'];
         };
       };
       /** @description Error */
@@ -3596,7 +3648,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputListRemoteEntryBody'];
+          'application/json': components['schemas']['JsonOutputListRemoteEntryBody'];
         };
       };
       /** @description Error */
@@ -3628,7 +3680,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputTreeListResultBody'];
+          'application/json': components['schemas']['JsonOutputTreeListResultBody'];
         };
       };
       /** @description Error */
@@ -3661,7 +3713,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputWorktreeCreatedBody'];
+          'application/json': components['schemas']['JsonOutputWorktreeCreatedBody'];
         };
       };
       /** @description Error */
@@ -3694,7 +3746,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -3727,7 +3779,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputWorktreeRemoveResultBody'];
+          'application/json': components['schemas']['JsonOutputWorktreeRemoveResultBody'];
         };
       };
       /** @description Error */
@@ -3760,7 +3812,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputMapStringInterface {}Body'];
+          'application/json': components['schemas']['JsonOutputMapStringInterface {}Body'];
         };
       };
       /** @description Error */
@@ -3791,7 +3843,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ApiOutputListWorktreeStatusBody'];
+          'application/json': components['schemas']['JsonOutputListWorktreeStatusBody'];
         };
       };
       /** @description Error */

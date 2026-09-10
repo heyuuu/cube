@@ -3,10 +3,10 @@ import { useState, type ReactNode } from 'react';
 
 import type { Opener, Project } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
-import { useCopied } from '@/hooks/use-copied';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useCopied } from '@/hooks/use-copied';
 import { prettyPath } from '@/lib/path';
 import { formatDateTime } from '@/lib/time';
 import { useProjectOpen, useWorkspaceState } from '@/queries/project';

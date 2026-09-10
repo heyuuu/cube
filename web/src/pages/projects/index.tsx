@@ -1,19 +1,11 @@
-import {
-  ArrowDownWideNarrow,
-  ChevronRight,
-  GitBranch,
-  Layers,
-  RefreshCw,
-  RotateCcw,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowDownWideNarrow, ChevronRight, GitBranch, Layers, RefreshCw, RotateCcw } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import type { Project } from '@/api/client';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorBanner } from '@/components/error-banner';
 import { Chip, CycleSortHead, FilterRow } from '@/components/filter-chips';
-import { usePersistentSet } from '@/hooks/use-local-pref';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { usePersistentSet } from '@/hooks/use-local-pref';
 import { matchForgeFilter, repoHostsOf } from '@/lib/forge';
 import type { IconDecl } from '@/lib/icon';
 import { renderIcon } from '@/lib/icon';
@@ -65,20 +58,24 @@ export function ProjectsPage() {
   // 筛选状态全部走 URL（?q=&group=&git=&tag=，?view= 同理）：刷新/前进后退/跨页往返均无损
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // 增量更新 query 参数（replace 避免每点一个筛选压一条历史）；空值参数不落 URL
-  function updateParams(patch: Record<string, string | null>) {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        for (const [key, value] of Object.entries(patch)) {
-          if (value) next.set(key, value);
-          else next.delete(key);
-        }
-        return next;
-      },
-      { replace: true },
-    );
-  }
+  // 增量更新 query 参数（replace 避免每点一个筛选压一条历史）；空值参数不落 URL。
+  // useCallback 稳定引用——setSearchParams 引用稳定，且 debounce effect 依赖它
+  const updateParams = useCallback(
+    (patch: Record<string, string | null>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [key, value] of Object.entries(patch)) {
+            if (value) next.set(key, value);
+            else next.delete(key);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   const keyword = searchParams.get('q') ?? '';
   const groupFilter = searchParams.get('group')?.split(',').filter(Boolean) ?? [];
@@ -97,17 +94,19 @@ export function ProjectsPage() {
       ? forgeParam
       : 'all';
 
-  // 搜索输入本地 state + 300ms debounce 后投影到 URL；URL 侧变化（后退/重置）回灌输入
+  // 搜索输入本地 state + 300ms debounce 后投影到 URL；URL 侧变化（后退/重置）在渲染期间回灌输入
   const [keywordInput, setKeywordInput] = useState(keyword);
+  const [prevKeyword, setPrevKeyword] = useState(keyword);
+  if (prevKeyword !== keyword) {
+    setPrevKeyword(keyword);
+    setKeywordInput(keyword);
+  }
   useEffect(() => {
     const timer = setTimeout(() => {
       if (keywordInput !== keyword) updateParams({ q: keywordInput });
     }, 300);
     return () => clearTimeout(timer);
-  }, [keywordInput, keyword]);
-  useEffect(() => {
-    setKeywordInput(keyword);
-  }, [keyword]);
+  }, [keywordInput, keyword, updateParams]);
 
   const mode: 'table' | 'tree' = searchParams.get('view') === 'tree' ? 'tree' : 'table';
   const [treeExpanded, setTreeExpanded] = useState<ReadonlySet<string>>(new Set());

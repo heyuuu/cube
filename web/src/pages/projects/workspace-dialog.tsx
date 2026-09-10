@@ -56,80 +56,72 @@ export function WorkspaceDialog({ project, onClose }: { project: Project; onClos
 
   return (
     <DialogShell title="workspace 声明" onClose={onClose} className="flex max-h-[80vh] max-w-lg flex-col">
-        <div className="mt-1 text-xs text-muted-foreground">
-          写入项目内 .cube/cube.json（进 git）。显式声明优先生效；未声明时按探测规则自动生效。
-        </div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        写入项目内 .cube/cube.json（进 git）。显式声明优先生效；未声明时按探测规则自动生效。
+      </div>
 
-        {state.isLoading ? (
-          <div className="py-6 text-center text-xs text-muted-foreground">加载中…</div>
-        ) : (
-          <>
-            <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
-              {members.length === 0 && (
-                <div className="py-2 text-xs text-muted-foreground">
-                  暂无成员
-                  {state.data?.detected?.length ? '，可点下方「导入探测候选」' : '（未探测到标准 monorepo 声明）'}
-                </div>
-              )}
-              {members.map((m, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input
-                    className="h-8 w-32 shrink-0"
-                    value={m.name}
-                    placeholder="名称"
-                    onChange={(e) => setAt(i, { name: e.target.value })}
-                  />
-                  <Input
-                    className="h-8 flex-1 font-mono text-xs"
-                    value={m.path}
-                    placeholder="相对项目根路径"
-                    onChange={(e) => setAt(i, { path: e.target.value })}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setMembers((prev) => prev.filter((_, j) => j !== i))}
-                  >
-                    移除
-                  </Button>
-                </div>
-              ))}
-            </div>
+      {state.isLoading ? (
+        <div className="py-6 text-center text-xs text-muted-foreground">加载中…</div>
+      ) : (
+        <>
+          <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
+            {members.length === 0 && (
+              <div className="py-2 text-xs text-muted-foreground">
+                暂无成员
+                {state.data?.detected?.length ? '，可点下方「导入探测候选」' : '（未探测到标准 monorepo 声明）'}
+              </div>
+            )}
+            {members.map((m, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Input
+                  className="h-8 w-32 shrink-0"
+                  value={m.name}
+                  placeholder="名称"
+                  onChange={(e) => setAt(i, { name: e.target.value })}
+                />
+                <Input
+                  className="h-8 flex-1 font-mono text-xs"
+                  value={m.path}
+                  placeholder="相对项目根路径"
+                  onChange={(e) => setAt(i, { path: e.target.value })}
+                />
+                <Button variant="ghost" size="sm" onClick={() => setMembers((prev) => prev.filter((_, j) => j !== i))}>
+                  移除
+                </Button>
+              </div>
+            ))}
+          </div>
 
-            <div className="mt-3 flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMembers((prev) => [...prev, { name: '', path: '' }])}
-              >
-                添加
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={importDetected}
-                disabled={!state.data?.detected?.length}
-                title="追加标准 monorepo 声明文件探测到的候选（去重）"
-              >
-                导入探测候选
-              </Button>
-              {save.isError && <span className="text-xs text-destructive">{save.error.message}</span>}
-            </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setMembers((prev) => [...prev, { name: '', path: '' }])}>
+              添加
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={importDetected}
+              disabled={!state.data?.detected?.length}
+              title="追加标准 monorepo 声明文件探测到的候选（去重）"
+            >
+              导入探测候选
+            </Button>
+            {save.isError && <span className="text-xs text-destructive">{save.error.message}</span>}
+          </div>
 
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={onClose}>
-                取消
-              </Button>
-              <Button
-                size="sm"
-                onClick={submit}
-                disabled={save.isPending || members.length === 0 || members.some((m) => !m.path)}
-              >
-                保存
-              </Button>
-            </div>
-          </>
-        )}
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>
+              取消
+            </Button>
+            <Button
+              size="sm"
+              onClick={submit}
+              disabled={save.isPending || members.length === 0 || members.some((m) => !m.path)}
+            >
+              保存
+            </Button>
+          </div>
+        </>
+      )}
     </DialogShell>
   );
 }

@@ -3,7 +3,7 @@
 // 纯浏览器 SPA 无 SSR，首渲染 lazy initializer 直接读；坏值回落 fallback。
 // 写发生在 setter 内（幂等，updater 重放无害），不用 effect 以避免 key/encode
 // 引用不稳引起的多余写入。
-import { useCallback, useEffect, useState, type SetStateAction } from 'react';
+import { useCallback, useState, type SetStateAction } from 'react';
 
 export function useLocalPref<T>(
   key: string,
@@ -48,9 +48,13 @@ function readSet(key: string): Set<string> {
 // 字符串集合偏好（展开态 / 显隐开关等）：key 变化（如按工作台 path 隔离）时重读。
 export function usePersistentSet(key: string) {
   const [set, setSet] = useState<Set<string>>(() => readSet(key));
-  useEffect(() => {
+  // key 变化时在渲染期间重读（React 官方的「props 变化重置 state」模式，
+  // 替代 effect 回灌，见 react.dev/learn/you-might-not-need-an-effect）
+  const [prevKey, setPrevKey] = useState(key);
+  if (prevKey !== key) {
+    setPrevKey(key);
     setSet(readSet(key));
-  }, [key]);
+  }
 
   const update = useCallback(
     (fn: (prev: Set<string>) => Set<string>) => {

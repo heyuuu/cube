@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, Crosshair, FileText, Folder } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { TreeToolbar } from '@/components/tree-toolbar';
 import { Button } from '@/components/ui/button';
@@ -132,16 +132,19 @@ export function FileTree({
   // 空树（无 children）不消费恢复标记——差异范围刷新时变更清单未就绪会先建出空树，
   // 在空树上恢复等于丢掉「全部展开」偏好，真数据到达后就不再恢复了
   const sourceKey = `${source.type}:${source.id}`;
-  const bulkInitRef = useRef<{ source: string; done: boolean }>({ source: sourceKey, done: false });
-  useEffect(() => {
-    const state = bulkInitRef.current;
-    if (state.source !== sourceKey) bulkInitRef.current = { source: sourceKey, done: false };
-    if (bulkInitRef.current.done || !root || root.children.length === 0) return;
-    bulkInitRef.current.done = true;
+  const [bulkInit, setBulkInit] = useState<{ source: string; done: boolean }>({
+    source: sourceKey,
+    done: false,
+  });
+  // 渲染期间重置/消费（React 官方的「props 变化调整 state」模式，替代 effect 回灌）：
+  // source 变化先重置 done；随后首个非空树消费一次 bulk 偏好。
+  if (bulkInit.source !== sourceKey) setBulkInit({ source: sourceKey, done: false });
+  if (!bulkInit.done && root && root.children.length > 0) {
+    setBulkInit({ source: sourceKey, done: true });
     const saved = localStorage.getItem(TREE_EXPAND_KEY);
     if (saved === 'all') setExpandedSet(allDirPaths(root));
     else if (saved === 'none') setExpandedSet(new Set(['']));
-  }, [root, sourceKey]);
+  }
 
   const listRef = useRef<HTMLDivElement>(null);
   // 定位当前文件：展开其祖先目录 → 滚动到该行 → 闪烁高亮（class 命令式添加，同 git 树定位）

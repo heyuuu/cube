@@ -17,22 +17,16 @@ const MIN_WIDTH = 160;
 const MAX_WIDTH = 640;
 
 export function useTreePanePrefs(storageKey: string, defaultScope: 'all' | 'diff') {
-  const [view, setView] = useLocalPref<'tree' | 'flat'>(
-    `${storageKey}.view`,
-    'tree',
-    (raw) => (raw === 'flat' ? 'flat' : 'tree'),
+  const [view, setView] = useLocalPref<'tree' | 'flat'>(`${storageKey}.view`, 'tree', (raw) =>
+    raw === 'flat' ? 'flat' : 'tree',
   );
   const [scope, setScope] = useLocalPref<'all' | 'diff'>(`${storageKey}.scope`, defaultScope, (raw) =>
     raw === 'all' || raw === 'diff' ? raw : defaultScope,
   );
-  const [width, setWidth] = useLocalPref<number>(
-    `${storageKey}.width`,
-    240,
-    (raw) => {
-      const v = Number(raw);
-      return Number.isFinite(v) && v >= MIN_WIDTH && v <= MAX_WIDTH ? v : 240;
-    },
-  );
+  const [width, setWidth] = useLocalPref<number>(`${storageKey}.width`, 240, (raw) => {
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= MIN_WIDTH && v <= MAX_WIDTH ? v : 240;
+  });
   return { view, setView, scope, setScope, width, setWidth };
 }
 
@@ -42,13 +36,11 @@ export function FileTreePane({
   prefs,
   above,
   below,
-  toolbarExtra,
   ...fileTreeProps
 }: {
   prefs: TreePanePrefs;
   above?: ReactNode; // 树上方附加行（diff 面板的路径搜索框）
   below?: ReactNode; // 树下方附加区（内容面板的提交详情，自带拖拽分隔条）
-  toolbarExtra?: ReactNode; // 树工具条附加区（diff 面板的对比模式·数量）
 } & Omit<Parameters<typeof FileTree>[0], 'viewMode' | 'onViewMode' | 'scope' | 'onScope'>) {
   const { view, setView, scope, setScope, width, setWidth } = prefs;
   return (

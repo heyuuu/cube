@@ -92,4 +92,3 @@ export function ForgeIcon({ matches }: { matches: { host: string; icon: IconDecl
     </span>
   );
 }
-

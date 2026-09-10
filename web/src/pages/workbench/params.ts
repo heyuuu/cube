@@ -90,7 +90,6 @@ export function selectDiffSide(params: URLSearchParams, src: TreeSource) {
   writeSource(params, 'current', src);
 }
 
-
 export function sameSource(a: TreeSource | null, b: TreeSource | null): boolean {
   return !!a && !!b && toUri(a) === toUri(b);
 }

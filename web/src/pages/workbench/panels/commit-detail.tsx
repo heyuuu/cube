@@ -1,7 +1,6 @@
-import { useLocalPref } from '@/hooks/use-local-pref';
-
 import { ErrorBanner } from '@/components/error-banner';
 import { Badge } from '@/components/ui/badge';
+import { useLocalPref } from '@/hooks/use-local-pref';
 import { cn } from '@/lib/utils';
 import { useWorkbenchCommit } from '@/queries/workbench';
 

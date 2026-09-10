@@ -59,4 +59,3 @@ export function matchGitFilter(p: Project, filter: GitStatus | 'all'): boolean {
       return !g.dirty && g.ahead === 0 && g.behind === 0;
   }
 }
-

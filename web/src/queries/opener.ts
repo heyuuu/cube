@@ -4,7 +4,7 @@ export function useOpenerIntents() {
   return useQuery({
     queryKey: ['opener', 'intents'],
     queryFn: async () =>
-        ((await apiGet('/api/opener/intents')).list ?? []).map((i) => ({ ...i, openers: i.openers ?? [] })),
+      ((await apiGet('/api/opener/intents')).list ?? []).map((i) => ({ ...i, openers: i.openers ?? [] })),
   });
 }
 

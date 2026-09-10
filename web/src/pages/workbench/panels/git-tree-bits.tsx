@@ -5,13 +5,7 @@ import { useSearchParams } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-import {
-  selectCurrent,
-  selectDiffSide,
-  sameSource,
-  type TreeSource,
-  type WorkbenchParams,
-} from '../params';
+import { selectCurrent, selectDiffSide, sameSource, type TreeSource, type WorkbenchParams } from '../params';
 
 import { formatCommitTime } from './commit-bits';
 

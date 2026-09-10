@@ -4,9 +4,9 @@ import { ChevronRight, Folder, FolderGit2 } from 'lucide-react';
 import type { Opener, Project } from '@/api/client';
 import type { IconDecl } from '@/lib/icon';
 import { prettyPath } from '@/lib/path';
-import { useProjectOpen } from '@/queries/project';
 import type { TreeRow } from '@/lib/tree';
 import { cn } from '@/lib/utils';
+import { useProjectOpen } from '@/queries/project';
 
 import { ProjectActions, WorktreeCountBadge } from './actions';
 import { ClickBadge, ForgeIcon, GitCell, LastUsedTime } from './cells';

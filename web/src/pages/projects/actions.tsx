@@ -2,6 +2,7 @@
 import { Ellipsis, Folder, GitBranch, Layers } from 'lucide-react';
 
 import type { Opener, Project } from '@/api/client';
+import { CopyPathItem, OpenWithGroup } from '@/components/open-with-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +17,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CopyPathItem, OpenWithGroup } from '@/components/open-with-menu';
 import { renderIcon } from '@/lib/icon';
 import { cn } from '@/lib/utils';
 import { useIntentDefaultOpener } from '@/queries/opener';
