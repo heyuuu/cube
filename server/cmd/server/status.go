@@ -7,7 +7,7 @@ import (
 
 	"cube/app"
 	"cube/cmd/env"
-	"cube/core/serve"
+	"cube/core/server"
 	"cube/util/tui"
 )
 
@@ -25,11 +25,12 @@ func newStatusCmd(env *env.Env) *cobra.Command {
 }
 
 func runStatus(a *app.App) error {
-	printStatus(a, serve.Status(a.Server().Port()))
+	client := server.NewClient(a.Server().ServerURL())
+	printStatus(a, client.Status())
 	return nil
 }
 
-func printStatus(a *app.App, st serve.StatusInfo) {
+func printStatus(a *app.App, st server.StatusInfo) {
 	state := "未运行"
 	version := "-"
 	instance := "-"

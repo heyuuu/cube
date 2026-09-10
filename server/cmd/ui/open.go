@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"cube/app"
-	"cube/core/serve"
+	"cube/core/server"
 	"cube/util/pathkit"
 )
 
@@ -27,7 +27,8 @@ func openPage(a *app.App, route string, rawPath string) error {
 		return fmt.Errorf("路径不存在: %s", absPath)
 	}
 
-	if st := serve.Status(a.Server().Port()); !st.Running {
+	client := server.NewClient(a.Server().ServerURL())
+	if st := client.Status(); !st.Running {
 		return errors.New("server 未运行，请先执行: cube server start")
 	}
 

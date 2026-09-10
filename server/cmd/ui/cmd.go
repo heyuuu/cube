@@ -16,7 +16,7 @@ import (
 
 	"cube/app"
 	"cube/cmd/env"
-	"cube/core/serve"
+	"cube/core/server"
 )
 
 // NewCmd 构建 `cube ui` 父命令及其子命令。
@@ -38,7 +38,8 @@ func NewCmd(env *env.Env) *cobra.Command {
 
 // runWeb 打开 Web UI 首页。
 func runWeb(a *app.App) error {
-	if st := serve.Status(a.Server().Port()); !st.Running {
+	client := server.NewClient(a.Server().ServerURL())
+	if st := client.Status(); !st.Running {
 		return errors.New("server 未运行，请先执行: cube server start")
 	}
 	openInBrowser(a.Server().ServerURL())

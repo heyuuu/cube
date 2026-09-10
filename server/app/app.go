@@ -46,7 +46,7 @@ func Init(cfgFile string, debug bool) (*App, error) {
 
 	// 组装 services
 	projectService := project.NewService(paths.SettingsFile(), paths.CacheDir())
-	openerService := opener.NewService(paths.SettingsFile(), nil, server.BaseURL(cfg.Server.Port))
+	openerService := opener.NewService(paths.SettingsFile(), nil, server.BaseURL(cfg.Server))
 	usageService := usage.NewService(paths.StateDir())
 	workbenchService := workbench.NewService(projectService.RefreshGitInfo)
 	createService := create.NewService(cfg.Create)

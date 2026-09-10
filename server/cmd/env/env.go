@@ -33,7 +33,7 @@ func (e *Env) Init(cfgFile string, debug bool, local bool) error {
 	if e.hasInit {
 		return errors.New("env 已初始化过，不可重复初始化")
 	}
-	
+
 	// 初始化 App
 	a, err := app.Init(cfgFile, debug)
 	if err != nil {

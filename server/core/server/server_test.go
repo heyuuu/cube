@@ -75,9 +75,9 @@ func decodeData[T any](t *testing.T, env envelope, out *T) {
 
 // --- system ---
 
-func TestWhoami(t *testing.T) {
+func TestStatus(t *testing.T) {
 	ts := newTestServer(t)
-	env := getJSON(t, ts.URL+"/api/system/whoami")
+	env := getJSON(t, ts.URL+"/api/system/status")
 	var got struct {
 		App      string `json:"app"`
 		Version  string `json:"version"`

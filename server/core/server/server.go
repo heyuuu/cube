@@ -56,13 +56,13 @@ func (s *Server) OpenAPIJSON() ([]byte, error) {
 	return s.routes.OpenAPIJSON()
 }
 
-// serverHost server 绑定的主机名——全仓 http 地址拼接的唯一事实源（web.BaseURL），
-// 以后换域名/绑定时只改这里。
-const serverHost = "localhost"
-
 // BaseURL 按 port 拼 server 的基地址（无尾斜杠），全仓 http 地址拼接收敛于此。
-func BaseURL(port int) string {
-	return "http://" + serverHost + ":" + strconv.Itoa(port)
+func BaseURL(cfg config.ServerConfig) string {
+	host := cfg.Host
+	if host == "" {
+		host = "localhost"
+	}
+	return "http://" + host + ":" + strconv.Itoa(cfg.Port)
 }
 
 // ServerURL 访问地址
