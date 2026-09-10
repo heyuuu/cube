@@ -1,10 +1,12 @@
 package app
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"cube/core/config"
-	web "cube/core/server"
+	"cube/core/logger"
+	"cube/core/server"
 	"cube/create"
 	"cube/forge"
 	"cube/handlers"
@@ -15,12 +17,11 @@ import (
 )
 
 type App struct {
-	cfg   *config.Config
-	paths *Paths
+	cfg    *config.Config
+	paths  *Paths
+	server *server.Server
 
-	server *web.Server
-
-	// services 有序清单，供生命周期钩子（OnAppCreated / OnServerStart / OnServerStop）分发
+	// services 有序清单，供生命周期钩子（OnServerStart / OnServerStop）分发
 	services []any
 
 	projectService   *project.Service
@@ -31,13 +32,22 @@ type App struct {
 	forgeService     *forge.Service
 }
 
-func New(cfg *config.Config) (*App, error) {
+func Init(cfgFile string, debug bool) (*App, error) {
+	// 初始化配置
+	cfg, err := config.Load(cfgFile)
+	if err != nil {
+		return nil, fmt.Errorf("加载配置文件失败: %w", err)
+	}
+
 	paths := NewPaths(cfg.DataDir)
+
+	// 尽量在其他行为前初始化 Logger
+	logger.Init(paths.LogDir(), debug)
 
 	// 组装 services
 	projectService := project.NewService(paths.SettingsFile(), paths.CacheDir())
-	openerService := opener.NewService(paths.SettingsFile(), nil, web.BaseURL(cfg.Server.Port))
-	usageService := usage.NewService(paths.UsageFile())
+	openerService := opener.NewService(paths.SettingsFile(), nil, server.BaseURL(cfg.Server.Port))
+	usageService := usage.NewService(paths.StateDir())
 	workbenchService := workbench.NewService(projectService.RefreshGitInfo)
 	createService := create.NewService(cfg.Create)
 	forgeService := forge.NewService(paths.SettingsFile(), filepath.Join(paths.CacheDir(), "forge-repos.json"))
@@ -52,9 +62,9 @@ func New(cfg *config.Config) (*App, error) {
 	workbenchHandler := handlers.NewWorkbenchHandler(workbenchService)
 	forgeHandler := handlers.NewForgeHandler(forgeService, projectService)
 	usageHandler := handlers.NewUsageHandler(usageService)
-	server := web.NewServer(
+	server := server.NewServer(
 		cfg.Server,
-		[]web.Handler{
+		[]server.Handler{
 			configHandler,
 			projectHandler,
 			openerHandler,
@@ -81,10 +91,10 @@ func New(cfg *config.Config) (*App, error) {
 	}, nil
 }
 
-func (a *App) Server() *web.Server { return a.server }
+func (a *App) Config() *config.Config { return a.cfg }
+func (a *App) Paths() *Paths          { return a.paths }
+func (a *App) Server() *server.Server { return a.server }
 
-// OpenAPIJSON 转发 server 的 spec 导出（cmd 层不直接依赖 web）。
-func (a *App) OpenAPIJSON() ([]byte, error)     { return a.server.OpenAPIJSON() }
 func (a *App) ProjectService() *project.Service { return a.projectService }
 func (a *App) OpenerService() *opener.Service   { return a.openerService }
 func (a *App) UsageService() *usage.Service     { return a.usageService }

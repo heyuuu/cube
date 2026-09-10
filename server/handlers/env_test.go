@@ -68,7 +68,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	forgeSvc := forge.NewService(settingsFile, "")
 	exec := &fakeExecutor{}
 	openerSvc := opener.NewService(settingsFile, exec, "http://127.0.0.1:6001")
-	usageSvc := usage.NewService(ws.Join("usage.jsonl"))
+	usageSvc := usage.NewService(ws.Dir)
 	cfg := &config.Config{
 		DataDir: ws.Join("data"),
 	}

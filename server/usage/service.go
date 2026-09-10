@@ -9,11 +9,16 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
 	"cube/util/store"
+)
+
+const (
+	usageFileName = "usage.jsonl"
 )
 
 // retentionDays 记录保留天数。30 天足够保留频率信号且不会无限增长；
@@ -24,8 +29,10 @@ type Service struct {
 	usageFilePath string // usage.jsonl 文件路径
 }
 
-func NewService(usageFilePath string) *Service {
-	return &Service{usageFilePath: usageFilePath}
+func NewService(statePath string) *Service {
+	return &Service{
+		usageFilePath: filepath.Join(statePath, usageFileName),
+	}
 }
 
 // RecordOpen 追加一条打开记录（打开成功后由出口层调用）。

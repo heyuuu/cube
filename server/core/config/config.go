@@ -11,19 +11,12 @@ import (
 
 type Config struct {
 	DataDir string       `json:"dataDir"` // 数据目录
-	Log     LogConfig    `json:"log"`
 	Server  ServerConfig `json:"server"`
 	Create  CreateConfig `json:"create"`
 }
 
 type CreateConfig struct {
 	TemplateSource string `json:"templateSource"` // cube create 未显式传 --tpl 时的默认模板来源（本地目录或 git url）
-}
-
-type LogConfig struct {
-	Path   string `json:"path"`
-	Level  string `json:"level"`
-	Format string `json:"format"`
 }
 
 type ServerConfig struct {
@@ -53,19 +46,5 @@ func applyDefaults(cfg *Config, path string) *Config {
 	if cfg.DataDir == "" {
 		cfg.DataDir = filepath.Dir(path)
 	}
-	if cfg.Log.Level == "" {
-		cfg.Log.Level = "info"
-	}
-	if cfg.Log.Path == "" {
-		cfg.Log.Path = cfg.DataDir
-	}
 	return cfg
-}
-
-// Save 把 cfg 原子写入 path（缩进 JSON + tmp/rename 原子写，见 store.SaveJson）。
-func Save(path string, cfg *Config) error {
-	if err := store.SaveJson(path, cfg); err != nil {
-		return fmt.Errorf("写入配置文件失败: path=%s err=%w", path, err)
-	}
-	return nil
 }

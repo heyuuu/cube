@@ -5,26 +5,27 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/lmittmann/tint"
 
-	"cube/core/config"
 	"cube/util/tui"
 )
 
-const logFileName = "log/app.log"
+const logFileName = "app.log"
 const logTimeFormat = "2006-01-02 15:04:05.000"
 const stdioLogTimeFormat = "15:04:05.000"
 
 // Init 初始化日志
 // 初始化失败会直接 panic，因为没有日志根本无法记录错误，容易导致静默失败。
-func Init(cfg config.LogConfig, debug bool) {
-	level := parseLogLevel(cfg.Level)
+func Init(logPath string, debug bool) {
+	level := slog.LevelInfo
+	if debug {
+		level = slog.LevelDebug
+	}
 
 	// 文件日志 Handler，始终启用
-	handler := initFileHandler(level, cfg.Path)
+	handler := initFileHandler(level, logPath)
 
 	// 在 Debug 模式下时，启用标准输出日志 Handler，颜色看 stderr 是否 TTY
 	if debug {
@@ -36,23 +37,17 @@ func Init(cfg config.LogConfig, debug bool) {
 	slog.SetDefault(slog.New(handler))
 }
 
-func parseLogLevel(level string) slog.Level {
-	switch strings.ToLower(level) {
-	case "debug":
-		return slog.LevelDebug
-	case "warn", "warning":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
-}
-
 func initFileHandler(level slog.Level, logPath string) slog.Handler {
+	// 校验 logPath
 	if logPath == "" {
-		panic("log path 配置不应为空，请检查 LogConfig 配置")
+		panic("log path 配置不应为空")
+	} else if !filepath.IsAbs(logPath) {
+		panic("log path 必须为绝对路径")
+	} else if st, err := os.Stat(logPath); err == nil && !st.IsDir() {
+		panic("log path 必须是目录路径")
 	}
+
+	// 构造 logFile 路径
 	logFile := filepath.Join(logPath, logFileName)
 
 	// init log file

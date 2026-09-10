@@ -37,7 +37,7 @@ func newOpenapiCmd(env *env.Env) *cobra.Command {
 
 // writeOpenAPIFile 生成 OpenAPI 3.1 spec，格式化后写入 outPath。
 func writeOpenAPIFile(a *app.App, outPath string) error {
-	data, err := a.OpenAPIJSON()
+	data, err := a.Server().OpenAPIJSON()
 	if err != nil {
 		return fmt.Errorf("生成 OpenAPI 失败: %w", err)
 	}

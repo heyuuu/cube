@@ -13,8 +13,6 @@ import (
 	"fmt"
 
 	"cube/app"
-	"cube/core/config"
-	"cube/core/logger"
 )
 
 type Env struct {
@@ -35,18 +33,9 @@ func (e *Env) Init(cfgFile string, debug bool, local bool) error {
 	if e.hasInit {
 		return errors.New("env 已初始化过，不可重复初始化")
 	}
-
-	// 初始化配置
-	cfg, err := config.Load(cfgFile)
-	if err != nil {
-		return fmt.Errorf("加载配置文件失败: %w", err)
-	}
-
-	// 尽量在其他行为前初始化 Logger
-	logger.Init(cfg.Log, debug)
-
+	
 	// 初始化 App
-	a, err := app.New(cfg)
+	a, err := app.Init(cfgFile, debug)
 	if err != nil {
 		return fmt.Errorf("app 初始化失败: %w", err)
 	}
