@@ -105,6 +105,11 @@ ws.MakeProjectDir("scanroot/g1/proj", testfixture.WithGodot())
    go vet ./...       # 静态校验
    ```
    每次改完 `.go` 文件都要跑，不要跳过。`air` 与 `run.sh` 也已内置这两步，保持一致。**命令在 `server/` 目录下执行**（go.mod 在那里）。
+1b. **前端代码修改后必须先 `pnpm check:fix` 再提交/收工**——与 Go 侧规则 1 同级的强制规则：
+   ```bash
+   pnpm check:fix    # oxfmt 格式化 + oxlint 自动修复并报出剩余问题（error 不会自动消失，须手工修）+ tsgo 类型检查
+   ```
+   每次改完 `web/src` 下的文件都要跑，**命令在 `web/` 目录下执行**。check 中的 error（如 `react/react-compiler`）不会被自动修复，必须当场手工修掉再收工——曾经因为跳过此步，effect 回灌 state 类违规积压数个提交才集中暴露。
 2. 遵循 v3 分层依赖纪律（见上），不要让 `cmd` 直接调 `web`、不要让基础设施包 import 领域包。
 3. **加新 domain 走"五处加法"流程**，不修改既有 domain 的接线。
 4. 日志统一用 `log/slog`（`slog.Debug` / `slog.Info` / ...），不要用 `fmt.Println` 做日志（`fmt` 仅用于面向用户的 CLI 输出）。debug 日志受 `--debug` 控制。
