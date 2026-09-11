@@ -2,8 +2,6 @@ package tui
 
 import (
 	"charm.land/huh/v2"
-
-	"cube/util/slicekit"
 )
 
 // Option 描述一个可选项：显示给用户的 Label 与返回给程序的 Value。
@@ -13,6 +11,14 @@ import (
 type Option[T any] struct {
 	Label string
 	Value T
+}
+
+func initOptions[T any](items []T, label func(T) string) []Option[T] {
+	options := make([]Option[T], len(items))
+	for i, item := range items {
+		options[i] = Option[T]{Label: label(item), Value: item}
+	}
+	return options
 }
 
 // maxSelectHeight 是 Select 列表的显示高度上限（行）：超过后列表内部滚动。
@@ -56,9 +62,7 @@ func Select[T any](title string, options []Option[T]) (T, error) {
 //
 // 与 Select 的错误语义一致：用户取消返回 (零值, ErrUserAborted)。
 func SelectItem[T any](title string, items []T, labelGetter func(T) string) (T, error) {
-	return Select(title, slicekit.Map(items, func(item T) Option[T] {
-		return Option[T]{Label: labelGetter(item), Value: item}
-	}))
+	return Select(title, initOptions(items, labelGetter))
 }
 
 // MultiSelect 展示多选列表，返回所有被选中的值。
@@ -144,7 +148,5 @@ func MultiSelectItemWithDefaults[T any](
 	labelGetter func(T) string,
 	defaults []T,
 ) ([]T, error) {
-	return MultiSelectWithDefaults(title, slicekit.Map(items, func(item T) Option[T] {
-		return Option[T]{Label: labelGetter(item), Value: item}
-	}), defaults)
+	return MultiSelectWithDefaults(title, initOptions(items, labelGetter), defaults)
 }
