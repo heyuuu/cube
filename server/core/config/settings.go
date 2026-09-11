@@ -1,10 +1,11 @@
-// Package settings 管理配置目录下 settings.json 的节级读写。
+// 管理配置目录下 settings.json 的节级读写。
+//
 // settings.json 是「运行中可变更的用户可管理数据」的载体（与 config.json 切割：
 // 后者启动加载、不热更），形状为多节 JSON 文档，各领域只读写自己的节。
 //
 // 职责边界：本包只管机制（节透传、原子写、读降级），不感知任何节名与节内结构；
 // 节名常量与节内校验归各领域包（如 opener 包的 "openers" 节）。
-package settings
+package config
 
 import (
 	"encoding/json"

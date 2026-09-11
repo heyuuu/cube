@@ -5,9 +5,10 @@ import (
 	"log/slog"
 	"os"
 
-	"cube/core/settings"
+	"cube/core/config"
 	"cube/util/iconkit"
 	"cube/util/pathkit"
+	"cube/util/slicekit"
 )
 
 // settings.json 中 project 域的两个规则节：分节存储，可独立读取与写入。
@@ -21,7 +22,7 @@ const (
 // settings 包已把文件级/节级坏数据降级为零值。
 func loadScanRules(settingsFile string) []ScanRule {
 	var specs []ScanRule
-	settings.LoadSection(settingsFile, scanRulesSection, &specs)
+	config.LoadSection(settingsFile, scanRulesSection, &specs)
 
 	var rules []ScanRule
 	for _, r := range specs {
@@ -43,7 +44,7 @@ func loadScanRules(settingsFile string) []ScanRule {
 // 展开 localPath 的 ~/ 为绝对路径（不校验存在——clone 时会自动创建）；相对路径是配置错误，跳过。
 func loadCloneRules(settingsFile string) []CloneRule {
 	var specs []CloneRule
-	settings.LoadSection(settingsFile, cloneRulesSection, &specs)
+	config.LoadSection(settingsFile, cloneRulesSection, &specs)
 
 	var rules []CloneRule
 	for _, r := range specs {
@@ -90,32 +91,32 @@ func saveScanRule(settingsFile string, rule ScanRule) error {
 	}
 
 	var specs []ScanRule
-	settings.LoadSection(settingsFile, scanRulesSection, &specs)
-	specs = settings.UpsertKeyed(specs, func(cur ScanRule) string { return cur.Path }, rule)
-	return settings.SaveSection(settingsFile, scanRulesSection, specs)
+	config.LoadSection(settingsFile, scanRulesSection, &specs)
+	specs = slicekit.UpsertKeyed(specs, func(cur ScanRule) string { return cur.Path }, rule)
+	return config.SaveSection(settingsFile, scanRulesSection, specs)
 }
 
 // deleteScanRule 按 path 删除一条 scan 规则；不存在时返回中文错误。
 func deleteScanRule(settingsFile, path string) error {
 	var specs []ScanRule
-	settings.LoadSection(settingsFile, scanRulesSection, &specs)
-	rest, removed := settings.RemoveKeyed(specs, func(cur ScanRule) string { return cur.Path }, path)
+	config.LoadSection(settingsFile, scanRulesSection, &specs)
+	rest, removed := slicekit.RemoveKeyed(specs, func(cur ScanRule) string { return cur.Path }, path)
 	if !removed {
 		return fmt.Errorf("未找到指定 scan 规则: %s", path)
 	}
-	return settings.SaveSection(settingsFile, scanRulesSection, rest)
+	return config.SaveSection(settingsFile, scanRulesSection, rest)
 }
 
 // reorderScanRules 按 paths 顺序重排 scanRule 节（顺序即项目列表展示序）。
 // 未列出的条目保持原相对顺序排在末尾，不丢数据；未知或重复路径返回中文错误。
 func reorderScanRules(settingsFile string, paths []string) error {
 	var specs []ScanRule
-	settings.LoadSection(settingsFile, scanRulesSection, &specs)
-	ordered, err := settings.ReorderKeyed(specs, func(cur ScanRule) string { return cur.Path }, paths, "scan 规则", func(k string) string { return k })
+	config.LoadSection(settingsFile, scanRulesSection, &specs)
+	ordered, err := slicekit.ReorderKeyed(specs, func(cur ScanRule) string { return cur.Path }, paths, "scan 规则", func(k string) string { return k })
 	if err != nil {
 		return err
 	}
-	return settings.SaveSection(settingsFile, scanRulesSection, ordered)
+	return config.SaveSection(settingsFile, scanRulesSection, ordered)
 }
 
 // saveCloneRule 新增或按 host+prefix 替换一条 clone 规则（二者组合是规则唯一键）。
@@ -131,30 +132,30 @@ func saveCloneRule(settingsFile string, rule CloneRule) error {
 	}
 
 	var specs []CloneRule
-	settings.LoadSection(settingsFile, cloneRulesSection, &specs)
-	specs = settings.UpsertKeyed(specs, cloneRuleKey, rule)
-	return settings.SaveSection(settingsFile, cloneRulesSection, specs)
+	config.LoadSection(settingsFile, cloneRulesSection, &specs)
+	specs = slicekit.UpsertKeyed(specs, cloneRuleKey, rule)
+	return config.SaveSection(settingsFile, cloneRulesSection, specs)
 }
 
 // deleteCloneRule 按 host+prefix 删除一条 clone 规则；不存在时返回中文错误。
 func deleteCloneRule(settingsFile string, key CloneRuleKey) error {
 	var specs []CloneRule
-	settings.LoadSection(settingsFile, cloneRulesSection, &specs)
-	rest, removed := settings.RemoveKeyed(specs, cloneRuleKey, key)
+	config.LoadSection(settingsFile, cloneRulesSection, &specs)
+	rest, removed := slicekit.RemoveKeyed(specs, cloneRuleKey, key)
 	if !removed {
 		return fmt.Errorf("未找到指定 clone 规则: %s%s", key.RepoHost, key.RepoPrefix)
 	}
-	return settings.SaveSection(settingsFile, cloneRulesSection, rest)
+	return config.SaveSection(settingsFile, cloneRulesSection, rest)
 }
 
 // reorderCloneRules 按键顺序重排 cloneRule 节（顺序即展示序；匹配语义按 prefix
 // 最长优先，顺序不影响路由结果）。语义约束同 reorderScanRules。
 func reorderCloneRules(settingsFile string, keys []CloneRuleKey) error {
 	var specs []CloneRule
-	settings.LoadSection(settingsFile, cloneRulesSection, &specs)
-	ordered, err := settings.ReorderKeyed(specs, cloneRuleKey, keys, "clone 规则", formatCloneRuleKey)
+	config.LoadSection(settingsFile, cloneRulesSection, &specs)
+	ordered, err := slicekit.ReorderKeyed(specs, cloneRuleKey, keys, "clone 规则", formatCloneRuleKey)
 	if err != nil {
 		return err
 	}
-	return settings.SaveSection(settingsFile, cloneRulesSection, ordered)
+	return config.SaveSection(settingsFile, cloneRulesSection, ordered)
 }

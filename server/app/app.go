@@ -66,11 +66,11 @@ func Init(cfgFile string, debug bool) (*App, error) {
 	server := server.NewServer(
 		cfg.Server,
 		[]server.Handler{
-			// system 端点（status / shutdown）
+			// 系统端点
 			server.NewSystemHandler(),
-			// 静态前端资源路由（/assets/* 与 SPA fallback）
+			// 静态资源端点
 			server.NewStaticHandler(web.StaticFS()),
-
+			// 业务端点
 			configHandler,
 			projectHandler,
 			openerHandler,

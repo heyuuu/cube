@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"cube/core/settings"
+	"cube/core/config"
 	"cube/internal/testfixture"
 	"cube/util/gitapi"
 	"cube/util/iconkit"
@@ -163,7 +163,7 @@ func TestFetchAccountPersist(t *testing.T) {
 
 // settings 引用占位（iconkit/settings 在裁剪后的用例中仍被间接使用，防止 import 漂移）。
 var (
-	_ = settings.SaveSection
+	_ = config.SaveSection
 	_ = iconkit.ValidateIcon
 )
 

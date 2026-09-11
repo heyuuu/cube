@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"cube/core/settings"
+	"cube/core/config"
 	"cube/util/gitapi"
 	"cube/util/iconkit"
+	"cube/util/slicekit"
 )
 
 // settings.json 中的 forge 域节名。
@@ -39,7 +40,7 @@ func NewService(settingsFile, cacheFile string) *Service {
 // Forges 读全部 forge（直读不缓存）。坏条目（host 空 / kind 未知 / icon 非法）跳过不阻断。
 func (s *Service) Forges() []Forge {
 	var specs []Forge
-	settings.LoadSection(s.settingsFile, forgesSection, &specs)
+	config.LoadSection(s.settingsFile, forgesSection, &specs)
 
 	forges := make([]Forge, 0, len(specs))
 	for _, f := range specs {
@@ -72,8 +73,8 @@ func (s *Service) SaveForge(f Forge) error {
 	}
 
 	specs := s.Forges()
-	specs = settings.UpsertKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, f)
-	return settings.SaveSection(s.settingsFile, forgesSection, specs)
+	specs = slicekit.UpsertKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, f)
+	return config.SaveSection(s.settingsFile, forgesSection, specs)
 }
 
 // ReorderForges 按 hosts 顺序重排 forges 节（顺序即展示序，1042 forge 页沿用）。
@@ -84,11 +85,11 @@ func (s *Service) ReorderForges(hosts []string) error {
 	for i, raw := range hosts {
 		keys[i] = NormalizeHost(raw)
 	}
-	ordered, err := settings.ReorderKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, keys, "forge", func(k string) string { return k })
+	ordered, err := slicekit.ReorderKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, keys, "forge", func(k string) string { return k })
 	if err != nil {
 		return err
 	}
-	return settings.SaveSection(s.settingsFile, forgesSection, ordered)
+	return config.SaveSection(s.settingsFile, forgesSection, ordered)
 }
 
 // DeleteForge 按 host 删除一条 forge，并级联清理该 host 下的 account
@@ -96,11 +97,11 @@ func (s *Service) ReorderForges(hosts []string) error {
 func (s *Service) DeleteForge(host string) error {
 	host = NormalizeHost(host)
 	specs := s.Forges()
-	rest, removed := settings.RemoveKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, host)
+	rest, removed := slicekit.RemoveKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, host)
 	if !removed {
 		return fmt.Errorf("未找到指定 forge: %s", host)
 	}
-	if err := settings.SaveSection(s.settingsFile, forgesSection, rest); err != nil {
+	if err := config.SaveSection(s.settingsFile, forgesSection, rest); err != nil {
 		return err
 	}
 	return s.retainAccounts(func(a Account) bool { return NormalizeHost(a.ForgeHost) != host })
@@ -127,7 +128,7 @@ func (s *Service) SaveAccount(a Account) error {
 		return err
 	}
 	accounts := loadAccounts(s.settingsFile)
-	accounts = settings.UpsertKeyed(accounts, accountKey, a)
+	accounts = slicekit.UpsertKeyed(accounts, accountKey, a)
 	return saveAccounts(s.settingsFile, accounts)
 }
 
@@ -140,7 +141,7 @@ func (s *Service) ReorderAccounts(keys []string) error {
 		h, u := key2acct(raw)
 		normalized[i] = acctCacheKey(NormalizeHost(h), NormalizeUsername(u))
 	}
-	ordered, err := settings.ReorderKeyed(accounts, accountKey, normalized, "account", formatAccountKey)
+	ordered, err := slicekit.ReorderKeyed(accounts, accountKey, normalized, "account", formatAccountKey)
 	if err != nil {
 		return err
 	}
@@ -151,7 +152,7 @@ func (s *Service) ReorderAccounts(keys []string) error {
 func (s *Service) DeleteAccount(forgeHost, username string) error {
 	forgeHost, username = NormalizeHost(forgeHost), NormalizeUsername(username)
 	accounts := loadAccounts(s.settingsFile)
-	rest, removed := settings.RemoveKeyed(accounts, accountKey, acctCacheKey(forgeHost, username))
+	rest, removed := slicekit.RemoveKeyed(accounts, accountKey, acctCacheKey(forgeHost, username))
 	if !removed {
 		return fmt.Errorf("未找到指定 account: %s@%s", username, forgeHost)
 	}

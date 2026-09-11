@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"cube/util/pathkit"
 	"cube/util/store"
 )
 
@@ -25,10 +24,10 @@ type ServerConfig struct {
 }
 
 // Load 从 path 读取 JSON 配置。
-// path 通常来自 -c 命令行参数（或默认值 ~/.config/cube/config.json），
-// 故按命令行输入解析：支持 ~ 前缀与基于 cwd 的相对路径。
+// path 来自 --config flag（或默认值 ~/.config/cube/config.json）——~ 前缀已由
+// cmd 层（root PersistentPreRunE）展开为绝对路径，此处仅做基于 cwd 的相对路径兜底。
 func Load(path string) (*Config, error) {
-	absPath, err := pathkit.AbsPath(path)
+	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("解析配置路径失败: path=%s err=%w", path, err)
 	}

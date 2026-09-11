@@ -1,13 +1,10 @@
-package settings
+package slicekit
 
 import "fmt"
 
-// 按 key 组织的节内条目三原语（upsert / remove / reorder）：五个 settings 节
-// （openers / forges / accounts / scanRules / cloneRules）的写侧算法完全同构，
-// 收敛在此单点维护；调用方保留领域校验与各自的 load/save 通道（读侧是否过滤坏条目
-// 各域口径不同，由调用方决定喂进来的 list）。
-//
-// K 须 comparable：字符串键（name / path）与 struct 键（CloneRuleKey）均可。
+// 按 key 组织的列表条目三原语（upsert / remove / reorder）：
+// 键类型 K 须 comparable（字符串键与 struct 键均可）；
+// 错误文案的领域语义经 entity / formatKey 由调用方注入。
 
 // UpsertKeyed 命中 key 则原位替换，否则追加到末尾。
 func UpsertKeyed[T any, K comparable](list []T, keyOf func(T) K, item T) []T {
@@ -43,7 +40,7 @@ func ReorderKeyed[T any, K comparable](list []T, keyOf func(T) K, keys []K, enti
 	for _, item := range list {
 		k := keyOf(item)
 		if _, dup := byKey[k]; dup {
-			return nil, fmt.Errorf("settings.json 存在重复键的 %s，无法重排", entity)
+			return nil, fmt.Errorf("存在重复键的 %s，无法重排", entity)
 		}
 		byKey[k] = item
 	}

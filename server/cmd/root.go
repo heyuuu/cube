@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -12,6 +13,7 @@ import (
 	"cube/cmd/server"
 	"cube/cmd/ui"
 	"cube/core/version"
+	"cube/util/pathkit"
 )
 
 func Execute() {
@@ -55,6 +57,13 @@ func newRootCmd(env *env.Env) *cobra.Command {
 		// --help / 未知命令等不触发 RunE 的路径全程零装配。
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true // 钩子之前发生的输入类错误仍附 usage；运行期错误不再附 usage
+			// ~ 前缀在此展开——config.Load 已改用 filepath.Abs（基础设施不依赖
+			// 能力层 pathkit），而默认路径 defaultConfigPath 返回的是未展开字面量
+			abs, err := pathkit.AbsPath(cfgFile)
+			if err != nil {
+				return fmt.Errorf("解析 config 路径失败: %w", err)
+			}
+			cfgFile = abs
 			return env.Init(cfgFile, debug, local)
 		},
 	}
