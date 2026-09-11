@@ -27,7 +27,7 @@ func newInitCmd(env *env.Env) *cobra.Command {
 			rawPath := args[0]
 
 			// 解析为绝对路径
-			absPath, err := pathkit.AbsPath(rawPath)
+			absPath, err := ExtendPath(rawPath)
 			if err != nil {
 				return fmt.Errorf("解析路径失败: %w", err)
 			}

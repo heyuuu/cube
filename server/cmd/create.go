@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/cmd/env"
+	"cube/create"
+	"cube/util/tui"
 )
 
 // cmd `cube create`（模板引擎：本地目录 / git 仓库，单模板或模板集）
@@ -48,7 +50,35 @@ func newCreateCmd(env *env.Env) *cobra.Command {
 			}
 			tpl, _ := cmd.Flags().GetString("tpl")
 			tplName, _ := cmd.Flags().GetString("tpl-name")
-			return env.App().CreateService().Create(tpl, tplName, args[0], vars)
+			svc := env.App().CreateService()
+
+			// 目标路径在本层展开为绝对路径（~/ 相对路径），domain 不感知进程 cwd
+			absTarget, err := ExtendPath(args[0])
+			if err != nil {
+				return fmt.Errorf("解析目标路径失败: %w", err)
+			}
+
+			// --tpl 缺省的交互收集留在 cmd：来源可能是 ~/ 路径，须在本层展开完才进 domain
+			if tpl == "" {
+				v, err := tui.Input("模板来源（本地目录或 git url）", svc.DefaultSource(), "", func(v string) error {
+					if v == "" {
+						return fmt.Errorf("模板来源不能为空")
+					}
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+				tpl = v
+			}
+			if !create.IsGitSource(tpl) {
+				abs, err := ExtendPath(tpl)
+				if err != nil {
+					return fmt.Errorf("解析模板来源路径失败: %w", err)
+				}
+				tpl = abs
+			}
+			return svc.Create(tpl, tplName, absTarget, vars)
 		},
 	}
 

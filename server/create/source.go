@@ -15,7 +15,9 @@ import (
 // gitUrlPrefixes 触发 git clone 的来源前缀。本地路径（含 ~/ 开头）不在此列。
 var gitUrlPrefixes = []string{"https://", "http://", "git://", "ssh://", "file://", "git@"}
 
-func isGitSource(source string) bool {
+// IsGitSource 判定模板来源是否为 git url 形态（本地路径——含 ~/ 前缀——返回 false）。
+// 供 cmd 层决定来源是否要展开为绝对路径：本地路径展开，url 原样传给 clone。
+func IsGitSource(source string) bool {
 	if strings.HasSuffix(source, ".git") {
 		return true
 	}
@@ -28,18 +30,15 @@ func isGitSource(source string) bool {
 }
 
 // ResolveTemplateDir 把来源（本地目录或 git url）解析为「来源根目录」。
+// 本地来源须为绝对路径（~/ 与相对路径由 cmd 层展开，domain 不感知进程 cwd 与 home）；
 // git 来源 clone --depth 1 到系统临时目录，返回 cleanup 供成功后删除临时目录；
 // 失败时 cleanup 为 nil（现场保留，路径已在错误信息中给出，便于排查模板问题）。
 func ResolveTemplateDir(source string) (dir string, cleanup func(), err error) {
-	if !isGitSource(source) {
-		absDir, err := pathkit.AbsPath(source)
-		if err != nil {
-			return "", nil, fmt.Errorf("解析模板来源路径失败: %w", err)
+	if !IsGitSource(source) {
+		if info, err := os.Stat(source); err != nil || !info.IsDir() {
+			return "", nil, fmt.Errorf("模板来源目录不存在或不是目录: %s", pathkit.PrettyPath(source))
 		}
-		if info, err := os.Stat(absDir); err != nil || !info.IsDir() {
-			return "", nil, fmt.Errorf("模板来源目录不存在或不是目录: %s", pathkit.PrettyPath(absDir))
-		}
-		return absDir, nil, nil
+		return source, nil, nil
 	}
 
 	tempDir, err := os.MkdirTemp("", "cube-create-")

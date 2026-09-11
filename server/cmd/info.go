@@ -10,7 +10,6 @@ import (
 
 	"cube/cmd/env"
 	"cube/util/git"
-	"cube/util/pathkit"
 	"cube/util/tui"
 )
 
@@ -62,7 +61,7 @@ query 支持两种搜索模式：
 			// 路径 query 命中 worktree 时注明当前所属（1032 归并：项目身份是主仓库，
 			// 但用户在 worktree 目录里执行，需指出实际所在副本）
 			if isPathQuery(query) {
-				if absPath, err := pathkit.AbsPath(query); err == nil {
+				if absPath, err := ExtendPath(query); err == nil {
 					if root, ok := git.FindGitRoot(absPath); ok && root != proj.Path() {
 						branch := git.CurrentBranch(root)
 						if branch != "" {

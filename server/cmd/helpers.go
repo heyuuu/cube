@@ -4,13 +4,51 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"cube/opener"
 	"cube/project"
-	"cube/util/pathkit"
 	"cube/util/tui"
 )
+
+// ExtendPath 展开路径为绝对路径，支持相对路径、~ 开头的路径
+func ExtendPath(p string) (string, error) {
+	// 判空
+	if p == "" {
+		return "", errors.New("路径不可为空")
+	}
+
+	// 绝对路径
+	if filepath.IsAbs(p) {
+		return filepath.Clean(p), nil
+	}
+
+	// 支持 ~ 前缀
+	if p == "~" || strings.HasPrefix(p, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("获取 home 路径失败: %w", err)
+		} else if home == "" {
+			return "", errors.New("home 路径为空")
+		}
+		// TrimPrefix 后 "~" 得 ""（Join 返回 home 本身），两种形态统一处理
+		return filepath.Join(home, strings.TrimPrefix(p, "~")), nil
+	}
+
+	// ~user 形态（他人 home）不支持展开，也不得当作相对路径静默拼 cwd——显式报错
+	if strings.HasPrefix(p, "~") {
+		return "", fmt.Errorf("不支持 ~user 形式的路径（仅支持 ~/ 指向 home）: %s", p)
+	}
+
+	// 支持相对路径
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("获取当前目录失败: %w", err)
+	}
+	return filepath.Join(wd, p), nil
+}
 
 // getArg 从 args 切片中安全取第 index 个元素，越界返回空字符串。
 func getArg(args []string, index int) string {
@@ -57,12 +95,12 @@ func isPathQuery(query string) bool {
 // searchProjects 搜索项目列表
 //
 // query 为搜索关键词，默认为搜索项目名；当以`.`/`~`/`/` 开头时，当做路径。
-// 路径 query 在本层用 AbsPath 基于 cwd 解析为绝对路径后再传入 domain——
+// 路径 query 在本层用 ExtendPath 基于 cwd 解析为绝对路径后再传入 domain——
 // cwd 依赖属于出口层职责，domain 只接受绝对路径/~ 前缀。
 // upper 表示是否向上搜索。仅 query 为路径时生效，用于在项目子目录标定当前目录时使用。
 func searchProjects(service *project.Service, query string, up bool) ([]*project.Project, error) {
 	if isPathQuery(query) {
-		absPath, err := pathkit.AbsPath(query)
+		absPath, err := ExtendPath(query)
 		if err != nil {
 			return nil, fmt.Errorf("解析路径 query 失败: query=%s err=%w", query, err)
 		}
@@ -93,7 +131,7 @@ func pickProject(service *project.Service, query string, localMode bool) (*proje
 	if len(projects) == 0 {
 		// 路径 query 落在 worktree 内：SearchByPath 找不到（worktree 通常在项目目录之外），归并主项目
 		if isPathQuery(query) {
-			if absPath, err := pathkit.AbsPath(query); err == nil {
+			if absPath, err := ExtendPath(query); err == nil {
 				if proj := service.ResolveProject(absPath); proj != nil {
 					return proj, nil
 				}
@@ -121,7 +159,7 @@ func pickProject(service *project.Service, query string, localMode bool) (*proje
 // checkOpenPath 解析并校验路径：返回绝对路径及其是否为目录。
 func checkOpenPath(path string) (absPath string, isDir bool, err error) {
 	// 获取绝对路径
-	absPath, err = pathkit.AbsPath(path)
+	absPath, err = ExtendPath(path)
 	if err != nil {
 		return "", false, err
 	}

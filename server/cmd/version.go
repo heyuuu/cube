@@ -12,10 +12,10 @@ import (
 func newVersionCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "show version",
-		Long:  `显示 cube 当前版本号。`,
+		Short: "显示当前版本号",
+		Long:  `显示当前版本号`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("cube " + version.VersionInfo())
+			fmt.Println(version.AppName + ": " + version.VersionInfo())
 			return nil
 		},
 	}

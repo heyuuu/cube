@@ -20,27 +20,22 @@ func NewService(cfg config.CreateConfig) *Service {
 	return &Service{defaultSource: cfg.TemplateSource}
 }
 
+// DefaultSource 返回 config 配置的默认模板来源（cmd 层交互收集时的预填值）。
+func (s *Service) DefaultSource() string { return s.defaultSource }
+
 // Create 生成项目到 targetPath。
-// source 为空时用默认来源（config 的 create.templateSource）弹交互输入框（预填该默认值）；
+// source 与 targetPath 须为绝对路径（或 git url），~/ 与相对路径由 cmd 层 ExtendPath 展开——
+// domain 不感知进程 cwd 与 home；
 // templateName 语义：单模板传名报错、模板集缺省交互选择、指定名不存在报错并列出可用；
 // cliVars 传了未声明的 key 报错，缺的交互提问。
 func (s *Service) Create(source, templateName, targetPath string, cliVars map[string]string) error {
+	if source == "" {
+		return fmt.Errorf("模板来源不能为空")
+	}
+
 	// 目标路径预检放在一切交互之前——不能让用户答完来源/模板/变量才被告知路径非法
 	if err := validateTarget(targetPath); err != nil {
 		return err
-	}
-
-	if source == "" {
-		v, err := tui.Input("模板来源（本地目录或 git url）", s.defaultSource, "", func(v string) error {
-			if v == "" {
-				return fmt.Errorf("模板来源不能为空")
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		source = v
 	}
 
 	sourceDir, cleanup, err := ResolveTemplateDir(source)
@@ -97,17 +92,13 @@ func (s *Service) Create(source, templateName, targetPath string, cliVars map[st
 
 // loadTemplate 校验模板目录并解析根下的 template.yaml。
 func loadTemplate(templateDir string) (*TemplateYaml, error) {
-	absDir, err := pathkit.AbsPath(templateDir)
-	if err != nil {
-		return nil, fmt.Errorf("解析模板目录失败: %w", err)
-	}
-	info, err := os.Stat(absDir)
+	info, err := os.Stat(templateDir)
 	if err != nil || !info.IsDir() {
-		return nil, fmt.Errorf("模板目录不存在或不是目录: %s", pathkit.PrettyPath(absDir))
+		return nil, fmt.Errorf("模板目录不存在或不是目录: %s", pathkit.PrettyPath(templateDir))
 	}
-	data, err := os.ReadFile(absDir + string(os.PathSeparator) + "template.yaml")
+	data, err := os.ReadFile(templateDir + string(os.PathSeparator) + "template.yaml")
 	if err != nil {
-		return nil, fmt.Errorf("模板目录缺少 template.yaml（不是合法模板目录）: %s", pathkit.PrettyPath(absDir))
+		return nil, fmt.Errorf("模板目录缺少 template.yaml（不是合法模板目录）: %s", pathkit.PrettyPath(templateDir))
 	}
 	return InitTemplateYaml(data)
 }
@@ -173,23 +164,19 @@ func interpolateTemplate(tpl *TemplateYaml, vars map[string]string) error {
 	return nil
 }
 
-// validateTarget 预检目标路径：已存在时必须是空目录（防覆盖既有内容）。
+// validateTarget 预检目标路径（绝对路径，cmd 层已展开）：已存在时必须是空目录（防覆盖既有内容）。
 // 在 Create 一切交互之前调用，让路径错误第一时间暴露。
 func validateTarget(targetPath string) error {
-	absPath, err := pathkit.AbsPath(targetPath)
-	if err != nil {
-		return fmt.Errorf("解析目标路径失败: %w", err)
-	}
-	if info, err := os.Stat(absPath); err == nil {
+	if info, err := os.Stat(targetPath); err == nil {
 		if !info.IsDir() {
-			return fmt.Errorf("目标路径已存在且不是目录: %s", pathkit.PrettyPath(absPath))
+			return fmt.Errorf("目标路径已存在且不是目录: %s", pathkit.PrettyPath(targetPath))
 		}
-		entries, err := os.ReadDir(absPath)
+		entries, err := os.ReadDir(targetPath)
 		if err != nil {
 			return fmt.Errorf("读取目标目录失败: %w", err)
 		}
 		if len(entries) > 0 {
-			return fmt.Errorf("目标目录非空，拒绝覆盖: %s", pathkit.PrettyPath(absPath))
+			return fmt.Errorf("目标目录非空，拒绝覆盖: %s", pathkit.PrettyPath(targetPath))
 		}
 	}
 	return nil
@@ -197,14 +184,10 @@ func validateTarget(targetPath string) error {
 
 // prepareTarget 创建目标目录（含多级），返回绝对路径。合法性已由 validateTarget 预检。
 func prepareTarget(targetPath string) (string, error) {
-	absPath, err := pathkit.AbsPath(targetPath)
-	if err != nil {
-		return "", fmt.Errorf("解析目标路径失败: %w", err)
-	}
-	if err := os.MkdirAll(absPath, 0o755); err != nil {
+	if err := os.MkdirAll(targetPath, 0o755); err != nil {
 		return "", fmt.Errorf("创建目标目录失败: %w", err)
 	}
-	return absPath, nil
+	return targetPath, nil
 }
 
 // runInit 逐条执行 init 命令（sh -c，cwd 为生成后的项目根，stdio 接终端），任一失败中止。
