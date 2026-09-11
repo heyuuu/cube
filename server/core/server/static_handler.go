@@ -23,9 +23,11 @@ func NewStaticHandler(fs fs.FS) *StaticHandler {
 //   - index.html 未嵌入（纯后端模式）→ 404
 //   - /api/*、/docs、/openapi.json 的未命中**不走 fallback**，按 404 处理——
 //     否则 API 打错路径会拿到 HTML 200，错误被吞成莫名的解析失败
-//
-// pattern 用 "GET ..." 前缀限定方法，非 GET/HEAD 请求由 mux 直接回 405。
 func (h *StaticHandler) Register(r *Routes) {
+	if h.fs == nil {
+		return
+	}
+
 	// index.html 启动时读一次即可（embed 内容恒定）；读不到即纯后端模式，页面路径按 404 处理
 	indexFile, _ := fs.ReadFile(h.fs, "index.html")
 	if indexFile == nil {
@@ -37,12 +39,14 @@ func (h *StaticHandler) Register(r *Routes) {
 			http.NotFound(w, req)
 			return
 		}
+		// 尝试读静态资源
 		if name := strings.TrimPrefix(req.URL.Path, "/"); name != "" {
 			if data, err := fs.ReadFile(h.fs, name); err == nil {
 				http.ServeContent(w, req, name, time.Time{}, bytes.NewReader(data))
 				return
 			}
 		}
+		// 没有对应资源，fallback 到 index.html (支持 SPA)
 		if indexFile == nil {
 			http.NotFound(w, req)
 			return

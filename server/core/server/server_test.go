@@ -18,7 +18,6 @@ import (
 	"testing/fstest"
 
 	"cube/core/config"
-	"cube/web"
 )
 
 // testHandler 框架自测用的最小 handler：一条 GET 路由，覆盖注册链路与 envelope。
@@ -32,11 +31,11 @@ func (testHandler) Register(r *Routes) {
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	// NewServer 不自动追加内置 handler，测试环境须与 app 装配一致，
-	// 否则 system / static 端点不注册，相关契约测试全部打 404
+	// NewServer 内置 system + static，否则相关契约测试全部打 404
+	// 静态资源注入假 FS——内容与这组测试无关
 	srv := NewServer(config.ServerConfig{Port: 6101}, []Handler{
 		NewSystemHandler(),
-		NewStaticHandler(web.StaticFS()),
+		NewStaticHandler(fakeUiFS()),
 		testHandler{},
 	})
 	ts := httptest.NewServer(srv.Handler())
