@@ -19,7 +19,7 @@ import (
 
 // SystemHandler 提供 /api/system/* 端点：服务自身的内部管理 API。
 //
-//	GET  /api/system/whoami   服务身份探活（无鉴权，只读）
+//	GET  /api/system/status    服务身份探活（无鉴权，只读）
 //	POST /api/system/shutdown  触发服务平滑关闭（HMAC 时间戳鉴权，防 CSRF/重放）
 //
 // shutdown 是运维端点，刻意不进 OpenAPI 文档。
@@ -28,7 +28,7 @@ import (
 type SystemHandler struct {
 	// instance 进程级随机实例标识，随 status 暴露。
 	// 服务被重启（如 launchctl 保活拉起新进程）后端口可能立刻被新实例占回，
-	// 调用方（serve.Stop）靠它区分「重启前后的不同实例」，只看端口会误判。
+	// 调用方（Client.Stop）靠它区分「重启前后的不同实例」，只看端口会误判。
 	instance string
 }
 
@@ -66,7 +66,7 @@ func (h *SystemHandler) shutdown(input struct {
 		Token string `json:"token" required:"true"`
 	}
 }) (string, error) {
-	if err := VerifyShutdownToken(h.instance, input.Body.Token, time.Now()); err != nil {
+	if err := VerifyShutdownToken(input.Body.Token, h.instance, time.Now()); err != nil {
 		slog.Warn("shutdown 鉴权失败", "err", err)
 		return "", fmt.Errorf("鉴权失败: %w", err)
 	}

@@ -11,7 +11,7 @@ import (
 	"cube/util/tui"
 )
 
-// newStatusCmd `cube server status` —— 探活（GET /api/system/whoami）。
+// newStatusCmd `cube server status` —— 探活（GET /api/system/status）。
 func newStatusCmd(env *env.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",

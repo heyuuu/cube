@@ -5,7 +5,7 @@
 //	cube server              # = cube server status（查看状态比启动更频繁，裸跑给高频动作）
 //	cube server start        # 前台启动（常驻形态：prod launchd / dev air，不自 fork）
 //	cube server stop         # 触发后台 server 平滑关闭（POST /api/system/shutdown）
-//	cube server status       # 探活（GET /api/system/whoami）
+//	cube server status       # 探活（GET /api/system/status）
 package server
 
 import (

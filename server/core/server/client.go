@@ -40,7 +40,7 @@ type StatusInfo struct {
 // Status 获取服务端状态
 func (c *Client) Status() StatusInfo {
 	url := c.baseUrl + "api/system/status"
-	resp, err := doJsonRequest[StatusResponse](url, nil)
+	resp, err := doJsonRequest[StatusResponse](http.MethodGet, url, nil)
 	if err != nil {
 		return StatusInfo{}
 	}
@@ -64,7 +64,7 @@ func (c *Client) Stop() (stopped bool, replaced bool, err error) {
 	instanceID := st.Instance
 
 	// 触发 shutdown 请求
-	_, err = doJsonRequest[string](c.baseUrl+"api/system/shutdown", map[string]any{
+	_, err = doJsonRequest[string](http.MethodPost, c.baseUrl+"api/system/shutdown", map[string]any{
 		"token": GenShutdownToken(instanceID, time.Now()),
 	})
 	if err != nil {
@@ -96,7 +96,7 @@ func (c *Client) waitOldStop(oldInstance string) (replace bool, err error) {
 
 // helpers
 
-func doJsonRequest[T any](url string, body any) (*T, error) {
+func doJsonRequest[T any](method string, url string, body any) (*T, error) {
 	// 构造 body reader
 	var bodyReader io.Reader
 	if body != nil {
@@ -108,7 +108,7 @@ func doJsonRequest[T any](url string, body any) (*T, error) {
 	}
 
 	// 构造 request
-	req, err := http.NewRequest(http.MethodGet, url, bodyReader)
+	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("构造 request 失败: %w", err)
 	}

@@ -29,7 +29,13 @@ func (testHandler) Register(r *Routes) {
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	srv := NewServer(config.ServerConfig{Port: 6101}, []Handler{testHandler{}})
+	// NewServer 不自动追加内置 handler，测试环境须与 app 装配一致，
+	// 否则 system / static 端点不注册，相关契约测试全部打 404
+	srv := NewServer(config.ServerConfig{Port: 6101}, []Handler{
+		NewSystemHandler(),
+		NewStaticHandler(),
+		testHandler{},
+	})
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 	return ts
@@ -95,7 +101,7 @@ func TestStatus(t *testing.T) {
 	}
 
 	// 实例标识应进程级随机：两个 Server 实例（模拟重启前后）不得同值
-	env2 := getJSON(t, newTestServer(t).URL+"/api/system/whoami")
+	env2 := getJSON(t, newTestServer(t).URL+"/api/system/status")
 	var got2 struct {
 		Instance string `json:"instance"`
 	}
@@ -199,7 +205,10 @@ func TestStaticAPIPathNoFallback(t *testing.T) {
 func TestStaticRootFileAndAssets(t *testing.T) {
 	ts := newTestServer(t)
 
-	// dist 根级文件存在即返回原文件
+	// dist 根级文件存在即返回原文件（前端未构建时 ui 无产物，与 assets 断言同规则跳过）
+	if _, err := fs.ReadFile(uiFS, "ui/favicon.svg"); err != nil {
+		t.Skip("ui/favicon.svg 不存在（前端未构建），跳过 favicon 断言")
+	}
 	resp, err := http.Get(ts.URL + "/favicon.svg")
 	if err != nil {
 		t.Fatalf("GET /favicon.svg 失败: %v", err)
