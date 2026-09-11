@@ -13,6 +13,7 @@ import (
 	"cube/opener"
 	"cube/project"
 	"cube/usage"
+	"cube/web"
 	"cube/workbench"
 )
 
@@ -68,7 +69,7 @@ func Init(cfgFile string, debug bool) (*App, error) {
 			// system 端点（status / shutdown）
 			server.NewSystemHandler(),
 			// 静态前端资源路由（/assets/* 与 SPA fallback）
-			server.NewStaticHandler(),
+			server.NewStaticHandler(web.StaticFS()),
 
 			configHandler,
 			projectHandler,

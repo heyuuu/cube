@@ -6,7 +6,7 @@ package handlers
 //
 // 这里只测「HTTP 出口」的契约（路由 / DTO / envelope / 状态码）；业务规则的深测在各自
 // domain 包的单测里，此处只构造能让 handler 走到目标分支的最小场景。
-// 服务端框架本身的测试（静态资源 / SPA fallback / system 端点）在 cube/web 包。
+// 服务端框架本身的测试（静态资源 / SPA fallback / system 端点）在 cube/core/server 包。
 
 import (
 	"encoding/json"

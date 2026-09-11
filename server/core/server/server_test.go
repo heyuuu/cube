@@ -4,6 +4,7 @@ package server
 // 打真实 HTTP 请求验证框架自身的契约（system 端点 / openapi / SPA fallback / 缓存头 / 端口）。
 //
 // 框架自测不依赖任何业务 handler——用 testHandler 注册一条最小路由即可覆盖注册链路；
+// 静态资源契约向 StaticHandler 注入假 FS（fstest.MapFS）确定性覆盖，不依赖 make build-ui 产物；
 // 业务 handler 的契约测试（路由 / DTO / envelope）在 cube/handlers 包。
 
 import (
@@ -14,8 +15,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"cube/core/config"
+	"cube/web"
 )
 
 // testHandler 框架自测用的最小 handler：一条 GET 路由，覆盖注册链路与 envelope。
@@ -33,7 +36,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	// 否则 system / static 端点不注册，相关契约测试全部打 404
 	srv := NewServer(config.ServerConfig{Port: 6101}, []Handler{
 		NewSystemHandler(),
-		NewStaticHandler(),
+		NewStaticHandler(web.StaticFS()),
 		testHandler{},
 	})
 	ts := httptest.NewServer(srv.Handler())
@@ -160,11 +163,7 @@ func TestOpenAPIJSON(t *testing.T) {
 }
 
 func TestStaticSPAFallback(t *testing.T) {
-	// ui/index.html 是 air pre_cmd 生成的纯文本占位（前端未构建）时，无法断言 HTML 回退
-	if index, err := fs.ReadFile(uiFS, "ui/index.html"); err != nil || !contains(string(index), "<!doctype html") {
-		t.Skip("ui/index.html 是纯文本占位（前端未构建），跳过 SPA fallback 断言")
-	}
-	ts := newTestServer(t)
+	ts := newStaticTestServer(t, fakeUiFS())
 	for _, path := range []string{"/", "/projects", "/projects?view=tree", "/config"} {
 		resp, err := http.Get(ts.URL + path)
 		if err != nil {
@@ -182,20 +181,44 @@ func TestStaticSPAFallback(t *testing.T) {
 	}
 }
 
-// TestStaticAPIPathNoFallback API 路径未命中必须 404 而非回退 HTML，
-// 否则打错路径的前端拿到 HTML 200，错误被吞成解析失败。
-func TestStaticAPIPathNoFallback(t *testing.T) {
-	ts := newTestServer(t)
-	for _, path := range []string{"/api/not-exist", "/docs/", "/openapi.json "} {
+// TestStaticPureBackendMode index.html 缺失（纯后端模式）时页面路径按 404 处理，
+// 但已嵌入的产物文件仍正常返回。
+func TestStaticPureBackendMode(t *testing.T) {
+	ts := newStaticTestServer(t, fstest.MapFS{
+		"favicon.svg": &fstest.MapFile{Data: []byte("<svg/>")},
+	})
+	for _, path := range []string{"/", "/projects"} {
 		resp, err := http.Get(ts.URL + path)
 		if err != nil {
 			t.Fatalf("GET %s 失败: %v", path, err)
 		}
 		resp.Body.Close()
-		// /openapi.json 带尾空格会被 ServeMux 清洗后命中 openapi.json 本身，跳过该断言
-		if path == "/openapi.json " && resp.StatusCode == http.StatusOK {
-			continue
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("纯后端模式 GET %s 应为 404, got %d", path, resp.StatusCode)
 		}
+	}
+	resp, err := http.Get(ts.URL + "/favicon.svg")
+	if err != nil {
+		t.Fatalf("GET /favicon.svg 失败: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("纯后端模式产物文件仍应 200, got %d", resp.StatusCode)
+	}
+}
+
+// TestStaticAPIPathNoFallback API 路径未命中必须 404 而非回退 HTML，
+// 否则打错路径的前端拿到 HTML 200，错误被吞成解析失败。
+// 注入含 index.html 的假 FS——index 存在才有「错误回退」可暴露，断言才有强度。
+// /openapi.json 与 /docs 是 huma 注册的真实路由（spec/文档端点），不在此列。
+func TestStaticAPIPathNoFallback(t *testing.T) {
+	ts := newStaticTestServer(t, fakeUiFS())
+	for _, path := range []string{"/api/not-exist", "/docs/", "/api/system/status"} {
+		resp, err := http.Get(ts.URL + path)
+		if err != nil {
+			t.Fatalf("GET %s 失败: %v", path, err)
+		}
+		resp.Body.Close()
 		if resp.StatusCode != http.StatusNotFound {
 			t.Errorf("GET %s 应为 404（不参与 fallback）, got %d", path, resp.StatusCode)
 		}
@@ -203,12 +226,9 @@ func TestStaticAPIPathNoFallback(t *testing.T) {
 }
 
 func TestStaticRootFileAndAssets(t *testing.T) {
-	ts := newTestServer(t)
+	ts := newStaticTestServer(t, fakeUiFS())
 
-	// dist 根级文件存在即返回原文件（前端未构建时 ui 无产物，与 assets 断言同规则跳过）
-	if _, err := fs.ReadFile(uiFS, "ui/favicon.svg"); err != nil {
-		t.Skip("ui/favicon.svg 不存在（前端未构建），跳过 favicon 断言")
-	}
+	// dist 根级文件存在即返回原文件
 	resp, err := http.Get(ts.URL + "/favicon.svg")
 	if err != nil {
 		t.Fatalf("GET /favicon.svg 失败: %v", err)
@@ -219,36 +239,35 @@ func TestStaticRootFileAndAssets(t *testing.T) {
 	}
 
 	// /assets/* 构建产物按普通静态文件返回（不走 FileServer，须自带 Content-Type）
-	asset := firstAssetName(t)
-	if asset == "" {
-		t.Skip("ui/assets 为空（未构建前端），跳过 assets 断言")
-	}
-	resp2, err := http.Get(ts.URL + "/assets/" + asset)
+	resp2, err := http.Get(ts.URL + "/assets/app-abc123.js")
 	if err != nil {
-		t.Fatalf("GET /assets/%s 失败: %v", asset, err)
+		t.Fatalf("GET /assets/app-abc123.js 失败: %v", err)
 	}
 	resp2.Body.Close()
 	if resp2.StatusCode != http.StatusOK {
-		t.Errorf("/assets/%s 应为 200, got %d", asset, resp2.StatusCode)
+		t.Errorf("/assets/app-abc123.js 应为 200, got %d", resp2.StatusCode)
 	}
 	if ct := resp2.Header.Get("Content-Type"); ct == "" {
-		t.Errorf("/assets/%s 应带 Content-Type（按扩展名识别）", asset)
+		t.Error("/assets/app-abc123.js 应带 Content-Type（按扩展名识别）")
 	}
 }
 
-// firstAssetName 从嵌入产物里取一个 assets 文件名。
-func firstAssetName(t *testing.T) string {
+// fakeUiFS 构造一份最小前端产物：index.html、根级文件与一个 assets 构建产物。
+func fakeUiFS() fs.FS {
+	return fstest.MapFS{
+		"index.html":           &fstest.MapFile{Data: []byte("<!doctype html><html>cube-ui</html>")},
+		"favicon.svg":          &fstest.MapFile{Data: []byte("<svg/>")},
+		"assets/app-abc123.js": &fstest.MapFile{Data: []byte("console.log(1)")},
+	}
+}
+
+// newStaticTestServer 只挂 StaticHandler 拉起 server——静态资源契约与业务路由无关。
+func newStaticTestServer(t *testing.T, fsys fs.FS) *httptest.Server {
 	t.Helper()
-	entries, err := fs.ReadDir(uiFS, "ui/assets")
-	if err != nil {
-		return ""
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			return e.Name()
-		}
-	}
-	return ""
+	srv := NewServer(config.ServerConfig{Port: 6101}, []Handler{NewStaticHandler(fsys)})
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	return ts
 }
 
 func contains(s, sub string) bool {

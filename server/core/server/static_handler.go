@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"embed"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -10,16 +9,12 @@ import (
 	"time"
 )
 
-// uiFS 前端构建产物（make build-ui 把 web/dist 的内容拷到这里，go:embed 嵌入）。
-// 目录常驻一个提交进仓库的空 .keep（gitignore 例外）——纯后端开发时 ui 无产物也能编译；
-//
-//go:embed all:ui
-var uiFS embed.FS
+type StaticHandler struct {
+	fs fs.FS
+}
 
-type StaticHandler struct{}
-
-func NewStaticHandler() *StaticHandler {
-	return &StaticHandler{}
+func NewStaticHandler(fs fs.FS) *StaticHandler {
+	return &StaticHandler{fs: fs}
 }
 
 // Register 挂载前端静态资源（Raw 路由，不进 OpenAPI），页面请求按回退链线性解析：
@@ -31,14 +26,8 @@ func NewStaticHandler() *StaticHandler {
 //
 // pattern 用 "GET ..." 前缀限定方法，非 GET/HEAD 请求由 mux 直接回 405。
 func (h *StaticHandler) Register(r *Routes) {
-	rootFS, err := fs.Sub(uiFS, "ui")
-	if err != nil {
-		slog.Error("无法进入 ui 子目录", "err", err)
-		return
-	}
-
 	// index.html 启动时读一次即可（embed 内容恒定）；读不到即纯后端模式，页面路径按 404 处理
-	indexFile, _ := fs.ReadFile(rootFS, "index.html")
+	indexFile, _ := fs.ReadFile(h.fs, "index.html")
 	if indexFile == nil {
 		slog.Info("web/ui 未构建，前端未嵌入，仅提供 API（需要前端执行 make build-ui 后重启）")
 	}
@@ -49,7 +38,7 @@ func (h *StaticHandler) Register(r *Routes) {
 			return
 		}
 		if name := strings.TrimPrefix(req.URL.Path, "/"); name != "" {
-			if data, err := fs.ReadFile(rootFS, name); err == nil {
+			if data, err := fs.ReadFile(h.fs, name); err == nil {
 				http.ServeContent(w, req, name, time.Time{}, bytes.NewReader(data))
 				return
 			}

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -54,15 +53,6 @@ func (s *Server) Handler() http.Handler { return s.routes.Handler() }
 // OpenAPIJSON 返回 OpenAPI 3.1 spec 的 JSON 字节。供 generate 命令或 /openapi.json 端点使用。
 func (s *Server) OpenAPIJSON() ([]byte, error) {
 	return s.routes.OpenAPIJSON()
-}
-
-// BaseURL 按 port 拼 server 的基地址（无尾斜杠），全仓 http 地址拼接收敛于此。
-func BaseURL(cfg config.ServerConfig) string {
-	host := cfg.Host
-	if host == "" {
-		host = "localhost"
-	}
-	return "http://" + host + ":" + strconv.Itoa(cfg.Port)
 }
 
 // ServerURL 访问地址
