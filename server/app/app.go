@@ -50,7 +50,7 @@ func Init(cfgFile string, debug bool) (*App, error) {
 	openerService := opener.NewService(paths.SettingsFile(), nil, server.BaseURL(cfg.Server))
 	usageService := usage.NewService(paths.StateDir())
 	workbenchService := workbench.NewService(projectService.RefreshGitInfo)
-	createService := create.NewService(cfg.Create)
+	createService := create.NewService(paths.SettingsFile())
 	forgeService := forge.NewService(paths.SettingsFile(), filepath.Join(paths.CacheDir(), "forge-repos.json"))
 	services := []any{projectService, openerService, usageService, workbenchService, createService, forgeService}
 

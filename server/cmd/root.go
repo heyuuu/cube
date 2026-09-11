@@ -10,15 +10,15 @@ import (
 	"cube/cmd/alfred"
 	"cube/cmd/dev"
 	"cube/cmd/env"
-	"cube/cmd/server"
 	"cube/cmd/ui"
 	"cube/core/version"
 )
 
 func Execute() {
-	env := env.New()
-	cmd := newRootCmd(env)
+	// 构建 cmd
+	cmd := newRootCmd(env.New())
 
+	// 执行命令
 	if err := cmd.Execute(); err != nil {
 		slog.Error("命令执行失败", "err", err)
 		os.Exit(1)
@@ -55,7 +55,8 @@ func newRootCmd(env *env.Env) *cobra.Command {
 		// 惰性装配：命令真正执行前才 Init（config→logger→app），
 		// --help / 未知命令等不触发 RunE 的路径全程零装配。
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			cmd.SilenceUsage = true // 钩子之前发生的输入类错误仍附 usage；运行期错误不再附 usage
+			// PersistentPreRunE 之前发生的输入类错误仍附 usage；运行期错误不再附 usage
+			cmd.SilenceUsage = true
 			// ~ 前缀在此展开——config.Load 已改用 filepath.Abs（基础设施不依赖
 			// 能力层 pathkit），而默认路径 defaultConfigPath 返回的是未展开字面量
 			abs, err := ExtendPath(cfgFile)
@@ -72,6 +73,7 @@ func newRootCmd(env *env.Env) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug mode")
 	cmd.PersistentFlags().BoolVar(&local, "local", false, "query 缺省时以当前目录定位项目（shell 函数 p 即此模式）")
 
+	// 绑定子命令
 	registerSubCommands(cmd, env)
 
 	return cmd
@@ -81,7 +83,7 @@ func registerSubCommands(cmd *cobra.Command, env *env.Env) {
 	cmd.AddCommand(newVersionCmd(env))
 
 	// web server 相关
-	cmd.AddCommand(server.NewCmd(env))
+	cmd.AddCommand(newServerCmd(env))
 	cmd.AddCommand(ui.NewCmd(env))
 	cmd.AddCommand(newOpenapiCmd(env))
 

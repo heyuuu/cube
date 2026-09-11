@@ -25,7 +25,7 @@ func newCreateCmd(env *env.Env) *cobra.Command {
 目标路径必传，不存在时自动创建（含多级）。
 
 --tpl 模板来源：本地目录或 git 仓库 url（--depth 1 clone 到临时目录）。
-缺省时弹交互输入框，预填 config.json 的 create.templateSource。
+缺省时弹交互输入框，预填 settings.json create 节的 templateSource。
 来源根目录有 template.yaml 则为单模板；一级子目录各有则为模板集。
 
 --tpl-name 模板名：模板集选择子模板用。单模板传名报错；

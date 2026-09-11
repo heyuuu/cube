@@ -1,8 +1,6 @@
 package create
 
 import (
-	"cube/core/config"
-
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -172,7 +170,7 @@ func TestCreateFromCollection(t *testing.T) {
 	ws.WriteFile(filepath.Join("tpls/templates/minimal/template.yaml"), []byte("version: 1\n"))
 	ws.WriteFile(filepath.Join("tpls/templates/minimal/x.go"), []byte("x"))
 
-	svc := NewService(config.CreateConfig{})
+	svc := NewService(ws.Join("settings.json"))
 	target := ws.Join("out")
 	if err := svc.Create(ws.Join("tpls"), "full", target, map[string]string{"project-name": "demo"}); err != nil {
 		t.Fatalf("Create 报错: %v", err)

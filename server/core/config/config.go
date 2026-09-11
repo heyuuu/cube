@@ -11,11 +11,6 @@ import (
 type Config struct {
 	DataDir string       `json:"dataDir"` // 数据目录
 	Server  ServerConfig `json:"server"`
-	Create  CreateConfig `json:"create"`
-}
-
-type CreateConfig struct {
-	TemplateSource string `json:"templateSource"` // cube create 未显式传 --tpl 时的默认模板来源（本地目录或 git url）
 }
 
 type ServerConfig struct {

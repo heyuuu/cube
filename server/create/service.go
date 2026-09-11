@@ -10,18 +10,28 @@ import (
 	"cube/util/tui"
 )
 
+// settingsSection settings.json 中 create 域的节名。
+const settingsSection = "create"
+
 // Service 是模板引擎（cube create）的入口。
-// cfg.TemplateSource 是未显式传来源时的默认值（也是交互输入框的预填值）。
+// 默认模板来源存 settings.json 的 create 节（templateSource），直读不缓存。
 type Service struct {
-	defaultSource string
+	settingsFile string
 }
 
-func NewService(cfg config.CreateConfig) *Service {
-	return &Service{defaultSource: cfg.TemplateSource}
+func NewService(settingsFile string) *Service {
+	return &Service{settingsFile: settingsFile}
 }
 
-// DefaultSource 返回 config 配置的默认模板来源（cmd 层交互收集时的预填值）。
-func (s *Service) DefaultSource() string { return s.defaultSource }
+// DefaultSource 返回默认模板来源（settings.json create 节的 templateSource），
+// 供 cmd 层交互收集来源时预填——直读不缓存，改完即生效。
+func (s *Service) DefaultSource() string {
+	var section struct {
+		TemplateSource string `json:"templateSource"` // 未显式传 --tpl 时的默认模板来源（本地目录或 git url）
+	}
+	config.LoadSection(s.settingsFile, settingsSection, &section)
+	return section.TemplateSource
+}
 
 // Create 生成项目到 targetPath。
 // source 与 targetPath 须为绝对路径（或 git url），~/ 与相对路径由 cmd 层 ExtendPath 展开——

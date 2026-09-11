@@ -1,12 +1,9 @@
 package create
 
 import (
-	"strings"
-
-	"cube/core/config"
-
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"cube/internal/testfixture"
@@ -30,7 +27,7 @@ init:
 `))
 	target := ws.Join("out", "demo")
 
-	svc := NewService(config.CreateConfig{})
+	svc := NewService(ws.Join("settings.json"))
 	err := svc.Create(templateDir, "", target, map[string]string{
 		"project-name": "demo",
 		"module":       "demo",
@@ -56,7 +53,7 @@ init:
 
 func TestCreateErrors(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
-	svc := NewService(config.CreateConfig{})
+	svc := NewService(ws.Join("settings.json"))
 
 	t.Run("缺少 template.yaml", func(t *testing.T) {
 		empty := ws.Mkdir("empty")
