@@ -183,16 +183,39 @@ func (s *Service) OwnsDir(path, dir string) bool {
 	return false
 }
 
-// ResolveProject 把目标目录归并到所属主项目：项目根本身直接命中，否则走 worktree
-// 归并（ResolveMainProject）。所有「拿一个实际目录反查项目」的出口（打开目标 /
-// usage 聚合 / 后续 workspace 子目录）统一走这里，不要在调用方手拼
+// ResolveProject 把目标目录归并到所属主项目：项目根本身直接命中，否则依次走 worktree
+// 归并（ResolveMainProject）与主根 workspace 成员归并。所有「拿一个实际目录反查项目」
+// 的出口（打开目标 / usage 聚合 / workspace 子目录）统一走这里，不要在调用方手拼
 // FindByPath + ResolveMainProject 的两段式。
 // 项目普通子目录不在此列（那是 SearchByPath 的 up 语义，含多结果交互选择）。
 func (s *Service) ResolveProject(dir string) *Project {
 	if p := s.FindByPath(dir); p != nil {
 		return p
 	}
-	return s.ResolveMainProject(dir)
+	if p := s.ResolveMainProject(dir); p != nil {
+		return p
+	}
+	return s.resolveWorkspaceMember(dir)
+}
+
+// resolveWorkspaceMember 把主根直系的 workspace 成员目录归并到所属项目。
+// ResolveMainProject 的向上探测只认 worktree 的 .git 指针文件，主仓库根下的成员命不中
+// （祖先 .git 是目录）；worktree 下的成员无需在此处理，向上探测已覆盖。
+// 只读 projcache 快照（读路径不读 cube.json），且精确匹配成员根本身——成员的子目录
+// 仍是普通子目录，归 SearchByPath 的 up 语义。路径拼接口径与 workspaceTargetsAt 一致。
+func (s *Service) resolveWorkspaceMember(dir string) *Project {
+	for _, proj := range s.Projects() {
+		info, _ := s.GitInfo(proj.Path())
+		if info == nil {
+			continue
+		}
+		for _, w := range info.Workspaces {
+			if filepath.Join(proj.Path(), w.Path) == dir {
+				return proj
+			}
+		}
+	}
+	return nil
 }
 
 // ResolveMainProject 把任意目录归并到主项目（1032 路径归并链路）：
