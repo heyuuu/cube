@@ -34,7 +34,6 @@ type App struct {
 }
 
 func Init(cfgFile string, debug bool) (*App, error) {
-	// 初始化配置
 	cfg, err := config.Load(cfgFile)
 	if err != nil {
 		return nil, fmt.Errorf("加载配置文件失败: %w", err)

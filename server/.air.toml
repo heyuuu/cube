@@ -1,3 +1,6 @@
+#:schema https://json.schemastore.org/any.json
+
+env_files = []
 root = "."
 testdata_dir = "testdata"
 tmp_dir = "tmp"
@@ -13,16 +16,17 @@ tmp_dir = "tmp"
   cmd = "go build -o ./tmp/main ."
   post_cmd = []
   # 启动
-  bin = "./tmp/main"
+  entrypoint = ["./tmp/main"]
   args_bin = ["--debug", "server", "start"]
   # 防抖(毫秒)
   delay = 1000
-  exclude_dir = ["assets", "tmp", "vendor", "testdata", "frontend", "build", "runtime"]
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "runtime"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
   follow_symlink = false
   full_bin = ""
+  ignore_dangerous_root_dir = false
   include_dir = []
   include_ext = ["go", "tpl", "tmpl", "html", "js", "css"]
   include_file = []
@@ -39,15 +43,23 @@ tmp_dir = "tmp"
   app = ""
   build = "yellow"
   main = "magenta"
+  mode = ""
   runner = "green"
   watcher = "cyan"
 
 [log]
   main_only = false
+  silent = false
   time = true
 
 [misc]
   clean_on_exit = false
+
+[proxy]
+  app_port = 0
+  app_start_timeout = 0
+  enabled = false
+  proxy_port = 0
 
 [screen]
   clear_on_rebuild = false

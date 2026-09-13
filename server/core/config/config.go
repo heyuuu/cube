@@ -18,23 +18,20 @@ type ServerConfig struct {
 	Port int    `json:"port"`
 }
 
-// Load 从 path 读取 JSON 配置。
-// path 来自 --config flag（或默认值 ~/.config/cube/config.json）——~ 前缀已由
-// cmd 层（root PersistentPreRunE）展开为绝对路径，此处仅做基于 cwd 的相对路径兜底。
+// Load 从 path 读取 JSON 配置。path 必须是绝对路径—— ~ 与相对路径的展开归 cmd 层，底层不做基于 cwd 的隐式解析。
 func Load(path string) (*Config, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, fmt.Errorf("解析配置路径失败: path=%s err=%w", path, err)
+	if !filepath.IsAbs(path) {
+		return nil, fmt.Errorf("配置路径必须为绝对路径: %s", path)
 	}
 
-	cfg, err := store.LoadJson[Config](absPath)
+	cfg, err := store.LoadJson[Config](path)
 	if errors.Is(err, store.ErrFileMissing) {
 		cfg = Config{} // 文件不存在 → 降级为默认值，不报错
 	} else if err != nil {
 		return nil, err // 读失败/解析失败（store 已包装中文错误）
 	}
 
-	return applyDefaults(&cfg, absPath), nil
+	return applyDefaults(&cfg, path), nil
 }
 
 func applyDefaults(cfg *Config, path string) *Config {

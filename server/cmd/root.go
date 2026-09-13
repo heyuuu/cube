@@ -57,18 +57,16 @@ func newRootCmd(env *env.Env) *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// PersistentPreRunE 之前发生的输入类错误仍附 usage；运行期错误不再附 usage
 			cmd.SilenceUsage = true
-			// ~ 前缀在此展开——config.Load 已改用 filepath.Abs（基础设施不依赖
-			// 能力层 pathkit），而默认路径 defaultConfigPath 返回的是未展开字面量
-			abs, err := ExtendPath(cfgFile)
+			// 展开 cfgFile 路径
+			absCfgFile, err := ExtendPath(cfgFile)
 			if err != nil {
 				return fmt.Errorf("解析 config 路径失败: %w", err)
 			}
-			cfgFile = abs
-			return env.Init(cfgFile, debug, local)
+			return env.Init(absCfgFile, debug)
 		},
 	}
 
-	// 全局 flag 走 cobra 真解析，值经 StringVar 注入闭包变量，供 PersistentPreRunE 读取
+	// 绑定全局 flag
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", defaultConfigPath(), "config file")
 	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug mode")
 	cmd.PersistentFlags().BoolVar(&local, "local", false, "query 缺省时以当前目录定位项目（shell 函数 p 即此模式）")

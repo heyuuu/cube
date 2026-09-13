@@ -19,13 +19,7 @@ func newOpenapiCmd(env *env.Env) *cobra.Command {
 		Use:     "openapi",
 		Aliases: []string{"api"},
 		Short:   "生成 OpenAPI 3.1 spec 到文件",
-		Long: `导出 cube server HTTP API 的 OpenAPI 3.1 spec 到文件，
-用于人工检查或给对接工具使用。
-
-生成不依赖 server 运行，直接来自装配好的路由；输出为
-2 空格缩进的格式化 JSON，默认写 openapi.json，
--o 可指定输出路径（所在目录不存在会自动创建）。`,
-		Args: cobra.NoArgs,
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return writeOpenAPIFile(env.App(), outPath)
 		},
@@ -50,7 +44,7 @@ func writeOpenAPIFile(a *app.App, outPath string) error {
 	pretty.WriteByte('\n')
 	data = pretty.Bytes()
 
-	outPath, err = filepath.Abs(outPath)
+	outPath, err = ExtendPath(outPath)
 	if err != nil {
 		return fmt.Errorf("解析输出文件绝对路径失败: %w", err)
 	}
