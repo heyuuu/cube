@@ -1,21 +1,5 @@
 .DEFAULT_GOAL := build
-.PHONY: build-ui build install tag
-
-# 输入参数
-OUTPUT ?= tmp/cube
-
-# 从 git 收集构建期信息（与 version/version.go 配合，通过 ldflags 注入）
-VERSION    := $(shell git describe --tags --abbrev=0 2>/dev/null || git rev-parse --short HEAD)
-COMMIT     := $(shell git rev-parse --short HEAD)
-BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-
-VERSION_PKG := cube/version
-LDFLAGS := \
-  -X $(VERSION_PKG).version=$(VERSION) \
-  -X $(VERSION_PKG).commit=$(COMMIT) \
-  -X $(VERSION_PKG).buildTime=$(BUILD_TIME)
-
-ZSH_COMPLETION_FILE := ~/.config/cube/zsh.sh
+.PHONY: build-ui build install tag dev-server dev-web dev-link-config last-proposal
 
 # dist 即完整产物，touch 补 .keep 后直接整体 mv 换入（同文件系统 mv 是原子 rename）：
 # 任何时刻 web/ui 要么旧要么新，没有半成品窗口；.keep 是提交进仓库的（保 embed 可编译
@@ -27,32 +11,10 @@ build-ui:
 	mv ./web/dist ./server/web/ui
 
 build: build-ui
-	@echo "==> go build ($(VERSION) @ $(COMMIT))"
-	cd server && go build -ldflags "$(LDFLAGS)" -o ../$(OUTPUT)
-	@echo "==> built $(OUTPUT) ($(VERSION) @ $(COMMIT), $(BUILD_TIME))"
-	@$(OUTPUT) version
+	$(MAKE) -C server build
 
 install: build-ui
-	@echo ">>> 编译安装 go install ... ($(VERSION) @ $(COMMIT) $(BUILD_TIME))"
-	cd server && go install -ldflags "$(LDFLAGS)"
-
-	@echo ">>> 验证是否正确安装..."
-	@# 安装完成，确认生效：PATH 上的 cube 必须是刚构建的版本（输出含本次BUILD_TIME），否则视为安装未生效（GOBIN 不在 PATH / 旧版本在前等），中止
-	@cube version | grep -qF "$(BUILD_TIME)" || { echo "!! 安装校验失败：PATH 上的 cube 不是刚构建的版本（检查 GOBIN 是否在 PATH 且优先于旧安装）" >&2; exit 1; }
-
-	@echo ">>> 已安装版本"
-	@cube version
-
-	@echo ">>> 停止旧服务"
-	@# 关闭旧版本 server（服务未运行时 stop 会非零退出，- 忽略）
-	-@cube server stop 2>/dev/null
-
-	@echo ">>> 写入 zsh 提示"
-	@# 安装 zsh completion + shell 扩展（p / pz，见 scripts/zsh-append.sh）
-	@# completion 生成是覆盖写，重复 install 不会累积
-	@cube completion zsh > $(ZSH_COMPLETION_FILE)
-	@cat scripts/zsh-append.sh >> $(ZSH_COMPLETION_FILE)
-
+	$(MAKE) -C server install
 
 tag: ## 在当前位置打一个新版本 tag（上个版本末位 +1，如 v3.0.6 -> v3.0.7）
 	@set -e; \
@@ -80,13 +42,8 @@ last-proposal:
 
 # -------
 
-# 起动前清掉 6001 上的残留监听：air 被异常退出后孤儿 server 会一直占着端口，
-# 之后 air 每次热重载的新进程都因端口冲突起不来，表现为「改了代码不生效」。
-# 注意必须 -sTCP:LISTEN 只杀监听进程——不带过滤会把连着 6001 的客户端
-# （vite 代理、浏览器连接等）一起杀掉
 dev-server:
-	-@lsof -ti :6001 -sTCP:LISTEN | xargs kill 2>/dev/null || true
-	cd server && air
+	$(MAKE) -C server dev
 
 dev-web:
 	cd web && pnpm dev

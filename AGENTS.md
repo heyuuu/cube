@@ -11,7 +11,7 @@
 - 历史有三代：v1 (php)、v2 (go)、**v3 (当前，按领域重构)**。
 - 出口：本地 Web HTTP server（`cube server`，huma + 标准 ServeMux，主要交互形态）、CLI（人用 / alfred，web 不可用时兜底可行）。
 - 定位原则：不做云服务、不绑 AI（cube 可被 AI 编排，但自身不集成 AI）。
-- Go 源码根在 `server/`（不是仓库根）；`make build` / `make install` 都 `cd server` 再执行。
+- Go 源码根在 `server/`（不是仓库根）；Makefile 分两层——仓库根 Makefile 做跨层编排（build-ui / 转发），`server/Makefile` 管 go 侧动作（build / install / dev，产物落 `server/tmp/cube`）。
 
 ## 分层架构（改代码必须遵守的依赖纪律）
 
@@ -41,11 +41,11 @@
 
 ## 常用命令
 
-构建 / 安装（Makefile 在**仓库根**，已注入 version ldflags；go 源码在 `server/`）：
+构建 / 安装（根 Makefile 编排，go 侧动作与 version ldflags 注入在 `server/Makefile`）：
 
 ```bash
-make build        # 先 pnpm -C web build 并拷 web/dist 到 server/web/ui (go:embed)，再 cd server && go build 到 tmp/cube
-make install      # cd server && go install + 安装 zsh completion
+make build        # 先 pnpm -C web build 并拷 web/dist 到 server/web/ui (go:embed)，再转发 server/Makefile 的 build（产物 server/tmp/cube）
+make install      # server/Makefile 的 go install + 安装校验 + 停旧服 + 安装 zsh completion
 make tag          # 当前位置打递增版本 tag（末位 +1）
 ```
 

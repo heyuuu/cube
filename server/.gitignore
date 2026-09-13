@@ -1,0 +1,13 @@
+# IDE
+.idea
+
+# AI 相关临时目录
+.claude/plans
+.cursor/plans
+.zcode/plans
+
+# 临时目录
+tmp/
+runtime/
+
+#

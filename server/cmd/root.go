@@ -62,7 +62,7 @@ func newRootCmd(env *env.Env) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("解析 config 路径失败: %w", err)
 			}
-			return env.Init(absCfgFile, debug)
+			return env.Init(absCfgFile, debug, local)
 		},
 	}
 
