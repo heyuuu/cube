@@ -10,7 +10,6 @@ import (
 	"cube/cmd/alfred"
 	"cube/cmd/dev"
 	"cube/cmd/env"
-	"cube/cmd/ui"
 	"cube/core/version"
 )
 
@@ -82,7 +81,7 @@ func registerSubCommands(cmd *cobra.Command, env *env.Env) {
 
 	// web server 相关
 	cmd.AddCommand(newServerCmd(env))
-	cmd.AddCommand(ui.NewCmd(env))
+	cmd.AddCommand(newUiCmd(env))
 	cmd.AddCommand(newOpenapiCmd(env))
 
 	// project 相关

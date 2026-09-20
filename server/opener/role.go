@@ -1,7 +1,6 @@
 package opener
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -42,15 +41,6 @@ var roleSlotCounts = map[Role]int{
 func roleSlotCount(r Role) (int, bool) {
 	n, ok := roleSlotCounts[r]
 	return n, ok
-}
-
-// ParseRole 解析单个 role 字符串，未知值返回中文错误。
-func ParseRole(s string) (Role, error) {
-	r := Role(strings.TrimSpace(s))
-	if _, ok := roleSlotCount(r); !ok {
-		return "", fmt.Errorf("未知的 opener role %q（合法值：%s）", s, RolesString(roleOrder))
-	}
-	return r, nil
 }
 
 // RolesString 把 role 声明格式化为 "open-dir,diff-file"（展示用）。

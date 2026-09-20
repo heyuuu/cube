@@ -135,46 +135,6 @@ func TestStaticAbsPath(t *testing.T) {
 	}
 }
 
-// TestAbsPath 基于 cwd 的绝对化糖层：相对路径以进程当前目录为基准。
-func TestAbsPath(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	dir := t.TempDir()
-	t.Chdir(dir) // 固定 cwd，测试不依赖外部目录
-
-	cases := []struct {
-		name    string
-		in      string
-		want    string
-		wantErr bool
-	}{
-		{"单点指 cwd", ".", dir, false},
-		{"./sub 基于 cwd", "./sub", filepath.Join(dir, "sub"), false},
-		{"../x 越过 cwd", "../x", filepath.Clean(filepath.Join(dir, "..", "x")), false},
-		{"绝对路径覆盖 cwd", "/abs", "/abs", false},
-		{"~ 展开优先于 cwd", "~/code", filepath.Join(home, "code"), false},
-		{"空串报错", "", "", true},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got, err := AbsPath(c.in)
-			if c.wantErr {
-				if err == nil {
-					t.Fatalf("AbsPath(%q) 期望报错，实际返回 %q", c.in, got)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("AbsPath(%q) 出错: %v", c.in, err)
-			}
-			if got != c.want {
-				t.Fatalf("AbsPath(%q) = %q, want %q", c.in, got, c.want)
-			}
-		})
-	}
-}
-
 // ---------- PrettyPath ----------
 
 func TestPrettyPath(t *testing.T) {

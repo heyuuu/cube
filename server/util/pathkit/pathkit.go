@@ -52,15 +52,6 @@ func StaticAbsPath(p string) (string, error) {
 	return resolveAbs(p, "")
 }
 
-// AbsPath 解析 path 对应的绝对路径，支持以 ~ 表示 home 路径，支持 . 或 .. 开头的相对路径
-func AbsPath(p string) (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("获取当前目录失败: %w", err)
-	}
-	return resolveAbs(p, wd)
-}
-
 func PrettyPath(path string) string {
 	if path == "" {
 		return ""
