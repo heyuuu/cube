@@ -16,16 +16,17 @@
 ## 分层架构（改代码必须遵守的依赖纪律）
 
 ```
-基础设施  config / db / logger / version / runtime               所有层共享
-能力      opener / util(git / fuzzy / easycache / pathkit / slicekit / tui)  通用动作, 不含业务实体
-领域      project (含 projcache / scan / clone / workspace) / usage / workbench   业务 domain, 含实体和规则
-出口      cmd / handlers / web                                     把领域包成 CLI/Web（handlers=业务 HTTP handler 层，web=服务端框架）
+基础设施  core/config / core/logger / core/version                 所有层共享
+独立工具  util(git / gitapi / fuzzy / easycache / pathkit / slicekit / iconkit / store / tui)  通用动作, 不含业务实体, 只依赖标准库/第三方
+能力      opener / core/server                                    通用动作与服务端框架, 不含业务实体
+领域      project (含 projcache / scan / clone / workspace) / usage / workbench / forge   业务 domain, 含实体和规则
+出口      cmd / handlers / web                                    把领域包成 CLI/Web（handlers=业务 HTTP handler 层；web 包只剩前端构建产物 go:embed 容器，服务端框架在 core/server）
 装配      app / main                                              接线
 ```
 
-- 基础设施不依赖上层；能力层只依赖基础设施；领域层依赖能力+基础设施；`handlers` 依赖领域层与 `web` 框架；**cmd 与 web 不互调**；`app` 是唯一接线点。
-- **App 装配是显式构造，CLI 侧惰性触发**：`app.New(cfg)` 一次性开 db + AutoMigrate + 构造各 service + 组装 web server（`server/app/app.go`）。`cmd.Execute()`（`server/cmd/root.go`）在 main 里调用；命令工厂收 `*env.Env`（`cmd/env` 包），由 root 的 `PersistentPreRunE` 惰性触发 `env.Init` → `app.New(cfg)`。**无全局单例、无 `app.Default()`、无包级 `init()` 反向依赖**（「惰性」仅指 cmd 层触发时机，装配本身仍是显式一次性构造）。
-- 加一个新 domain = ①领域包 ②`cmd/<x>` 子命令组 ③`handlers/` 加 `<domain>_handler.go`（实现 `Handler.Register`，注册走 `web.ApiGet`/`web.ApiPost`） ④config 加节 ⑤`app/app.go` 装配清单加构造。**五处都是加法，不碰现有 domain**。
+- **util 是独立工具层**：只依赖标准库/第三方，不含业务实体；基础设施层与能力层都可以依赖 util（`core/config → util/store`、`core/logger → util/tui` 合规）。基础设施不依赖上层；能力层不依赖领域/出口；领域层依赖能力+基础设施+util；`handlers` 依赖领域层与 `core/server` 框架；**cmd 与 web 不互调**（cmd 经 `core/server` 的 `Client` 走 localhost HTTP 探活/关停 server，是进程间通信，不算互调）；`app` 是唯一接线点。
+- **App 装配是显式构造，CLI 侧惰性触发**：`app.New(cfg)` 一次性构造各 service + 组装 web server（`server/app/app.go`）。`cmd.Execute()`（`server/cmd/root.go`）在 main 里调用；命令工厂收 `*env.Env`（`cmd/env` 包），由 root 的 `PersistentPreRunE` 惰性触发 `env.Init` → `app.New(cfg)`。**无全局单例、无 `app.Default()`、无包级 `init()` 反向依赖**（「惰性」仅指 cmd 层触发时机，装配本身仍是显式一次性构造）。
+- 加一个新 domain = ①领域包 ②`cmd/<x>` 子命令组 ③`handlers/` 加 `<domain>_handler.go`（实现 `Handler.Register`，注册走 `Routes.Get` / `Routes.Post` + `server.JsonHandler`） ④config 加节 ⑤`app/app.go` 装配清单加构造。**五处都是加法，不碰现有 domain**。
 
 ## 关键机制（改动前先理解）
 
@@ -34,10 +35,10 @@
 - **projcache 异步采集**（原 projcache，1030 起含 workspace 更名）：`project list --status` 等读命令从 `~/.config/cube/cache/git.json` 读项目状态快照（git 信息 + worktree 枚举 + workspace 成员，几乎零开销）；**单写者模型**——常驻 server 是 git.json 的唯一写方（后台异步采集回写），CLI 只读不写，落盘靠原子写（tmp + rename），无跨进程锁。**读路径不得阻塞采集——只能读快照**（workspace 也一样：解析/探测只发生在采集侧，读路径不读 `.cube/cube.json`）。详见 [`docs/spec/现状.md`](./docs/spec/现状.md)「三、关键机制」。
 - **monorepo workspace（1030）**：项目根 `.cube/cube.json` 声明打开子目录（`workspaces` 显式声明优先，空数组不回落探测；字段缺失按 `workspaceScanRule`/默认 `pnpm|npm` 探测 pnpm/npm 标准声明文件为正选——规则格式 `|` 分规则组按序回落，组内 `+` 合并去重）。文件格式层在 `project/cubefile`（多节容器：读写 + 节存在性语义 + 未知节保留），workspace 解析与探测在 `project/workspace` 包（纯函数），组合进 projcache 采集。此为「project 自身的配置放项目内跟仓库走」的落地形态，不放全局配置。
 - **OpenTargets 是 CLI 专用出口**（`cube open` / alfred / `project/open` 归属校验）：Web 前端不消费它（无 HTTP 端点），前端下拉从 list DTO 快照字段自拼同一套排序——改打开目标的排序/展示规则时，后端 `targetEntries` 与前端 `projectTargets` 两边同步。
-- **opener：接口 + 唯一 exec 实现 + settings.json**：`Opener` 是接口（`opener/opener.go`），唯一实现 `execOpener`（`opener/exec.go`）：按 role 各配一条动作串 `actions: {role: "<kind>:<模板>"}`，kind ∈ {`exec:`（命令，sh 风格分词 + `$0/$1` 占位）、`url:`（`/` 开头站内路由拼 baseURL + query encode；`http(s)://` 外部链接）}，两种动作统一经 `Executor` 执行（`opener/executor.go`，测试注入 fake）；role 是纯参数约束（槽数，见 `opener/role.go`），声明 roles = actions 键集合；`Open(role, slotArgs...)` 的 role 校验收敛在实现内。baseURL（站内路由用，来自 config `server.port`）由 `app` 装配注入，opener 包不 import config。**opener 数据存 settings.json 的 openers 节**（`settings` 包节级 API，Service 直读不缓存、写侧领域校验；详见 现状.md 3.3）——改 opener 时同步看 `opener/opener.go`、`opener/exec.go`、`opener/role.go`、`opener/executor.go`、`settings/settings.go`。
+- **opener：接口 + 唯一 exec 实现 + settings.json**：`Opener` 是接口（`opener/opener.go`），唯一实现 `actionOpener`（`opener/exec.go`）：按 role 各配一条动作串 `actions: {role: "<kind>:<模板>"}`，kind ∈ {`exec:`（命令，sh 风格分词 + `$0/$1` 占位）、`url:`（`/` 开头站内路由拼 baseURL + query encode；`http(s)://` 外部链接）}，两种动作统一经 `Executor` 执行（`opener/executor.go`，测试注入 fake）；role 是纯参数约束（槽数，见 `opener/role.go`），声明 roles = actions 键集合；`Open(role, slotArgs...)` 的 role 校验收敛在实现内。baseURL（站内路由用，来自 config `server.port`）由 `app` 装配注入，opener 包不 import config。**opener 数据存 settings.json 的 openers 节**（`settings` 包节级 API，Service 直读不缓存、写侧领域校验；详见 现状.md 3.3）——改 opener 时同步看 `opener/opener.go`、`opener/exec.go`、`opener/role.go`、`opener/executor.go`、`settings/settings.go`。
 - **CLI 惰性装配（cmd/env）**：全局 flag（`--config` / `--debug` / `--local`）走 cobra PersistentFlags 真解析（`StringVar` 闭包注入，`cmd/root.go`）；装配链（config→logger→app）收敛在 `cmd/env` 包 `Env.Init`，由 root 的 `PersistentPreRunE` 触发——不进 RunE 的路径（`--help`/未知命令）全程零装配。命令工厂统一收 `env *env.Env`，RunE 内联 `env.App()` 取依赖。钩子顶部 `cmd.SilenceUsage = true` 画出 usage 边界：输入类错误（flag/参数）附 usage，运行期错误（Init/RunE）不附。错误输出双通道：cobra `Error:` 行给终端、`slog` 给日志（`checkError` 已移除）。注意 cobra 只执行最近一层 PersistentPreRunE——子命令自定义钩子会顶掉 root 的装配钩子。
-- **Web 出口分两层**：`web` 包是服务端框架（Server 装配 / envelope / 静态资源 / system 端点，`web.NewServer(handlers ...Handler)` 自动追加内置 system 与 static handler）；业务 handler 在 `handlers` 包（`<domain>_handler.go` 同包分文件，不按 domain 分子包），实现 `Handler.Register(api huma.API, mux *http.ServeMux)`——注册统一走 `web.ApiGet` / `web.ApiPost`，WebSocket 等原生路由直接挂 mux（不经 huma）。统一 `ApiOutput{ok,message,data}` envelope（泛型 `ApiOutput[T]`，见 `web/api.go`）；路径强制 `/api/` 前缀，由 `apiRegister` 解析 group tag + operationId。响应 JSON 经 `nilSliceJSONFormat`（`web/jsonfmt.go`）把 nil 切片序列化为 `[]`——新增 handler 自动复用，不要在 handler 里手写 `make([]T, 0)` 兜底。
-- **配置与双环境**：默认目录按环境分流——dev（源码直跑 / air / run.sh）→ `~/.config/cube-dev/`，prod（`make build` / `make install`，ldflags 注入了正式 version）→ `~/.config/cube/`；身份判定见 `version.IsDev()`，详见 [`docs/proposals/archived/1026-环境分离/`](./docs/proposals/archived/1026-环境分离/)。`config.json` 按 domain 分节，`server.port` 是端口唯一事实源（无 `-p` flag、不支持多实例）。`--config` 覆盖配置文件路径，`--debug` 开 debug（只影响 logger 初始化）。配置解析失败/缺失不阻断启动（降级优先，见 `opener.NewService` 跳过坏配置）。**无热 reload**（已移除，转向命令式改 config）。配置目录下的运行期状态（sqlite `data.db`、`cache/git.json`、`app.log`）由 `app.Paths`（`server/app/paths.go`）统一计算，不要在调用方硬拼路径。应用标识（`AppName`/`AppTitle`）收敛在 `version/name.go`：whoami 身份 / 进程探测 / shutdown token / 默认配置目录路径均由 `version.AppName` 派生；日志文件名是通用的 `app.log`，不含应用名。
+- **Web 出口分两层**：服务端框架在 `core/server` 包（Server 装配 / 路由 / envelope / 静态资源 / system 端点，`server.NewServer(cfg, handlers ...Handler)` 自动追加内置 system 与 static handler；`Client` 提供 server 进程探活/关停）；业务 handler 在 `handlers` 包（`<domain>_handler.go` 同包分文件，不按 domain 分子包），实现 `Handler.Register(r *server.Routes)`——注册统一走 `r.Get` / `r.Post` + `server.JsonHandler`（自动包 envelope），WebSocket 等原生路由走 `r.Raw`（不经 huma）。统一 `Envelope{ok,message,data}` envelope（泛型 `Envelope[T]`，见 `core/server/routes.go`）；路径强制 `/api/` 前缀，由 `parseInfoFromPath` 解析 group tag + operationId。响应 JSON 经 `nilSliceJSONFormat`（`core/server/jsonfmt.go`）把 nil 切片序列化为 `[]`——新增 handler 自动复用，不要在 handler 里手写 `make([]T, 0)` 兜底。`server/web` 包只剩前端构建产物的 go:embed 容器（`static.go` 的 `StaticFS()`，产物由 `make build-ui` 拷入）。
+- **配置与双环境**：默认目录按环境分流——dev（源码直跑 / air / run.sh）→ `~/.config/cube-dev/`，prod（`make build` / `make install`，ldflags 注入了正式 version）→ `~/.config/cube/`；身份判定见 `version.IsDev()`，详见 [`docs/proposals/archived/1026-环境分离/`](./docs/proposals/archived/1026-环境分离/)。`config.json` 按 domain 分节，`server.port` 是端口唯一事实源（无 `-p` flag、不支持多实例）。`--config` 覆盖配置文件路径，`--debug` 开 debug（只影响 logger 初始化）。配置解析失败/缺失不阻断启动（降级优先，见 `opener.NewService` 跳过坏配置）。**无热 reload**（已移除，转向命令式改 config）。配置目录下的运行期状态（`state/usage.jsonl`、`cache/git.json`、`app.log`）由 `app.Paths`（`server/app/paths.go`）统一计算，不要在调用方硬拼路径。应用标识（`AppName`）收敛在 `core/version/name.go`：status 身份 / 进程探测 / shutdown token / 默认配置目录路径均由 `version.AppName` 派生；日志文件名是通用的 `app.log`，不含应用名。
 
 ## 常用命令
 
@@ -67,7 +68,7 @@ cd server && go test ./opener/...     # 聚焦某个包
 
 cube 的 IO 测试（git 操作、文件扫描、缓存读写）通过 `server/internal/testfixture` 包提供统一 fixture builder：
 
-- **临时目录落 `runtime/test/`**（已 gitignore），**不用系统 `/tmp`**——失败时方便翻看现场排查。每个测试拿到独立子目录（`runtime/test/<时间戳>-<test名>/`），不自动清理。
+- **临时目录用 `os.MkdirTemp` 落系统临时目录**（前缀 `cube-test-<测试名>-`），测试成功自动清理、失败保留现场排查（旧方案写项目内 `runtime/test/` 且永不清理，会持续膨胀并被 goimports/IDE 扫描拖慢）。
 - **`Workspace`**：测试工作区。`ws := testfixture.NewWorkspace(t)` → `ws.Dir` 是该测试专属目录；`ws.Mkdir/WriteFile/Join` 在其下操作。
 - **`BuildGitRepo(t, dir, GitRepoSpec)` / `ws.MakeGitRepo(name)`**：建真实 git 仓库（用系统 git + 注入 user 配置，不依赖全局 git config）。`GitRepoSpec` 声明预期状态（分支/commit 数/tag/remote/ahead/dirty）。
 - **`ws.MakeProjectDir(relPath, opts...)`**：建「会被 cube 扫描识别为 project」的目录（默认含 git 仓库）。opts：`WithGodot()`/`WithWorktree()`/`WithDirty()`/`WithoutGit()`。
@@ -87,14 +88,13 @@ ws.MakeProjectDir("scanroot/g1/proj", testfixture.WithGodot())
 
 - **纯函数**（解析、计算、字符串处理）：普通表驱动测试。`fuzzy`/`pathkit`/`git/url`/`git 读输出解析`/`slicekit`/`easycache`/`opener 解析`。
 - **依赖外部进程/库的 IO**（git 二进制读/写仓库）：**用 testfixture 建真实临时仓库测**，不 mock。`git` 的 `Refs/Remotes/IsDirty/LoadRepoStatus`、`git.FindGitRoot`、`projcache.Load/Save/Refresh/collectEntry`。
-- **依赖 sqlite**：用 `:memory:` 内存库 + 直接 AutoMigrate。`history` 全部测试。
-- **依赖真实目录扫描**：用 testfixture 建工程目录树，构造 `config.ProjectConfig` 喂给 `project.NewService`（绕开 config/app 单例）。`project/scan_test.go`。
+- **依赖真实目录扫描**：用 testfixture 建工程目录树，直接构造 `[]ScanRule` 喂给 `project.NewService`（绕开 config/app 装配）。`project/scan_test.go`。
 - **opener 执行类**：通过 `Executor` 接口注入 fake，不真的启动编辑器。见 `opener/opener_test.go`。
-- **web 层**：httptest 拉起真实 `Server.Handler()` 打真实 HTTP 请求（见 `web/server_test.go` 的 newTestEnv 基建），断言路由 / DTO / envelope / nil 序列化 / 静态资源契约。新增 handler 时在此模式上补用例。
+- **web 层**：httptest 拉起真实 `Server.Handler()` 打真实 HTTP 请求（框架自测在 `core/server/server_test.go`，业务契约在 `handlers/*_test.go` 的 newTestEnv 基建），断言路由 / DTO / envelope / nil 序列化 / 静态资源契约。新增 handler 时在 handlers 包此模式上补用例。
 - **不写单测的（靠手动/集成验证）**：
   - `git.Run`/`git.Clone`/`git.Push`（透传 stdio 到 `os.Stdout`，无法捕获输出；且本质是组装 git 参数）
   - `opener.Open` 的真实进程启动（已用 Executor 隔离，但默认实现的真启动仍靠手动验证）
-  - `config`/`db`（全局单例无 setter，测试无法隔离）
+  - `config`（全局单例无 setter，测试无法隔离）
   - `cmd/*`（cobra 命令编排）
 
 ## 必须遵守的编码规则
@@ -113,7 +113,7 @@ ws.MakeProjectDir("scanroot/g1/proj", testfixture.WithGodot())
 2. 遵循 v3 分层依赖纪律（见上），不要让 `cmd` 直接调 `web`、不要让基础设施包 import 领域包。
 3. **加新 domain 走"五处加法"流程**，不修改既有 domain 的接线。
 4. 日志统一用 `log/slog`（`slog.Debug` / `slog.Info` / ...），不要用 `fmt.Println` 做日志（`fmt` 仅用于面向用户的 CLI 输出）。debug 日志受 `--debug` 控制。
-5. 错误处理遵循现有风格：可恢复的降级用 `slog` 记录后继续；致命错误用 `fmt.Errorf("...: %w", err)` 包装并返回。`cmd.Execute()` 的 `checkError` 会在退出前把错误打到 `slog` + stdout。
+5. 错误处理遵循现有风格：可恢复的降级用 `slog` 记录后继续；致命错误用 `fmt.Errorf("...: %w", err)` 包装并返回。错误输出双通道：cobra 的 `Error:` 行给终端（`cmd.Execute()` 的返回值由 main 处理），`slog` 给日志。
 6. **所有 Error 消息一律用中文**（`errors.New` / `fmt.Errorf` 的字符串）。变量名、标识符、以及约定俗成的英文专业名词/技术术语保留英文原词——例如 `repoUrl`、`OpenAPI`、`worktree`、`opener`、`config`、`slot`、`tty` 等。参考既有代码，如 `fmt.Errorf("repoUrl 不是合法地址: url=%s", rawRepoUrl)`、`errors.New("未找到指定app: " + appName)`。
 7. **构造函数命名约定**（按返回值形态选前缀）：
    - `NewXxx()` → 返回 `*Xxx`（指针，单返回值）。例：`NewService` / `NewOpenerHandler` / `NewItem`。
@@ -133,7 +133,7 @@ ws.MakeProjectDir("scanroot/g1/proj", testfixture.WithGodot())
    - 方法体是**直接读 / 直接写 struct 的某个属性**（`return o.xxx` 或 `o.xxx = v`）。
 
    以下**不属于** getter/setter，仍按多行显示：
-   - 包级函数（如 `config.Path()`、`config.Default()`、`db.Default()`、`config.SetDebug()`）；
+   - 包级函数（如 `config.Path()`、`config.Default()`、`config.SetDebug()`）；
    - 虽名为 `GetXxx`/`SetXxx` 但方法体不是属性的直接读/写——例如 `return s.cache.Get()`、`return strings.Join(o.cmd, " ")`、`Projects()`（委托、计算、聚合等）。
 
    getter/setter 的书写约定：
@@ -180,6 +180,6 @@ ws.MakeProjectDir("scanroot/g1/proj", testfixture.WithGodot())
 - **module path 是 `cube`**（不是 `github.com/heyuuu/cube`——README 里写的旧值，以 go.mod 为准）。import 路径写 `cube/...`。
 - `logger` 包用 `runtime.Callers` 在 `init()` 里推算项目绝对路径（`relativeProjPath = "../../"`），移动/重命名 logger 源文件位置会让日志里的 `file` 相对路径错位。
 - `.gitignore` 忽略：`tmp/`、`runtime/`（测试产物）、`server/web/ui`（`make build-ui` 从 `web/dist` 复制而来，go:embed 嵌入）、`openapi.json`、`.zcode/plans` / `.claude/plans` / `.cursor/plans`。不要提交这些。
-- 默认配置目录按环境分流：dev `~/.config/cube-dev/`、prod `~/.config/cube/`（非项目目录），运行期状态（sqlite `data.db`、`cache/git.json`、日志）落在对应配置目录。两环境数据不互通（history 各自积累、config 人工 diff 合并）。
+- 默认配置目录按环境分流：dev `~/.config/cube-dev/`、prod `~/.config/cube/`（非项目目录），运行期状态（`state/usage.jsonl`、`cache/git.json`、日志）落在对应配置目录。两环境数据不互通（usage 各自积累、config 人工 diff 合并）。
 - **开发中修改本地配置时只允许动 `~/.config/cube-dev/` 下的内容，禁止修改正式配置 `~/.config/cube/` 下的任何文件**——正式配置由已安装的 prod 二进制使用，格式随旧版本；开发期格式变更只迁移 dev 一份，正式配置待安装新版本时人工迁移。
 - **前端源码在 `web/`（仓库根）**，`make build-ui` 时 `pnpm -C web build` 后把 `web/dist` 拷到 `server/web/ui` 供 go:embed 嵌入。改前端改 `web/`，不要直接改 `server/web/ui/`（会被覆盖）；旧版 vanilla 前端 `ui/` 已删除。
