@@ -168,11 +168,12 @@ type ScanRuleSaveInput struct {
 		Path     string   `json:"path" doc:"扫描根目录（绝对路径或 ~/ 前缀，规则唯一键）"`
 		MaxDepth int      `json:"maxDepth" doc:"扫描最大深度"`
 		Icon     *IconDTO `json:"icon,omitempty" doc:"组图标（可选：lucide 图名或 base64 PNG）"`
+		Tags     []string `json:"tags,omitempty" doc:"命中该规则的项目统一追加的标签（如 个人/公司/开源，可选）"`
 	}
 }
 
 func (h *ProjectHandler) scanRuleSave(input ScanRuleSaveInput) (map[string]any, error) {
-	rule := project.ScanRule{Group: input.Body.Group, Path: input.Body.Path, MaxDepth: input.Body.MaxDepth}
+	rule := project.ScanRule{Group: input.Body.Group, Path: input.Body.Path, MaxDepth: input.Body.MaxDepth, Tags: input.Body.Tags}
 	if input.Body.Icon != nil {
 		rule.Icon = &iconkit.Icon{Type: input.Body.Icon.Type, Value: input.Body.Icon.Value}
 	}

@@ -22,10 +22,21 @@ interface ScanDraft {
   group: string;
   path: string;
   maxDepth: string;
+  tags: string;
   icon?: IconDecl;
 }
 
-const EMPTY_SCAN_DRAFT: ScanDraft = { group: '', path: '', maxDepth: '3' };
+const EMPTY_SCAN_DRAFT: ScanDraft = { group: '', path: '', maxDepth: '3', tags: '' };
+
+// tags 逗号分隔输入 ↔ 数组的互转（后端保存侧也会 trim/去空/去重）
+const draftTags = (tags?: string[] | null) => (tags ?? []).join(', ');
+const parseTags = (raw: string): string[] | undefined => {
+  const tags = raw
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return tags.length > 0 ? tags : undefined;
+};
 
 // 编辑表单（右侧抽屉）：关闭即放弃草稿，保存成功后自动关闭
 function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => void }) {
@@ -42,6 +53,7 @@ function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => voi
         group: form.group.trim(),
         path: newPath,
         maxDepth: Number(form.maxDepth) || 0,
+        tags: parseTags(form.tags),
         icon: form.icon && form.icon.value ? { type: form.icon.type, value: form.icon.value } : undefined,
       },
       {
@@ -88,6 +100,13 @@ function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => voi
               onChange={(e) => set('maxDepth', e.target.value)}
               className="w-24"
             />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted-foreground">
+              tags（可选，逗号分隔，命中规则的项目统一追加，如：个人,公司,开源）
+            </span>
+            <Input value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="个人,公司" />
           </label>
 
           <div className="flex flex-col gap-1">
@@ -145,13 +164,14 @@ export function ScanSection() {
               <TableHead>group</TableHead>
               <TableHead>path</TableHead>
               <TableHead>maxDepth</TableHead>
+              <TableHead>tags</TableHead>
               <TableHead className={`${STICKY_RIGHT} text-right`}>操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {d.rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-xs text-muted-foreground">
+                <TableCell colSpan={6} className="text-xs text-muted-foreground">
                   暂无扫描规则
                 </TableCell>
               </TableRow>
@@ -167,6 +187,7 @@ export function ScanSection() {
                 </TableCell>
                 <TableCell className="font-mono text-xs">{r.path}</TableCell>
                 <TableCell className="font-mono text-xs">{r.maxDepth}</TableCell>
+                <TableCell className="text-xs">{(r.tags ?? []).join(' / ')}</TableCell>
                 <TableCell className={`${STICKY_RIGHT} text-right`}>
                   <Button
                     size="sm"
@@ -176,6 +197,7 @@ export function ScanSection() {
                         group: r.group,
                         path: r.path,
                         maxDepth: String(r.maxDepth),
+                        tags: draftTags(r.tags),
                         icon: r.icon ? { type: r.icon.type, value: r.icon.value } : undefined,
                       })
                     }

@@ -2,6 +2,7 @@ package project
 
 import (
 	"path"
+	"slices"
 	"strings"
 	"testing"
 
@@ -39,6 +40,32 @@ func TestSaveScanRule(t *testing.T) {
 	}
 	if rules := s.ScanRules(); len(rules) != 1 || rules[0].Group != "g2" {
 		t.Fatalf("同 path 应替换而非追加: %v", rules)
+	}
+}
+
+// TestSaveScanRule_TagsNormalized 保存时清洗 tags（trim/去空/去重），空 tags 落盘后不残留空节。
+func TestSaveScanRule_TagsNormalized(t *testing.T) {
+	s, ws := newWriteService(t)
+	root := ws.Mkdir("root")
+	ws.MakeProjectDir(path.Join("root", "p1"))
+
+	if err := s.SaveScanRule(ScanRule{Group: "g", Path: root, MaxDepth: 3, Tags: []string{" 公司 ", "", "开源", "公司"}}); err != nil {
+		t.Fatalf("保存失败: %v", err)
+	}
+	rules := s.ScanRules()
+	if len(rules) != 1 || !slices.Equal(rules[0].Tags, []string{"公司", "开源"}) {
+		t.Fatalf("tags 应清洗为 [公司 开源]，实际: %v", rules)
+	}
+	if projs := s.Projects(); len(projs) != 1 || !slices.Equal(projs[0].Tags(), []string{"公司", "开源"}) {
+		t.Fatalf("项目 tags 应来自规则，实际: %v", projs)
+	}
+
+	// 清空 tags 替换：不残留旧值
+	if err := s.SaveScanRule(ScanRule{Group: "g", Path: root, MaxDepth: 3, Tags: []string{" ", ""}}); err != nil {
+		t.Fatalf("替换失败: %v", err)
+	}
+	if rules := s.ScanRules(); len(rules) != 1 || rules[0].Tags != nil {
+		t.Fatalf("全空 tags 应清洗为 nil，实际: %v", rules)
 	}
 }
 

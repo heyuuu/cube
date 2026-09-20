@@ -22,12 +22,8 @@ export function ConfigSection() {
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 rounded-lg border p-4 text-xs">
             <dt className="text-muted-foreground">dataDir</dt>
             <dd className="font-mono">{cfg.dataDir || '-'}</dd>
-            <dt className="text-muted-foreground">log.path</dt>
-            <dd className="font-mono">{cfg.log?.path || '-'}</dd>
-            <dt className="text-muted-foreground">log.level</dt>
-            <dd className="font-mono">{cfg.log?.level || '-'}</dd>
-            <dt className="text-muted-foreground">log.format</dt>
-            <dd className="font-mono">{cfg.log?.format || '-'}</dd>
+            <dt className="text-muted-foreground">server</dt>
+            <dd className="font-mono">{cfg.server ? `${cfg.server.host || '-'}:${cfg.server.port}` : '-'}</dd>
           </dl>
         </section>
       )}

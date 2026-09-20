@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -97,8 +98,8 @@ func TestScanRuleWrite(t *testing.T) {
 	env := newTestEnv(t)
 	root := env.ws.Mkdir("g3")
 
-	// save 新增（带 icon）
-	r := postJSON(t, env.url("/api/project/scan-rule/save"), fmt.Sprintf(`{"group":"g3","path":%q,"maxDepth":2,"icon":{"type":"lucide","value":"folder-git-2"}}`, root))
+	// save 新增（带 icon + tags）
+	r := postJSON(t, env.url("/api/project/scan-rule/save"), fmt.Sprintf(`{"group":"g3","path":%q,"maxDepth":2,"icon":{"type":"lucide","value":"folder-git-2"},"tags":["公司","开源","公司"," "]}`, root))
 	if !r.Ok {
 		t.Fatalf("save 应成功, message=%q", r.Message)
 	}
@@ -121,9 +122,12 @@ func TestScanRuleWrite(t *testing.T) {
 	if len(got.List) != 3 { // fixture 预置 g1/g2 + 新增 g3
 		t.Fatalf("应返回 3 条规则, got %d: %+v", len(got.List), got.List)
 	}
-	for _, r := range got.List { // icon 落盘并回读（g3 带，g1/g2 未带为 nil）
+	for _, r := range got.List { // icon/tags 落盘并回读（g3 带，g1/g2 未带为 nil）
 		if r.Group == "g3" && (r.Icon == nil || r.Icon.Value != "folder-git-2") {
 			t.Fatalf("g3 icon 未回读: %+v", r.Icon)
+		}
+		if r.Group == "g3" && !slices.Equal(r.Tags, []string{"公司", "开源"}) {
+			t.Fatalf("g3 tags 应清洗为 [公司 开源]: %v", r.Tags)
 		}
 	}
 

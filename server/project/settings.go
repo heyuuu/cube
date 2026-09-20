@@ -36,7 +36,7 @@ func loadScanRules(settingsFile string) []ScanRule {
 			slog.Warn("scan 规则路径不存在或非目录，跳过", "group", r.Group, "path", path, "err", err)
 			continue
 		}
-		rules = append(rules, ScanRule{Group: r.Group, Path: path, MaxDepth: r.MaxDepth, Icon: r.Icon})
+		rules = append(rules, ScanRule{Group: r.Group, Path: path, MaxDepth: r.MaxDepth, Icon: r.Icon, Tags: r.Tags})
 	}
 	return rules
 }
@@ -91,6 +91,7 @@ func saveScanRule(settingsFile string, rule ScanRule) error {
 	if err := iconkit.ValidateIcon(rule.Icon); err != nil {
 		return fmt.Errorf("scan 规则 %s", err)
 	}
+	rule.Tags = normalizeTags(rule.Tags)
 
 	var specs []ScanRule
 	config.LoadSection(settingsFile, scanRulesSection, &specs)

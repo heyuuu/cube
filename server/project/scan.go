@@ -15,6 +15,7 @@ type ScanRule struct {
 	Path     string        `json:"path"`           // 扫描的根目录
 	MaxDepth int           `json:"maxDepth"`       // 扫描的最大深度
 	Icon     *iconkit.Icon `json:"icon,omitempty"` // 组图标（可选，语义见 util/iconkit）
+	Tags     []string      `json:"tags,omitempty"` // 命中该规则的项目统一追加的标签（如 个人/公司/开源，可选）
 }
 
 // 项目标签。scanner 命中特征时打标。
@@ -61,7 +62,7 @@ func scanOne(r ScanRule) ([]*Project, error) {
 			return checkErr
 		}
 		if isProject {
-			projects = append(projects, newProject(r, path, tags))
+			projects = append(projects, newProject(r, path, mergeTags(r.Tags, tags)))
 			return fs.SkipDir
 		}
 
@@ -154,6 +155,26 @@ func MatchScanRule(absPath string, rules []ScanRule) (rule ScanRule, name string
 		}
 	}
 	return
+}
+
+// normalizeTags 清洗标签列表：trim、去空串、按序去重；全空返回 nil。
+func normalizeTags(tags []string) []string {
+	var out []string
+	seen := make(map[string]bool)
+	for _, t := range tags {
+		t = strings.TrimSpace(t)
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		out = append(out, t)
+	}
+	return out
+}
+
+// mergeTags 合并规则声明标签与探测标签（去重，规则标签在前）。
+func mergeTags(ruleTags, detectedTags []string) []string {
+	return normalizeTags(append(append([]string{}, ruleTags...), detectedTags...))
 }
 
 // relHasSkipDirName 判断相对路径 rel 的任一级目录名是否被扫描跳过。

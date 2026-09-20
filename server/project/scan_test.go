@@ -3,6 +3,7 @@ package project
 import (
 	"os"
 	"path"
+	"slices"
 	"testing"
 
 	"cube/core/config"
@@ -146,6 +147,31 @@ func TestScan_GodotTag(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("godot 项目应打 godot tag，实际 tags=%v", tags)
+	}
+}
+
+// TestScan_RuleTags 规则声明的 tags 追加到命中项目，与探测 tag（godot）合并且清洗（去重/去空）。
+func TestScan_RuleTags(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	root := ws.Mkdir("root")
+	ws.MakeProjectDir(path.Join("root", "game"), testfixture.WithGodot())
+	ws.MakeProjectDir(path.Join("root", "plain"))
+
+	s := newServiceWithRules(t, ws, []ScanRule{
+		{Group: "g", Path: root, MaxDepth: 5, Tags: []string{"公司", " "}},
+	}, nil)
+	projs := s.Projects()
+	if len(projs) != 2 {
+		t.Fatalf("应扫到 2 个，实际 %d", len(projs))
+	}
+	for _, p := range projs {
+		want := []string{"公司"}
+		if path.Base(p.Path()) == "game" {
+			want = []string{"公司", TagGodot}
+		}
+		if got := p.Tags(); !slices.Equal(got, want) {
+			t.Fatalf("项目 %s tags=%v, want %v", p.Name(), got, want)
+		}
 	}
 }
 
