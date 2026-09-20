@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"cube/core/config"
 	"cube/util/iconkit"
-	"cube/util/pathkit"
 	"cube/util/slicekit"
 )
 
@@ -26,16 +26,17 @@ func loadScanRules(settingsFile string) []ScanRule {
 
 	var rules []ScanRule
 	for _, r := range specs {
-		absPath, err := pathkit.StaticAbsPath(r.Path)
-		if err != nil {
-			slog.Warn("scan 规则路径配置错误，跳过", "group", r.Group, "path", r.Path, "err", err)
+		if !filepath.IsAbs(r.Path) {
+			slog.Warn("scan 规则路径配置错误，path 必须为绝对路径", "group", r.Group, "path", r.Path)
 			continue
 		}
-		if info, err := os.Stat(absPath); err != nil || !info.IsDir() {
-			slog.Warn("scan 规则路径不存在或非目录，跳过", "group", r.Group, "path", r.Path, "abs", absPath, "err", err)
+		path := filepath.Clean(r.Path)
+
+		if info, err := os.Stat(path); err != nil || !info.IsDir() {
+			slog.Warn("scan 规则路径不存在或非目录，跳过", "group", r.Group, "path", path, "err", err)
 			continue
 		}
-		rules = append(rules, ScanRule{Group: r.Group, Path: absPath, MaxDepth: r.MaxDepth, Icon: r.Icon})
+		rules = append(rules, ScanRule{Group: r.Group, Path: path, MaxDepth: r.MaxDepth, Icon: r.Icon})
 	}
 	return rules
 }
@@ -48,12 +49,13 @@ func loadCloneRules(settingsFile string) []CloneRule {
 
 	var rules []CloneRule
 	for _, r := range specs {
-		absLocalPath, err := pathkit.StaticAbsPath(r.LocalPath)
-		if err != nil {
-			slog.Warn("clone 本地路径配置错误", "localPath", r.LocalPath, "err", err)
+		if !filepath.IsAbs(r.LocalPath) {
+			slog.Warn("clone 本地路径配置错误, 必须为绝对路径", "localPath", r.LocalPath)
 			continue
 		}
-		rules = append(rules, CloneRule{RepoHost: r.RepoHost, RepoPrefix: r.RepoPrefix, LocalPath: absLocalPath})
+		localPath := filepath.Clean(r.LocalPath)
+
+		rules = append(rules, CloneRule{RepoHost: r.RepoHost, RepoPrefix: r.RepoPrefix, LocalPath: localPath})
 	}
 	return rules
 }
@@ -79,11 +81,11 @@ func saveScanRule(settingsFile string, rule ScanRule) error {
 	if rule.MaxDepth <= 0 {
 		return fmt.Errorf("scan 规则 maxDepth 必须大于 0: %d", rule.MaxDepth)
 	}
-	absPath, err := pathkit.StaticAbsPath(rule.Path)
-	if err != nil {
-		return fmt.Errorf("scan 规则路径不合法: %w", err)
+
+	if !filepath.IsAbs(rule.Path) {
+		return fmt.Errorf("scan 规则路径必须为绝对路径: path=%s", rule.Path)
 	}
-	if info, err := os.Stat(absPath); err != nil || !info.IsDir() {
+	if info, err := os.Stat(rule.Path); err != nil || !info.IsDir() {
 		return fmt.Errorf("scan 规则路径不存在或非目录: %s", rule.Path)
 	}
 	if err := iconkit.ValidateIcon(rule.Icon); err != nil {
@@ -127,8 +129,8 @@ func saveCloneRule(settingsFile string, rule CloneRule) error {
 	if rule.RepoPrefix != "" && rule.RepoPrefix[0] != '/' {
 		return fmt.Errorf("clone 规则 repoPrefix 须以 / 开头或为空: %s", rule.RepoPrefix)
 	}
-	if _, err := pathkit.StaticAbsPath(rule.LocalPath); err != nil {
-		return fmt.Errorf("clone 规则 localPath 不合法（须绝对路径或 ~/ 前缀）: %s", rule.LocalPath)
+	if !filepath.IsAbs(rule.LocalPath) {
+		return fmt.Errorf("clone 规则 localPath 不合法（须绝对路径）: %s", rule.LocalPath)
 	}
 
 	var specs []CloneRule

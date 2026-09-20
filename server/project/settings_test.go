@@ -57,7 +57,7 @@ func TestSaveScanRule_Validation(t *testing.T) {
 		{"maxDepth 非正", ScanRule{Group: "g", Path: root, MaxDepth: 0}, "maxDepth"},
 		{"路径不存在", ScanRule{Group: "g", Path: "/no/such/dir/xyz", MaxDepth: 3}, "不存在"},
 		{"路径是文件", ScanRule{Group: "g", Path: ws.Join("f.txt"), MaxDepth: 3}, "非目录"},
-		{"相对路径", ScanRule{Group: "g", Path: "relative/dir", MaxDepth: 3}, "不合法"},
+		{"相对路径", ScanRule{Group: "g", Path: "relative/dir", MaxDepth: 3}, "绝对路径"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

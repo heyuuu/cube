@@ -254,35 +254,24 @@ func TestService_MatchScanRule(t *testing.T) {
 	}
 }
 
-// TestScan_HomePathExpansion 验证 scan 规则路径里的 ~/ 被展开为绝对路径。
-// 这是用户配置常见场景（写 ~/Code 而非 /Users/xxx/Code）。
-func TestScan_HomePathExpansion(t *testing.T) {
-	// 用一个临时 HOME，在其中建项目目录
+// TestScan_HomePrefixSkipped ~/ 前缀不再由 domain 展开（展开职责在出口层），
+// 配置里写 ~/ 视为配置错误，降级跳过、不阻断其它规则。
+func TestScan_HomePrefixSkipped(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	// 在 home 下建 Code/proj 真实 git 仓库
 	repoDir := home + "/Code/proj"
 	os.MkdirAll(repoDir, 0755)
-	// 用 testfixture 的 BuildGitRepo 在该目录建仓库（不依赖 Workspace 的 runtime/test 根）
-	ws := testfixture.NewWorkspace(t) // 仅借用它的 BuildGitRepo 能力
+	ws := testfixture.NewWorkspace(t)
 	testfixture.BuildGitRepo(ws.TB, repoDir, testfixture.GitRepoSpec{})
 
-	// settings 里写 ~/Code（相对 home 展开）
-	s := newServiceWithRules(t, ws, []ScanRule{{Group: "g", Path: "~/Code", MaxDepth: 3}}, nil)
+	s := newServiceWithRules(t, ws, []ScanRule{
+		{Group: "bad", Path: "~/Code", MaxDepth: 3},
+		{Group: "good", Path: home + "/Code", MaxDepth: 3},
+	}, nil)
 
-	// 规则路径应被展开为绝对路径
 	rules := s.ScanRules()
-	if len(rules) != 1 {
-		t.Fatalf("应保留 1 条规则，实际 %d（可能 ~/ 未展开导致校验失败被跳过）", len(rules))
-	}
-	if rules[0].Path != home+"/Code" {
-		t.Fatalf("规则路径未展开 ~/，实际 %q，期望 %q", rules[0].Path, home+"/Code")
-	}
-
-	// 扫描应能命中 ~/Code/proj
-	projs := s.Projects()
-	if len(projs) != 1 || projs[0].Path() != repoDir {
-		t.Fatalf("扫描结果异常： %+v，期望命中 %s", projs, repoDir)
+	if len(rules) != 1 || rules[0].Group != "good" {
+		t.Fatalf("~/ 前缀应被跳过，只保留绝对路径规则，实际 %v", rules)
 	}
 }
 
@@ -310,22 +299,17 @@ func TestScan_InvalidPathSkipped(t *testing.T) {
 	}
 }
 
-// TestCloneRule_LocalPathExpansion 验证 clone 规则的 LocalPath 展开 ~/。
-func TestCloneRule_LocalPathExpansion(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+// TestCloneRule_HomePrefixSkipped clone 规则 LocalPath 的 ~/ 前缀不再展开，按配置错误跳过。
+func TestCloneRule_HomePrefixSkipped(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 
 	ws := testfixture.NewWorkspace(t)
 	s := newServiceWithRules(t, ws, nil, []CloneRule{
 		{RepoHost: "github.com", RepoPrefix: "/heyuuu", LocalPath: "~/src"},
 	})
 
-	rules := s.CloneRules()
-	if len(rules) != 1 {
-		t.Fatalf("应保留 1 条 clone 规则，实际 %d", len(rules))
-	}
-	if rules[0].LocalPath != home+"/src" {
-		t.Fatalf("clone LocalPath 未展开 ~/，实际 %q，期望 %q", rules[0].LocalPath, home+"/src")
+	if rules := s.CloneRules(); len(rules) != 0 {
+		t.Fatalf("~/ 前缀应被跳过，实际 %v", rules)
 	}
 }
 

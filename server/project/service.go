@@ -106,22 +106,21 @@ func (s *Service) Projects() []*Project {
 }
 
 func (s *Service) FindByPath(path string) *Project {
-	// 仅接受绝对路径/~ 前缀（调用方是 web，server 进程的 cwd 对请求路径无意义）；
-	// 相对路径视为未找到而非报错，与「查无此项目」语义一致
-	absPath, err := pathkit.StaticAbsPath(path)
-	if err != nil {
+	// 仅接受绝对路径，相对路径视为未找到而非报错，与「查无此项目」语义一致
+	if !filepath.IsAbs(path) {
 		return nil
 	}
+	path = filepath.Clean(path)
 
 	for _, proj := range s.Projects() {
-		if proj.Path() == absPath {
+		if proj.Path() == path {
 			return proj
 		}
 	}
 	// 兜底：符号链接口径二次比对。项目路径来自扫描（用户配置口径的字面路径），
 	// 而调用方传入的可能是 git 规范化后的路径（macOS /var → /private/var，如 worktree
 	// 归并链路），反之亦然。规范化两侧任一侧即可对齐；只有精确匹配落空才付这笔 syscall。
-	realPath, realErr := filepath.EvalSymlinks(absPath)
+	realPath, realErr := filepath.EvalSymlinks(path)
 	for _, proj := range s.Projects() {
 		if proj.Path() == realPath {
 			return proj
@@ -234,23 +233,25 @@ func (s *Service) ResolveMainProject(dir string) *Project {
 // up 表示是否向上搜索。用于通过项目子目录标定当前目录时使用。
 // 因为项目子目录不可能是另一个项目的目录或父目录，所以当向上匹配成功时不会出现其他项目
 //
-// path 只接受绝对路径或 ~ 前缀（经 StaticAbsPath 归一化，兼容 web 直接传 ~/xxx）；
-// 相对路径的 cwd 解析是出口层职责（cmd 用 AbsPath），到这里说明调用方传错，按未找到处理。
+// path 只接受绝对路径；~ / 相对路径的展开是出口层职责（cmd 用 ExtendPath），
+// 到这里说明调用方传错，按未找到处理。
 func (s *Service) SearchByPath(path string, up bool) []*Project {
-	absPath, err := pathkit.StaticAbsPath(path)
-	if err != nil {
+	// 仅接受绝对路径，相对路径视为未找到而非报错，与「查无此项目」语义一致
+	if !filepath.IsAbs(path) {
 		return nil
 	}
+	path = filepath.Clean(path)
 
+	// 逐个对比
 	var result []*Project
 	for _, proj := range s.Projects() {
 		// 判断 proj 是否在 realpath 目录及子目录中
-		if pathkit.IsUnder(proj.Path(), absPath) {
+		if pathkit.IsUnder(proj.Path(), path) {
 			result = append(result, proj)
 			continue
 		}
 		// 若向上查找， 判断 proj.Path() 是否在 realpath 父目录
-		if up && pathkit.IsUnder(absPath, proj.Path()) {
+		if up && pathkit.IsUnder(path, proj.Path()) {
 			result = append(result, proj)
 			continue
 		}

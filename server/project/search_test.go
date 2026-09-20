@@ -9,8 +9,7 @@ import (
 )
 
 // TestSearchByPath_SearchByPath 验证 SearchByPath 的入参契约与路径搜索行为。
-// path 只接受绝对路径或 ~ 前缀（StaticAbsPath 归一化）；相对路径按未找到处理
-// ——cwd 解析是出口层（cmd）职责，见 cmd 包的 searchProjects 测试。
+// path 只接受绝对路径；~/ / 相对路径的展开是出口层（cmd）职责，见 cmd 包的 searchProjects 测试。
 func TestSearchByPath_SearchByPath(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	root := ws.Mkdir("root")
@@ -40,12 +39,12 @@ func TestSearchByPath_SearchByPath(t *testing.T) {
 	}
 }
 
-// TestSearchByPath_HomePrefix 验证 ~ 前缀归一化（兼容 web 直接传 ~/xxx 的场景）。
+// TestSearchByPath_HomePrefix ~/ 前缀不再归一化（展开是出口层职责），按未找到处理。
 func TestSearchByPath_HomePrefix(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	// 在 home 下建 scan root + 项目，使项目路径形如 home/root/proj
+	// 在 home 下建 scan root + 项目，确认绝对路径可命中、~/ 同路径不可
 	ws := testfixture.NewWorkspace(t)
 	repoDir := home + "/root/proj"
 	if err := os.MkdirAll(repoDir, 0o755); err != nil {
@@ -54,8 +53,10 @@ func TestSearchByPath_HomePrefix(t *testing.T) {
 	testfixture.BuildGitRepo(ws.TB, repoDir, testfixture.GitRepoSpec{})
 
 	cfg := newServiceAt(t, home+"/root", "g1", 5)
-	projs := cfg.SearchByPath("~/root", false)
-	if len(projs) != 1 || projs[0].Path() != repoDir {
-		t.Fatalf("SearchByPath(~/root) 应命中 %s，实际 %v", repoDir, projs)
+	if projs := cfg.SearchByPath(home+"/root", false); len(projs) != 1 {
+		t.Fatalf("SearchByPath(绝对路径) 应命中，实际 %v", projs)
+	}
+	if projs := cfg.SearchByPath("~/root", false); len(projs) != 0 {
+		t.Fatalf("SearchByPath(~/root) 应按未找到处理，实际 %v", projs)
 	}
 }
