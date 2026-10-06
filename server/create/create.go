@@ -2,8 +2,12 @@ package create
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
+	"slices"
+	"sort"
+	"strings"
 
 	"cube/util/pathkit"
 	"cube/util/tui"
@@ -81,15 +85,32 @@ func validateTarget(targetPath string) error {
 
 // 交互选择模板, 返回模板路径
 func selectTplPath(sourcePath string, tplName string) (string, error) {
-	layout, err := InspectSource(sourcePath)
+	// 加载模板地址
+	tplPaths, err := LoadSourceTemplates(sourcePath)
 	if err != nil {
 		return "", err
 	}
-	templateDir, err := SelectTemplateDir(layout, tplName)
-	if err != nil {
-		return "", err
+
+	// 收集模板名并排序
+	tplNames := slices.Collect(maps.Keys(tplPaths))
+	sort.Strings(tplNames)
+
+	// 未指定 name 的情况，通过交互选择
+	if tplName == "" {
+		tplName, err = tui.SelectItem("选择模板", tplNames, func(n string) string { return n })
+		if err != nil {
+			return "", err
+		}
+		return tplPaths[tplName], nil
 	}
-	return templateDir, nil
+
+	// 指定了 name 的情况，通过 name 获取
+	if tplPath, ok := tplPaths[tplName]; ok {
+		return tplPath, nil
+	}
+
+	// 指定了不存在的模板，返回错误
+	return "", fmt.Errorf("模板 %q 不存在，可用模板: %v", tplName, strings.Join(tplNames, ", "))
 }
 
 // collectVariables 收集变量：cliVars 优先；未提供的用 prompt 交互提问

@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"cube/util/git"
+	"cube/util/oskit"
 	"cube/util/pathkit"
-	"cube/util/tui"
 )
 
 // gitUrlPrefixes 触发 git clone 的来源前缀。本地路径（含 ~/ 开头）不在此列。
@@ -51,72 +50,37 @@ func ResolveTemplateDir(source string) (dir string, cleanup func(), err error) {
 	return tempDir, func() { _ = os.RemoveAll(tempDir) }, nil
 }
 
-// SourceLayout 描述来源的形态：单模板或模板集。
-type SourceLayout struct {
-	Dir           string   // 模板所在目录（单模板=来源根；模板集=templates/ 子目录）
-	TemplateNames []string // 非空表示模板集（templates/ 一级子目录名，字典序）；空表示单模板
-}
+// LoadSourceTemplates 加载 source 下的模板，返回 Map<模板名, 模板路径>
+func LoadSourceTemplates(sourcePath string) (map[string]string, error) {
+	// 单模板 source (根目录即为唯一模板目录)
+	if oskit.IsFile(filepath.Join(sourcePath, MetaFileName)) {
+		return map[string]string{"default": MetaFileName}, nil
+	}
+	// 多模板 source (默认 templates/* 为各模板地址)
+	tplRoot := filepath.Join(sourcePath, "templates")
+	if !oskit.IsDir(tplRoot) {
+		return nil, fmt.Errorf("%s 不是合法模板来源：根目录无 template.yaml，也无 templates/ 子目录", pathkit.PrettyPath(sourcePath))
+	}
 
-// InspectSource 判定来源目录形态：根目录有 template.yaml → 单模板；
-// InspectSource 判定来源目录形态（收纳式，模板只活在 templates/ 里）：
-// 根目录有 template.yaml → 单模板；否则 templates/ 子目录的一级子目录（各含
-// template.yaml，跳过隐藏目录）构成模板集；两者都不是 → 报错。
-// 根目录的其他内容（README/docs/草稿目录等）不参与判定。
-func InspectSource(dir string) (*SourceLayout, error) {
-	if fileExists(filepath.Join(dir, "template.yaml")) {
-		return &SourceLayout{Dir: dir}, nil
-	}
-	tplRoot := filepath.Join(dir, "templates")
-	if info, err := os.Stat(tplRoot); err != nil || !info.IsDir() {
-		return nil, fmt.Errorf("%s 不是合法模板来源：根目录无 template.yaml，也无 templates/ 子目录", pathkit.PrettyPath(dir))
-	}
+	// 读取子目录
 	entries, err := os.ReadDir(tplRoot)
 	if err != nil {
 		return nil, fmt.Errorf("读取 templates/ 目录失败: %w", err)
 	}
-	var names []string
+
+	// 遍历并记录符合条件的路径
+	result := make(map[string]string)
 	for _, e := range entries {
 		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
 			continue
 		}
-		if fileExists(filepath.Join(tplRoot, e.Name(), "template.yaml")) {
-			names = append(names, e.Name())
+		// 通过 MetaFileName 是否存在判断是否为 template 目录
+		tplPath := filepath.Join(tplRoot, e.Name())
+		if !oskit.IsFile(filepath.Join(tplPath, MetaFileName)) {
+			continue
 		}
+		// 添加到结果
+		result[e.Name()] = tplPath
 	}
-	if len(names) == 0 {
-		return nil, fmt.Errorf("templates/ 子目录下没有任何模板（一级子目录需各含 template.yaml）: %s", pathkit.PrettyPath(tplRoot))
-	}
-	sort.Strings(names)
-	// Dir 指向「模板所在的目录」：单模板是来源根，模板集是 templates/
-	return &SourceLayout{Dir: tplRoot, TemplateNames: names}, nil
-}
-
-// SelectTemplateDir 在来源内定位最终的模板目录：
-// 单模板 + 未指定名 → 根目录；单模板 + 指定名 → 报错（防误用）；
-// 模板集 + 指定名 → 校验存在（不存在则列出可用名）；模板集 + 未指定名 → 交互选择。
-func SelectTemplateDir(layout *SourceLayout, name string) (string, error) {
-	if len(layout.TemplateNames) == 0 {
-		if name != "" {
-			return "", fmt.Errorf("该来源是单模板（根目录即 template.yaml），无需指定模板名 %q", name)
-		}
-		return layout.Dir, nil
-	}
-	if name == "" {
-		selected, err := tui.SelectItem("选择模板", layout.TemplateNames, func(n string) string { return n })
-		if err != nil {
-			return "", err
-		}
-		return filepath.Join(layout.Dir, selected), nil
-	}
-	for _, n := range layout.TemplateNames {
-		if n == name {
-			return filepath.Join(layout.Dir, n), nil
-		}
-	}
-	return "", fmt.Errorf("模板 %q 不存在，可用模板: %v", name, layout.TemplateNames)
-}
-
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
+	return result, nil
 }
