@@ -3,8 +3,6 @@ package create
 import (
 	"bytes"
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -17,35 +15,15 @@ import (
 type ReplaceRule = PatternDecl
 
 // Render 遍历模板目录，把所有文件（路径与内容统一替换后）生成到目标目录。
-func Render(templateDir, targetDir string, tpl *TemplateMeta, vars map[string]string) (int, error) {
-	allRules, err := interpolatePatterns(tpl.Patterns, vars)
+func Render(tpl *Template, targetDir string, vars map[string]string) (int, error) {
+	allRules, err := interpolatePatterns(tpl.Meta().Patterns, vars)
 	if err != nil {
 		return 0, err
 	}
 
 	count := 0
-	err = filepath.WalkDir(templateDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, err := filepath.Rel(templateDir, path)
-		if err != nil {
-			return err
-		}
-		if rel == "." {
-			return nil
-		}
-		base := filepath.Base(rel)
-		if base == ".git" || base == "template.yaml" && !strings.ContainsRune(rel, '/') {
-			if d.IsDir() {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if d.IsDir() {
-			return nil
-		}
-
+	err = tpl.WalkFile(func(rel string) error {
+		// 匹配适用的规则(使用 slash 化的 rel 路径匹配)
 		// 收集命中该文件的所有分组，路径（含文件名）与内容应用同一组规则
 		rules := matchRules(allRules, filepath.ToSlash(rel))
 
@@ -53,7 +31,7 @@ func Render(templateDir, targetDir string, tpl *TemplateMeta, vars map[string]st
 		outPath := filepath.Join(targetDir, applyRules(rel, rules))
 
 		// 计算目标数据
-		data, err := os.ReadFile(path)
+		data, err := tpl.ReadFile(rel)
 		if err != nil {
 			return fmt.Errorf("读取模板文件失败: %w", err)
 		}
@@ -87,7 +65,7 @@ func matchRules(rules []ReplaceRule, rel string) []ReplaceRule {
 }
 
 // applyRules 按声明顺序逐条应用精确字符串替换（非正则）。
-func applyRules(s string, rules []PatternDecl) string {
+func applyRules(s string, rules []ReplaceRule) string {
 	for _, r := range rules {
 		s = strings.ReplaceAll(s, r.Pattern, r.Replace)
 	}

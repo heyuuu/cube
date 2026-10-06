@@ -1,115 +1,128 @@
 package create
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"cube/internal/testfixture"
+	"github.com/stretchr/testify/assert"
 )
 
-// makeTemplateDir 建一个含占位符目录名、多层文件、二进制文件的模板目录。
-func makeTemplateDir(t *testing.T, ws *testfixture.Workspace, name string) string {
-	dir := ws.Mkdir(name)
-	ws.WriteFile(filepath.Join(name, "template.yaml"), []byte("version: 1\n"))
-	ws.WriteFile(filepath.Join(name, "__PROJECT__/main.go"), []byte("package main // __MODULE__"))
-	ws.WriteFile(filepath.Join(name, "__PROJECT__/nested/util.go"), []byte("// __PROJECT__"))
-	ws.WriteFile(filepath.Join(name, "README.md"), []byte("# __PROJECT__"))
-	if err := os.WriteFile(ws.Join(name, "logo.png"), []byte("PN\x00G"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return dir
-}
+// 收集目标目录下所有文件内容
+func collectResultFiles(t *testing.T, dir string) map[string]string {
+	result := make(map[string]string)
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
 
-func testTemplateYaml(t *testing.T) *TemplateMeta {
-	tpl, err := InitTemplateMeta([]byte(`
-version: 1
-variables:
-  project-name: {prompt: 项目名, required: true}
-  module: {prompt: module, required: true}
-patterns:
-  "**/*.go":
-    - {pattern: __MODULE__, replace: "github.com/x/${module}"}
-    - {pattern: __PROJECT__, replace: "${project-name}"}
-  "**/*.md":
-    - {pattern: __PROJECT__, replace: "${project-name}"}
-`))
+		// 读取文件
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("读取文件失败 %s: %w", path, err)
+		}
+		result[rel] = string(data)
+		return nil
+	})
+
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("收集结果文件 collectResultFiles 失败: %v", err)
 	}
-	//tpl.Patterns_old["**/*.go"][0].Replace = "github.com/x/myapp"
-	//tpl.Patterns_old["**/*.go"][1].Replace = "demo"
-	//tpl.Patterns_old["**/*.md"][0].Replace = "demo"
-	return tpl
+	return result
 }
 
 func TestRender(t *testing.T) {
-	ws := testfixture.NewWorkspace(t)
-	templateDir := makeTemplateDir(t, ws, "tpl")
-	target := ws.Join("out")
+	tplMetaFile := `
+version: 1
+variables:
+  - name: project-name
+    prompt: 项目名
+    required: true
+  - name: module
+    prompt: module
+    required: true
+patterns:
+  - pattern: __MODULE__
+    replace: "github.com/x/${module}"
+    scope: "" # 缺省默认匹配所有
+  - pattern: __PROJECT__
+    replace: "${project-name}"
+    scope: "**/*.go"
+  - pattern: __PROJECT__
+    replace: "${project-name}"
+    scope: "**/*.md"
+`
+	vars := map[string]string{
+		"module":       "myapp",
+		"project-name": "demo",
+	}
+	tplFiles := map[string]string{
+		MetaFileName: tplMetaFile,
+		// 路径替换
+		"__PROJECT__/main.go":        "package main // __MODULE__",
+		"__PROJECT__/nested/util.go": "// __PROJECT__",
+		// 内容替换
+		"README.md": "# __PROJECT__",
+		// 二进制
+		"logo.png": "PN\x00G",
+		// 应忽略的文件
+		".git/config":    "[core]",
+		".git/objects/x": "x",
+	}
+	wantFiles := map[string]string{
+		"demo/main.go":        "package main // github.com/x/myapp",
+		"demo/nested/util.go": "// demo",
+		"README.md":           "# demo",
+		"logo.png":            "PN\x00G",
+	}
 
-	count, err := Render(templateDir, target, testTemplateYaml(t), map[string]string{})
+	// 构建测试 tpl
+	tpl := makeTestTpl(t, tplFiles)
+	target := t.TempDir()
+
+	// 执行目标逻辑
+	count, err := Render(tpl, target, vars)
 	if err != nil {
 		t.Fatalf("Render 报错: %v", err)
 	}
-	// 4 个文件（main.go / nested/util.go / README.md / logo.png），template.yaml 不算
-	if count != 4 {
-		t.Fatalf("生成文件数 = %d, want 4", count)
+
+	// 收集产生的文件
+	resultFiles := collectResultFiles(t, target)
+
+	// 验证 count 是否匹配
+	if count != len(resultFiles) {
+		t.Fatalf("count = %d, 实际写入 %d 个文件", count, len(resultFiles))
+	}
+	if count != len(wantFiles) {
+		t.Fatalf("写入文件数为 %d, 预期文件数为 %d", count, len(wantFiles))
 	}
 
-	read := func(rel string) string {
-		t.Helper()
-		data, err := os.ReadFile(filepath.Join(target, rel))
-		if err != nil {
-			t.Fatalf("读取 %s 失败: %v", rel, err)
-		}
-		return string(data)
-	}
-
-	// 目录名占位符替换（路径含文件名）
-	if got := read("demo/main.go"); got != "package main // github.com/x/myapp" {
-		t.Fatalf("main.go 内容替换失败: %q", got)
-	}
-	if got := read("demo/nested/util.go"); got != "// demo" {
-		t.Fatalf("nested/util.go 替换失败: %q", got)
-	}
-	if got := read("README.md"); got != "# demo" {
-		t.Fatalf("README 替换失败: %q", got)
-	}
-	// 二进制内容原样
-	if got := read("logo.png"); got != "PN\x00G" {
-		t.Fatalf("二进制文件内容被改动: %q", got)
-	}
-	// template.yaml 不被复制
-	if _, err := os.Stat(filepath.Join(target, "template.yaml")); !os.IsNotExist(err) {
-		t.Fatal("template.yaml 不应被复制到目标")
-	}
-}
-
-func TestRenderSkipDotGit(t *testing.T) {
-	ws := testfixture.NewWorkspace(t)
-	templateDir := makeTemplateDir(t, ws, "tpl")
-	ws.WriteFile(filepath.Join("tpl", ".git/config"), []byte("[core]"))
-	ws.WriteFile(filepath.Join("tpl", ".git/objects/x"), []byte("x"))
-
-	target := ws.Join("out")
-	count, err := Render(templateDir, target, testTemplateYaml(t), map[string]string{})
-	if err != nil {
-		t.Fatalf("Render 报错: %v", err)
-	}
-	if count != 4 {
-		t.Fatalf("生成文件数 = %d, want 4（.git 应被跳过）", count)
-	}
-	if _, err := os.Stat(filepath.Join(target, ".git")); !os.IsNotExist(err) {
-		t.Fatal(".git 不应被生成")
-	}
+	// 校验目标文件
+	assert.Equalf(t, wantFiles, resultFiles, "生成文件与预期不符")
 }
 
 func TestIsBinary(t *testing.T) {
-	if isBinary([]byte("hello")) {
-		t.Fatal("纯文本被误判为二进制")
+	tests := []struct {
+		data []byte
+		want bool
+	}{
+		{[]byte("plain text"), false},
+		{[]byte(""), false},
+		{[]byte("utf-8 中文 无 NUL"), false},
+		{[]byte{0x01, 0x00, 0x02}, true},
+		{[]byte("a\x00b"), true},
 	}
-	if !isBinary([]byte("a\x00b")) {
-		t.Fatal("含 NUL 字节未被判定为二进制")
+	for _, tt := range tests {
+		if got := isBinary(tt.data); got != tt.want {
+			t.Fatalf("isBinary(%q) = %v, want %v", tt.data, got, tt.want)
+		}
 	}
 }
