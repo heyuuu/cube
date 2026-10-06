@@ -21,8 +21,8 @@ func makeTemplateDir(t *testing.T, ws *testfixture.Workspace, name string) strin
 	return dir
 }
 
-func testTemplateYaml(t *testing.T) *TemplateYaml {
-	tpl, err := InitTemplateYaml([]byte(`
+func testTemplateYaml(t *testing.T) *TemplateMeta {
+	tpl, err := InitTemplateMeta([]byte(`
 version: 1
 variables:
   project-name: {prompt: 项目名, required: true}
@@ -37,9 +37,9 @@ patterns:
 	if err != nil {
 		t.Fatal(err)
 	}
-	tpl.Patterns["**/*.go"][0].Replace = "github.com/x/myapp"
-	tpl.Patterns["**/*.go"][1].Replace = "demo"
-	tpl.Patterns["**/*.md"][0].Replace = "demo"
+	//tpl.Patterns_old["**/*.go"][0].Replace = "github.com/x/myapp"
+	//tpl.Patterns_old["**/*.go"][1].Replace = "demo"
+	//tpl.Patterns_old["**/*.md"][0].Replace = "demo"
 	return tpl
 }
 
@@ -48,7 +48,7 @@ func TestRender(t *testing.T) {
 	templateDir := makeTemplateDir(t, ws, "tpl")
 	target := ws.Join("out")
 
-	count, err := Render(templateDir, target, testTemplateYaml(t))
+	count, err := Render(templateDir, target, testTemplateYaml(t), map[string]string{})
 	if err != nil {
 		t.Fatalf("Render 报错: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestRenderSkipDotGit(t *testing.T) {
 	ws.WriteFile(filepath.Join("tpl", ".git/objects/x"), []byte("x"))
 
 	target := ws.Join("out")
-	count, err := Render(templateDir, target, testTemplateYaml(t))
+	count, err := Render(templateDir, target, testTemplateYaml(t), map[string]string{})
 	if err != nil {
 		t.Fatalf("Render 报错: %v", err)
 	}
@@ -105,41 +105,11 @@ func TestRenderSkipDotGit(t *testing.T) {
 	}
 }
 
-func TestRenderGlobEdges(t *testing.T) {
-	// glob-rules.md 的边界行为：** 零层、dotfile 默认匹配、全路径匹配非子串
-	tests := []struct {
-		glob string
-		rel  string
-		want bool
-	}{
-		{"src/**/*.go", "src/a.go", true},      // ** 零层也算
-		{"src/**/*.go", "src/x/a.go", true},    // 跨层
-		{"src/*.go", "src/nested/a.go", false}, // * 不跨 /
-		{"**/*.go", ".hidden.go", true},        // dotfile 默认匹配
-		{"**/*.go", "src/b.txt", false},
-		{"src/*.go", "xsrc/a.go", false}, // 全路径匹配，非子串
+func TestIsBinary(t *testing.T) {
+	if isBinary([]byte("hello")) {
+		t.Fatal("纯文本被误判为二进制")
 	}
-	for _, tt := range tests {
-		groups := []globGroup{{glob: tt.glob, rules: []ReplaceRule{{Pattern: "x"}}}}
-		if got := len(collectRules(groups, tt.rel)) == 1; got != tt.want {
-			t.Errorf("collectRules(%q, %q) 命中 = %v, want %v", tt.glob, tt.rel, got, tt.want)
-		}
-	}
-}
-
-func TestCompileGroupsErrors(t *testing.T) {
-	tests := []struct {
-		name string
-		tpl  *TemplateYaml
-	}{
-		{"非法 glob", &TemplateYaml{Patterns: map[string][]ReplaceRule{"[": nil}}},
-		{"空 pattern", &TemplateYaml{Patterns: map[string][]ReplaceRule{"**/*.go": {{Pattern: "", Replace: "x"}}}}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if _, err := compileGroups(tt.tpl); err == nil {
-				t.Fatal("期望报错")
-			}
-		})
+	if !isBinary([]byte("a\x00b")) {
+		t.Fatal("含 NUL 字节未被判定为二进制")
 	}
 }

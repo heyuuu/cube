@@ -84,7 +84,7 @@ func (s *Service) Create(source, templateName, targetPath string, cliVars map[st
 		return err
 	}
 
-	count, err := Render(templateDir, absTarget, tpl)
+	count, err := Render(templateDir, absTarget, tpl, vars)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (s *Service) Create(source, templateName, targetPath string, cliVars map[st
 }
 
 // loadTemplate 校验模板目录并解析根下的 template.yaml。
-func loadTemplate(templateDir string) (*TemplateYaml, error) {
+func loadTemplate(templateDir string) (*TemplateMeta, error) {
 	info, err := os.Stat(templateDir)
 	if err != nil || !info.IsDir() {
 		return nil, fmt.Errorf("模板目录不存在或不是目录: %s", pathkit.PrettyPath(templateDir))
@@ -110,20 +110,28 @@ func loadTemplate(templateDir string) (*TemplateYaml, error) {
 	if err != nil {
 		return nil, fmt.Errorf("模板目录缺少 template.yaml（不是合法模板目录）: %s", pathkit.PrettyPath(templateDir))
 	}
-	return InitTemplateYaml(data)
+	return InitTemplateMeta(data)
 }
 
 // collectVariables 收集变量：cliVars 优先；未提供的用 prompt 交互提问
 // （default 预填，required 拒绝空值）。cliVars 里的未声明 key 视为拼写错误报错。
-func (s *Service) collectVariables(tpl *TemplateYaml, cliVars map[string]string) (map[string]string, error) {
+func (s *Service) collectVariables(tpl *TemplateMeta, cliVars map[string]string) (map[string]string, error) {
+	varDecls := tpl.Variables
+
+	// 检查预设参数是否有拼写错误
+	varNameSet := make(map[string]struct{}, len(varDecls))
+	for _, v := range varDecls {
+		varNameSet[v.Name] = struct{}{}
+	}
 	for name := range cliVars {
-		if _, ok := tpl.Variables[name]; !ok {
+		if _, exists := varNameSet[name]; exists {
 			return nil, fmt.Errorf("变量 %q 未在 template.yaml 中声明（检查拼写）", name)
 		}
 	}
 
-	vars := make(map[string]string, len(tpl.Variables))
-	for name, decl := range tpl.Variables {
+	vars := make(map[string]string, len(varDecls))
+	for _, decl := range varDecls {
+		name := decl.Name
 		if v, ok := cliVars[name]; ok {
 			vars[name] = v
 			continue
@@ -154,22 +162,14 @@ func (s *Service) collectVariables(tpl *TemplateYaml, cliVars map[string]string)
 }
 
 // interpolateTemplate 对 patterns 的 Replace 与 init 命令做 ${var} 插值。
-func interpolateTemplate(tpl *TemplateYaml, vars map[string]string) error {
-	for glob, rules := range tpl.Patterns {
-		for i, r := range rules {
-			v, err := interpolate(r.Replace, vars)
-			if err != nil {
-				return fmt.Errorf("patterns[%s] 第 %d 条: %w", glob, i+1, err)
-			}
-			rules[i].Replace = v
-		}
+func interpolateTemplate(tpl *TemplateMeta, vars map[string]string) (err error) {
+	tpl.Patterns, err = interpolatePatterns(tpl.Patterns, vars)
+	if err != nil {
+		return err
 	}
-	for i, cmd := range tpl.Init {
-		v, err := interpolate(cmd, vars)
-		if err != nil {
-			return fmt.Errorf("init 第 %d 条: %w", i+1, err)
-		}
-		tpl.Init[i] = v
+	tpl.Init, err = interpolateInit(tpl.Init, vars)
+	if err != nil {
+		return err
 	}
 	return nil
 }
