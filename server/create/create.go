@@ -14,26 +14,14 @@ import (
 )
 
 // Create 生成项目到 targetPath
-func Create(source string, tplName string, targetPath string, cliVars map[string]string) error {
-	if source == "" {
-		return fmt.Errorf("模板来源不能为空")
-	}
-
+func Create(source *Source, tplName string, targetPath string, cliVars map[string]string) error {
 	// 目标路径预检放在一切交互之前——不能让用户答完来源/模板/变量才被告知路径非法
 	if err := validateTarget(targetPath); err != nil {
 		return err
 	}
 
-	sourcePath, cleanup, err := ResolveTemplateDir(source)
-	if err != nil {
-		return err
-	}
-	if cleanup != nil {
-		defer cleanup()
-	}
-
 	// 选择模板
-	tplPath, err := selectTplPath(sourcePath, tplName)
+	tplPath, err := selectTplPath(source.Path, tplName)
 	if err != nil {
 		return err
 	}

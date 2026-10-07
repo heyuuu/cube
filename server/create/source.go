@@ -1,6 +1,7 @@
 package create
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,43 +12,57 @@ import (
 	"cube/util/pathkit"
 )
 
-// gitUrlPrefixes 触发 git clone 的来源前缀。本地路径（含 ~/ 开头）不在此列。
-var gitUrlPrefixes = []string{"https://", "http://", "git://", "ssh://", "file://", "git@"}
+const DefaultSource = "core"
 
-// IsGitSource 判定模板来源是否为 git url 形态（本地路径——含 ~/ 前缀——返回 false）。
-// 供 cmd 层决定来源是否要展开为绝对路径：本地路径展开，url 原样传给 clone。
-func IsGitSource(source string) bool {
-	if strings.HasSuffix(source, ".git") {
-		return true
-	}
-	for _, p := range gitUrlPrefixes {
-		if strings.HasPrefix(source, p) {
-			return true
-		}
-	}
-	return false
+type SourceType uint8
+
+const (
+	SourceTypeGit   SourceType = iota
+	SourceTypeLocal SourceType = iota
+)
+
+type Source struct {
+	Type SourceType
+	Path string
 }
 
-// ResolveTemplateDir 把来源（本地目录或 git url）解析为「来源根目录」。
-// 本地来源须为绝对路径（~/ 与相对路径由 cmd 层展开，domain 不感知进程 cwd 与 home）；
-// git 来源 clone --depth 1 到系统临时目录，返回 cleanup 供成功后删除临时目录；
-// 失败时 cleanup 为 nil（现场保留，路径已在错误信息中给出，便于排查模板问题）。
-func ResolveTemplateDir(source string) (dir string, cleanup func(), err error) {
-	if !IsGitSource(source) {
-		if info, err := os.Stat(source); err != nil || !info.IsDir() {
-			return "", nil, fmt.Errorf("模板来源目录不存在或不是目录: %s", pathkit.PrettyPath(source))
-		}
-		return source, nil, nil
+func NewSource(typ SourceType, path string) *Source {
+	return &Source{Type: typ, Path: path}
+}
+
+// LoadSource 获取 sourceName 对应的本地路径，sourceName 可以为名称或本地绝对路径
+func LoadSource(sourceName string, tplSourceRoot string) (source *Source, err error) {
+	if sourceName == "" {
+		return nil, fmt.Errorf("sourceName 不能为空")
 	}
 
-	tempDir, err := os.MkdirTemp("", "cube-create-")
-	if err != nil {
-		return "", nil, fmt.Errorf("创建临时目录失败: %w", err)
+	// 若 sourceName 为路径，直接返回
+	if strings.Contains(sourceName, string(filepath.Separator)) {
+		sourcePath := sourceName
+		if !filepath.IsAbs(sourcePath) {
+			return nil, errors.New("sourceName 为路径时必须为绝对路径")
+		}
+		if !oskit.IsDir(sourcePath) {
+			return nil, errors.New("sourceName 路径不存在或不为文件夹")
+		}
+		return NewSource(SourceTypeLocal, sourcePath), nil
 	}
-	if err := git.Clone(tempDir, source, 1, ""); err != nil {
-		return "", nil, fmt.Errorf("clone 模板仓库失败（临时目录 %s 保留供排查）: %w", tempDir, err)
+
+	// sourceName 作为名字对应本地路径
+	sourcePath := filepath.Join(tplSourceRoot, sourceName)
+	if !oskit.IsDir(sourcePath) {
+		return nil, fmt.Errorf("sourceName 不存在或不可读: %s, path=%s", sourceName, sourcePath)
 	}
-	return tempDir, func() { _ = os.RemoveAll(tempDir) }, nil
+	return NewSource(SourceTypeGit, sourcePath), nil
+}
+
+// InitGitSource 初始化 git source 到本地目录
+func InitGitSource(sourceName string, repoUrl string, tplSourceRoot string) error {
+	sourcePath := filepath.Join(tplSourceRoot, sourceName)
+	if err := git.Clone(sourcePath, repoUrl, 1, ""); err != nil {
+		return err
+	}
+	return nil
 }
 
 // LoadSourceTemplates 加载 source 下的模板，返回 Map<模板名, 模板路径>
