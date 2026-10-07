@@ -1,5 +1,5 @@
 // 公共测试用工具函数
-package create
+package template
 
 import (
 	"path/filepath"

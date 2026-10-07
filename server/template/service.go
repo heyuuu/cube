@@ -1,4 +1,4 @@
-package create
+package template
 
 // Service 是模板引擎（cube create）的入口。
 // 默认模板来源存 settings.json 的 create 节（templateSource），直读不缓存。

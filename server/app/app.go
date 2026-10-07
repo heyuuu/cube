@@ -7,11 +7,11 @@ import (
 	"cube/core/config"
 	"cube/core/logger"
 	"cube/core/server"
-	"cube/create"
 	"cube/forge"
 	"cube/handlers"
 	"cube/opener"
 	"cube/project"
+	"cube/template"
 	"cube/usage"
 	"cube/web"
 	"cube/workbench"
@@ -29,7 +29,7 @@ type App struct {
 	workbenchService *workbench.Service
 	openerService    *opener.Service
 	usageService     *usage.Service
-	createService    *create.Service
+	templateService  *template.Service
 	forgeService     *forge.Service
 }
 
@@ -49,9 +49,9 @@ func Init(cfgFile string, debug bool) (*App, error) {
 	openerService := opener.NewService(paths.SettingsFile(), nil, server.BaseURL(cfg.Server))
 	usageService := usage.NewService(paths.StateDir())
 	workbenchService := workbench.NewService(projectService.RefreshGitInfo)
-	createService := create.NewService(paths.TplSourceDir())
+	templateService := template.NewService(paths.TplSourceDir())
 	forgeService := forge.NewService(paths.SettingsFile(), filepath.Join(paths.CacheDir(), "forge-repos.json"))
-	services := []any{projectService, openerService, usageService, workbenchService, createService, forgeService}
+	services := []any{projectService, openerService, usageService, workbenchService, templateService, forgeService}
 
 	// 组装 web server
 	configHandler := handlers.NewConfigHandler(cfg)
@@ -91,7 +91,7 @@ func Init(cfgFile string, debug bool) (*App, error) {
 		workbenchService: workbenchService,
 		openerService:    openerService,
 		usageService:     usageService,
-		createService:    createService,
+		templateService:  templateService,
 		forgeService:     forgeService,
 	}, nil
 }
@@ -100,11 +100,11 @@ func (a *App) Config() *config.Config { return a.cfg }
 func (a *App) Paths() *Paths          { return a.paths }
 func (a *App) Server() *server.Server { return a.server }
 
-func (a *App) ProjectService() *project.Service { return a.projectService }
-func (a *App) OpenerService() *opener.Service   { return a.openerService }
-func (a *App) UsageService() *usage.Service     { return a.usageService }
-func (a *App) CreateService() *create.Service   { return a.createService }
-func (a *App) ForgeService() *forge.Service     { return a.forgeService }
+func (a *App) ProjectService() *project.Service   { return a.projectService }
+func (a *App) OpenerService() *opener.Service     { return a.openerService }
+func (a *App) UsageService() *usage.Service       { return a.usageService }
+func (a *App) TemplateService() *template.Service { return a.templateService }
+func (a *App) ForgeService() *forge.Service       { return a.forgeService }
 
 // StartBackgroundJobs 启动常驻进程的后台任务（分发到各 service 的 OnServerStart 钩子）。
 // 仅常驻 server 调用；CLI 短命进程不调用。

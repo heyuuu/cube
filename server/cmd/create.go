@@ -55,7 +55,7 @@ func newCreateCmd(env *env.Env) *cobra.Command {
 			}
 
 			// 创建模板
-			svc := env.App().CreateService()
+			svc := env.App().TemplateService()
 			return svc.Create(source, tplName, target, vars)
 		},
 	}
