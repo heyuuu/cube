@@ -30,7 +30,7 @@ func TestParseCliTpl(t *testing.T) {
 		// 裸名：默认源
 		{"裸名 → 默认源", "go-cli", "core", "go-cli", "", false},
 		{"裸名带 / 提前拦截", "core/go-cli", "", "", "@source/模板名", false},
-		{"空串", "", "", "", "模板源不能为空", false},
+		{"空串 → 默认源交互选", "", "core", "", "", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

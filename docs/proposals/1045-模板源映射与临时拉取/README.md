@@ -18,13 +18,14 @@ cube create 的 git 模板源经历了三次定位摇摆：
 
 ### D2：引用语法 `@<source>/<tpl>`，npm scope 式 @ 前缀
 
-三形态由首字符零歧义区分：
+三形态由首字符零歧义区分（交付后追加第四形态：**模板源参数整体可省略**——单参数时唯一参数即目标路径，走默认源交互选模板；目标路径恒为最后一个参数，无歧义）：
 
 ```
 @core/go-cli ~/x    @ 前缀 → 命名源 core 的 go-cli
 @core ~/x           @ 前缀无 / → 命名源 core，交互选模板
 go-cli ~/x          裸名 → 默认源 core（DefaultSource 常量）的 go-cli
 ~/code/tpl ~/x      . ~/ / 开头 → 本地路径直读（开发态：正在编辑的模板仓库）
+~/x                 模板源省略 → 默认源 core，交互选模板
 ```
 
 **业内对照**（选型依据）：nix `registry#attr`（符号注册表同构但 `#` 是 shell 注释符，排除）；helm `repo/chart` / brew tap（裸 `/` 靠「首段命中注册表」隐式消歧，弱于显式标记）；npm `@scope/pkg`（@ 前缀对齐，肌肉记忆）；cookiecutter `gh:owner/repo`（无注册表，正是 url 太长的痛点本源）；go/npm 的 `pkg@version`（**@ 尾部 = 版本是业内共识**，`source@tpl` 语法会占用未来 ref 锁定空间，否决）。
