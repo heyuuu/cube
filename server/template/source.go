@@ -13,6 +13,7 @@ import (
 )
 
 const DefaultSource = "core"
+const DefaultSourceRepoUrl = "git@github.com:heyuuu/cube-templates.git"
 
 type SourceType uint8
 

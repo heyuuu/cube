@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/cmd/env"
+	"cube/template"
 )
 
 // cmd `cube create`（模板引擎：本地目录 / git 仓库，单模板或模板集）
@@ -92,4 +93,11 @@ func parseCliTpl(cliTpl string) (source string, tplName string, err error) {
 		return absPath, "", nil
 	}
 
+	// <模板源> 为 `@<source>/<tpl>` 形式
+	if source, tplName, ok := strings.Cut(cliTpl, "@"); ok {
+		return source, tplName, nil
+	}
+
+	// <模板源> 为 `<tpl>` 形式
+	return template.DefaultSource, cliTpl, nil
 }
