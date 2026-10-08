@@ -2,6 +2,7 @@ package template
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -33,17 +34,22 @@ func ValidateTplSource(src TplSource) error {
 	return nil
 }
 
-// validateTplSourceUrl 校验 repoUrl 是可 clone 的 git 远程地址（git@host:path 或 https://host/path）。
-// ParseRepoUrl 对裸路径/裸 host 也解析成功（scheme/host 为空），这里按字段完备性收紧。
+// validateTplSourceUrl 校验 repoUrl 是可 clone 的 git 地址：git@host:path / https://host:path /
+// 本地绝对路径（模板仓库放本地盘也是正当用法，git 原生支持 clone 本地路径）。
+// ParseRepoUrl 对裸路径/裸 host 也解析成功（scheme/host 为空），这里按形态收紧。
 func validateTplSourceUrl(rawUrl string) error {
-	u, err := git.ParseRepoUrl(strings.TrimSpace(rawUrl))
+	trimmed := strings.TrimSpace(rawUrl)
+	if filepath.IsAbs(trimmed) {
+		return nil
+	}
+	u, err := git.ParseRepoUrl(trimmed)
 	if err != nil {
 		return fmt.Errorf("repoUrl 不是合法地址: url=%s", rawUrl)
 	}
 	switch u.Scheme {
 	case "git", "https", "http":
 	default:
-		return fmt.Errorf("repoUrl 不是合法地址: url=%s（支持 git@host:path 或 https://host/path）", rawUrl)
+		return fmt.Errorf("repoUrl 不是合法地址: url=%s（支持 git@host:path、https://host/path 或本地绝对路径）", rawUrl)
 	}
 	if u.Host == "" || u.Path == "" {
 		return fmt.Errorf("repoUrl 不是合法地址: url=%s（缺少 host 或仓库路径）", rawUrl)

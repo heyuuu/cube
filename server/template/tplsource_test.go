@@ -12,7 +12,7 @@ import (
 func newConfigService(t *testing.T) *Service {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
-	return NewService(ws.Join("settings.json"), ws.Join("tpl"))
+	return NewService(ws.Join("settings.json"))
 }
 
 // TestValidateTplSource name / repoUrl 校验表。
@@ -24,10 +24,10 @@ func TestValidateTplSource(t *testing.T) {
 	}{
 		{"合法 ssh 地址", TplSource{Name: "core", RepoUrl: "git@github.com:heyuuu/cube-templates.git"}, ""},
 		{"合法 https 地址", TplSource{Name: "work-2_x", RepoUrl: "https://github.com/a/b.git"}, ""},
+		{"合法本地绝对路径", TplSource{Name: "local", RepoUrl: "/local/path/tpl.git"}, ""},
 		{"name 含路径分隔符", TplSource{Name: "a/b", RepoUrl: "git@github.com:a/b.git"}, "source 名非法"},
 		{"name 相对逃逸", TplSource{Name: "..", RepoUrl: "git@github.com:a/b.git"}, "source 名非法"},
 		{"name 空白", TplSource{Name: " ", RepoUrl: "git@github.com:a/b.git"}, "source 名非法"},
-		{"repoUrl 本地路径", TplSource{Name: "core", RepoUrl: "/local/path"}, "repoUrl 不是合法地址"},
 		{"repoUrl 裸 host 路径", TplSource{Name: "core", RepoUrl: "github.com/a/b"}, "repoUrl 不是合法地址"},
 		{"repoUrl 空", TplSource{Name: "core", RepoUrl: ""}, "repoUrl 不是合法地址"},
 	}
@@ -77,7 +77,7 @@ func TestTplSourceCRUD(t *testing.T) {
 	if err := s.SaveTplSource(TplSource{Name: "a/b", RepoUrl: "git@github.com:a/b.git"}); err == nil || !strings.Contains(err.Error(), "source 名非法") {
 		t.Fatalf("坏 name 应报中文错误, got %v", err)
 	}
-	if err := s.SaveTplSource(TplSource{Name: "bad-url", RepoUrl: "/local/path"}); err == nil || !strings.Contains(err.Error(), "repoUrl 不是合法地址") {
+	if err := s.SaveTplSource(TplSource{Name: "bad-url", RepoUrl: "github.com/a/b"}); err == nil || !strings.Contains(err.Error(), "repoUrl 不是合法地址") {
 		t.Fatalf("坏 repoUrl 应报中文错误, got %v", err)
 	}
 	if len(s.TplSources()) != 2 {

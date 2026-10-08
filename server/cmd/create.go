@@ -10,30 +10,35 @@ import (
 	"cube/template"
 )
 
-// cmd `cube create`（模板引擎：本地目录 / git 仓库，单模板或模板集）
+// cmd `cube create`（模板引擎：命名 git 源 / 本地目录，单模板或模板集）
 //
 // 两种主用法，其余是边缘校验：
-//  1. cube create <模板源> <目标路径> —— 交互式逐步创建（来源/模板名/变量缺啥问啥）；
+//  1. cube create <模板源> <目标路径> —— 交互式逐步创建（模板名/变量缺啥问啥）；
 //  2. cube create <模板源> <目标路径> --var k=v ... —— 非交互一步生成。
 //
-// <模板源> 支持以下几种值
-//  1. `@<source>/<tpl>` 表示 source 模板源下的 tpl 模板
-//  2. `<tpl>`			 表示默认模板源下的 tpl 模板
-//  3. `<本地目录>` 	 指向一个本地模板目录
+// <模板源> 由首字符零歧义区分三种形态（提案 1045）：
+//  1. `@<source>/<tpl>` 命名源的指定模板；`@<source>` 命名源交互选模板（npm scope 式 @ 前缀）
+//  2. `<本地路径>`      . ~/ / 开头，直读模板目录（开发态：正在编辑的模板仓库）
+//  3. `<tpl>`           裸名，默认源 core 的指定模板
 func newCreateCmd(env *env.Env) *cobra.Command {
 	var cliVars []string
 	cmd := &cobra.Command{
-		Use:   "create <模板名> <目标路径> [--var key=value ...]",
+		Use:   "create <模板源> <目标路径> [--var key=value ...]",
 		Short: "使用模板生成项目",
 		Long: `使用模板生成项目
 
 --var key=value：模板变量，可多次。传未声明的变量报错，缺的交互提问。
 
+模板源三种写法：
+  @core/go-service   命名源 core 的 go-service 模板（源在设置页「模板源」配置）
+  go-service         默认源 core 的 go-service 模板
+  ~/code/tpl-dev     本地模板目录直读（开发态：不 clone，吃未推送的改动）
+
 示例：
-  cube create my-app
-  cube create my-app --tpl-name go-service --var author=heyu
-  cube create my-app --tpl ~/templates --tpl-name full
-  cube create my-app --tpl https://github.com/xxx/templates.git --tpl-name go-service --var author=heyu`,
+  cube create go-service ~/code/new-app --var author=heyu
+  cube create @core/go-service ~/code/new-app
+  cube create @work ~/code/new-app          # work 源交互选模板
+  cube create ~/code/tpl-dev ~/code/new-app`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliTpl := args[0]
@@ -44,7 +49,7 @@ func newCreateCmd(env *env.Env) *cobra.Command {
 			}
 
 			// 解析 cliTpl <模板源> 的参数
-			source, tplName, err := parseCliTpl(cliTpl)
+			sourceRef, tplName, err := parseCliTpl(cliTpl)
 			if err != nil {
 				return fmt.Errorf("解析模板源参数失败: %w", err)
 			}
@@ -57,7 +62,7 @@ func newCreateCmd(env *env.Env) *cobra.Command {
 
 			// 创建模板
 			svc := env.App().TemplateService()
-			return svc.Create(source, tplName, target, vars)
+			return svc.Create(sourceRef, tplName, target, vars)
 		},
 	}
 
@@ -82,9 +87,22 @@ func parseCliVars(items []string) (map[string]string, error) {
 	return vars, nil
 }
 
-// parseCliTpl 解析命令中的 <模板源> 参数
-func parseCliTpl(cliTpl string) (source string, tplName string, err error) {
-	// <模板源> 为本地路径
+// parseCliTpl 解析命令中的 <模板源> 参数为 (sourceRef, tplName)。
+// sourceRef 形态（命名源 / 本地绝对路径）由本函数判定，domain 侧 loadSourceDir 按形态分发。
+func parseCliTpl(cliTpl string) (sourceRef string, tplName string, err error) {
+	// `@<source>/<tpl>` 或 `@<source>`：@ 前缀显式标记命名源引用
+	if strings.HasPrefix(cliTpl, "@") {
+		source, tpl, _ := strings.Cut(cliTpl[1:], "/")
+		if source == "" {
+			return "", "", fmt.Errorf("@ 后缺 source 名: %q", cliTpl)
+		}
+		if strings.Contains(tpl, "/") {
+			return "", "", fmt.Errorf("模板名不能包含 /: %q", tpl)
+		}
+		return source, tpl, nil
+	}
+
+	// 本地路径：./ ~/ / 开头
 	if isPathQuery(cliTpl) {
 		absPath, err := ExtendPath(cliTpl)
 		if err != nil {
@@ -93,11 +111,12 @@ func parseCliTpl(cliTpl string) (source string, tplName string, err error) {
 		return absPath, "", nil
 	}
 
-	// <模板源> 为 `@<source>/<tpl>` 形式
-	if source, tplName, ok := strings.Cut(cliTpl, "@"); ok {
-		return source, tplName, nil
+	// 裸名 → 默认源；带 / 的既非路径也非 @ 引用，提前拦截（否则要 clone 完才在模板查找处报错）
+	if cliTpl == "" {
+		return "", "", fmt.Errorf("模板源不能为空")
 	}
-
-	// <模板源> 为 `<tpl>` 形式
+	if strings.Contains(cliTpl, "/") {
+		return "", "", fmt.Errorf("命名源引用请用 @source/模板名 形式: %q", cliTpl)
+	}
 	return template.DefaultSource, cliTpl, nil
 }

@@ -13,15 +13,11 @@ import (
 	"cube/util/tui"
 )
 
-// Create 生成项目到 targetPath
-func Create(source *Source, tplName string, targetPath string, cliVars map[string]string) error {
-	// 目标路径预检放在一切交互之前——不能让用户答完来源/模板/变量才被告知路径非法
-	if err := validateTarget(targetPath); err != nil {
-		return err
-	}
-
+// Create 生成项目到 targetPath（sourcePath 已由 Service.Create 解析为可用目录）。
+// 目标路径预检在 Service.Create 里先于 clone/交互执行，这里不再重复。
+func Create(sourcePath string, tplName string, targetPath string, cliVars map[string]string) error {
 	// 选择模板
-	tplPath, err := selectTplPath(source.Path, tplName)
+	tplPath, err := selectTplPath(sourcePath, tplName)
 	if err != nil {
 		return err
 	}
@@ -54,7 +50,7 @@ func Create(source *Source, tplName string, targetPath string, cliVars map[strin
 }
 
 // validateTarget 预检目标路径（绝对路径，cmd 层已展开）：已存在时必须是空目录（防覆盖既有内容）。
-// 在 Create 一切交互之前调用，让路径错误第一时间暴露。
+// 由 Service.Create 在 clone/交互之前调用，让路径错误第一时间暴露。
 func validateTarget(targetPath string) error {
 	if info, err := os.Stat(targetPath); err == nil {
 		if !info.IsDir() {
@@ -112,7 +108,7 @@ func collectVariables(tpl *Template, cliVars map[string]string) (map[string]stri
 		varNameSet[v.Name] = struct{}{}
 	}
 	for name := range cliVars {
-		if _, exists := varNameSet[name]; exists {
+		if _, exists := varNameSet[name]; !exists {
 			return nil, fmt.Errorf("变量 %q 未在 template.yaml 中声明（检查拼写）", name)
 		}
 	}

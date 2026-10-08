@@ -12,25 +12,32 @@ import (
 // Service 是模板引擎（cube create）的入口。
 // 模板源映射存 settings.json 的 tplSources 节（直读不缓存，保存即生效）。
 type Service struct {
-	settingsFile  string
-	tplSourceRoot string // 本地 source 目录（create 现行链路用；tplSources 接管 create 后移除）
+	settingsFile string
 }
 
-func NewService(settingsFile string, tplSourceRoot string) *Service {
+func NewService(settingsFile string) *Service {
 	return &Service{
-		settingsFile:  settingsFile,
-		tplSourceRoot: tplSourceRoot,
+		settingsFile: settingsFile,
 	}
 }
 
 // Create 生成项目到 targetPath。
-func (s *Service) Create(sourceName string, tplName string, targetPath string, cliVars map[string]string) error {
-	source, err := LoadSource(sourceName, s.tplSourceRoot)
+// sourceRef 为模板源引用：@语法解析后的名字或本地绝对路径（cmd 层已定形态）。
+func (s *Service) Create(sourceRef string, tplName string, targetPath string, cliVars map[string]string) error {
+	// 目标路径预检先行——clone、交互都可能耗时，不能让它们跑完才发现路径非法
+	if err := validateTarget(targetPath); err != nil {
+		return err
+	}
+
+	sourcePath, cleanup, err := loadSourceDir(sourceRef, s.TplSources())
+	if cleanup != nil {
+		defer cleanup() // 临时 clone 目录用后即删（失败路径同样清理）
+	}
 	if err != nil {
 		return err
 	}
 
-	return Create(source, tplName, targetPath, cliVars)
+	return Create(sourcePath, tplName, targetPath, cliVars)
 }
 
 // --- 模板源配置（settings.json tplSources 节，forge 同款形态） ---

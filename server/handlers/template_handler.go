@@ -39,7 +39,7 @@ func (h *TemplateHandler) sourceList(_ struct{}) (TplSourceListResult, error) {
 type TplSourceSaveInput struct {
 	Body struct {
 		Name    string `json:"name" doc:"source 名（cube create 的引用短名，如 core）"`
-		RepoUrl string `json:"repoUrl" doc:"git 仓库地址（git@host:path 或 https://host/path）"`
+		RepoUrl string `json:"repoUrl" doc:"git 仓库地址（git@host:path / https://host/path / 本地绝对路径）"`
 	}
 }
 

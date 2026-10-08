@@ -57,7 +57,7 @@ func TestTplSourceWrite(t *testing.T) {
 	if badName.Ok || !strings.Contains(badName.Message, "source 名非法") {
 		t.Fatalf("坏 name 应报中文错误, message=%q", badName.Message)
 	}
-	badUrl := postJSON(t, env.url("/api/template/source/save"), `{"name":"local","repoUrl":"/local/path"}`)
+	badUrl := postJSON(t, env.url("/api/template/source/save"), `{"name":"local","repoUrl":"github.com/a/b"}`)
 	if badUrl.Ok || !strings.Contains(badUrl.Message, "repoUrl 不是合法地址") {
 		t.Fatalf("坏 repoUrl 应报中文错误, message=%q", badUrl.Message)
 	}

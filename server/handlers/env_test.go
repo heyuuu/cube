@@ -66,7 +66,7 @@ func newTestEnv(t *testing.T) *testEnv {
 
 	projSvc := project.NewService(settingsFile, ws.Join("cache"))
 	forgeSvc := forge.NewService(settingsFile, "")
-	tplSvc := template.NewService(settingsFile, ws.Join("tpl"))
+	tplSvc := template.NewService(settingsFile)
 	exec := &fakeExecutor{}
 	openerSvc := opener.NewService(settingsFile, exec, "http://127.0.0.1:6001")
 	usageSvc := usage.NewService(ws.Dir)

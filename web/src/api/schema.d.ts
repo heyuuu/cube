@@ -2010,7 +2010,7 @@ export interface components {
       readonly $schema?: string;
       /** @description source 名（cube create 的引用短名，如 core） */
       name: string;
-      /** @description git 仓库地址（git@host:path 或 https://host/path） */
+      /** @description git 仓库地址（git@host:path / https://host/path / 本地绝对路径） */
       repoUrl: string;
     };
     TreeListResult: {

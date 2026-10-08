@@ -12,7 +12,6 @@ const (
 	logDirName       = "log"
 	stateDirName     = "state"
 	cacheDirName     = "cache"
-	tplSourceDirName = "tpl"
 )
 
 // Paths 数据目录的路径
@@ -44,6 +43,3 @@ func (p *Paths) StateDir() string { return filepath.Join(p.dataDir, stateDirName
 
 // CacheDir 纯缓存目录（如 git.json）：可整体删除且 app 行为不变差，随时可重建。
 func (p *Paths) CacheDir() string { return filepath.Join(p.dataDir, cacheDirName) }
-
-// TplSourceDir 模板源的缓存目录
-func (p *Paths) TplSourceDir() string { return filepath.Join(p.dataDir, tplSourceDirName) }
