@@ -45,7 +45,7 @@ install:
 	-@cube server stop 2>/dev/null
 
 	@echo ">>> 写入 zsh 提示"
-	@# 安装 zsh completion + shell 扩展（p / pz，见 ./scripts/zsh-append.sh）
+	@# 安装 zsh completion + shell 扩展（p / pz 函数及其 TAB 补全，见 ./scripts/zsh-append.sh）
 	@# completion 生成是覆盖写，重复 install 不会累积
 	@cube completion zsh > $(ZSH_COMPLETION_FILE)
 	@cat ./scripts/zsh-append.sh >> $(ZSH_COMPLETION_FILE)
