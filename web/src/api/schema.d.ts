@@ -616,6 +616,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/template/source/delete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 按 name 删除模板源 */
+    post: operations['template.sourceDelete'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/template/source/list': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 获取模板源列表（含默认源名） */
+    get: operations['template.sourceList'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/template/source/reorder': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 按 name 重排模板源顺序 */
+    post: operations['template.sourceReorder'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/template/source/save': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 新增或按 name 替换模板源 */
+    post: operations['template.sourceSave'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/usage/recent-paths': {
     parameters: {
       query?: never;
@@ -1438,6 +1506,17 @@ export interface components {
       message: string;
       ok: boolean;
     };
+    EnvelopeTplSourceListResult: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/EnvelopeTplSourceListResult.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['TplSourceListResult'];
+      message: string;
+      ok: boolean;
+    };
     EnvelopeTreeListResult: {
       /**
        * Format: uri
@@ -1893,6 +1972,46 @@ export interface components {
       app: string;
       instance: string;
       version: string;
+    };
+    TplSource: {
+      name: string;
+      repoUrl: string;
+    };
+    TplSourceDeleteInputBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/TplSourceDeleteInputBody.json
+       */
+      readonly $schema?: string;
+      /** @description source 名（唯一键） */
+      name: string;
+    };
+    TplSourceListResult: {
+      defaultSource: string;
+      list: components['schemas']['TplSource'][] | null;
+    };
+    TplSourceReorderInputBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/TplSourceReorderInputBody.json
+       */
+      readonly $schema?: string;
+      /** @description 按目标顺序排列的 source 名名单 */
+      names: string[] | null;
+    };
+    TplSourceSaveInputBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/TplSourceSaveInputBody.json
+       */
+      readonly $schema?: string;
+      /** @description source 名（cube create 的引用短名，如 core） */
+      name: string;
+      /** @description git 仓库地址（git@host:path 或 https://host/path） */
+      repoUrl: string;
     };
     TreeListResult: {
       list: string[] | null;
@@ -3153,6 +3272,134 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['EnvelopeStatusResponse'];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel'];
+        };
+      };
+    };
+  };
+  'template.sourceDelete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TplSourceDeleteInputBody'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel'];
+        };
+      };
+    };
+  };
+  'template.sourceList': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EnvelopeTplSourceListResult'];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel'];
+        };
+      };
+    };
+  };
+  'template.sourceReorder': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TplSourceReorderInputBody'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel'];
+        };
+      };
+    };
+  };
+  'template.sourceSave': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TplSourceSaveInputBody'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
         };
       };
       /** @description Error */

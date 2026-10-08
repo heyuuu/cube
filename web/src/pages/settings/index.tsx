@@ -9,6 +9,7 @@ import { ForgeAccountsSection } from './forge-accounts';
 import { ForgeSection } from './forge-section';
 import { OpenerSection } from './opener-section';
 import { ScanSection } from './scan-section';
+import { TplSourceSection } from './tpl-source-section';
 
 // settings 分区清单（提案 1025）：Config（config.json 只读展示的过渡分区）为默认分区，
 // 其余分区可编辑（settings.json）；各域配置管理能力到位后逐步把 Config 内容收编为可编辑分区。
@@ -18,6 +19,7 @@ const SECTIONS = [
   { key: 'opener', label: 'Opener' },
   { key: 'scan', label: '项目·扫描' },
   { key: 'clone', label: '项目·Clone' },
+  { key: 'tpl', label: '模板源' },
   { key: 'forge', label: 'Forge' },
 ] as const;
 
@@ -57,6 +59,7 @@ export function SettingsPage() {
           {current.key === 'opener' && <OpenerSection />}
           {current.key === 'scan' && <ScanSection />}
           {current.key === 'clone' && <CloneSection />}
+          {current.key === 'tpl' && <TplSourceSection />}
           {current.key === 'forge' && (
             <div className="flex flex-col gap-8">
               <ForgeSection />

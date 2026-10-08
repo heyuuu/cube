@@ -14,6 +14,7 @@ export type CloneRule = components['schemas']['CloneRule'];
 export type Forge = components['schemas']['Forge'];
 export type ForgeAccount = components['schemas']['Account'];
 export type ForgeOverview = components['schemas']['Overview'];
+export type TplSource = components['schemas']['TplSource'];
 export type OpenerIntent = components['schemas']['OpenerIntentDTO'];
 export type ProjectListResult = components['schemas']['ProjectListResult'];
 
