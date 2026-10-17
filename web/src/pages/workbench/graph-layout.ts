@@ -68,13 +68,16 @@ export function simplifyLite<T extends { sha: string; parents?: string[] | null;
 }
 
 export interface GraphWire {
-  row: number; // 段的起始行（连到 row+1）
+  row: number; // 段的起始行（连到 row+span，span 缺省 1）
   from: number; // 起始泳道
   to: number; // 结束泳道
   color: number; // 调色板索引（渲染端映射具体颜色）
   origin: number; // 线的起始行（创建该等待泳道的节点行）：线的稳定身份，
   // 渲染端据此判定「虚拟节点的线」——泳道号会被复用（让位留洞、newLane 回填），
   // 不能作为灰线判定的键
+  span?: number; // 跨行直连：一条直线从 row 落到 row+span 的节点（缺省 1 = 只连相邻行）。
+  // 让位出线在父节点已加载时直落父节点——只画到下一行的话，拐点恰好终结在
+  // 让位目标泳道的兄弟节点上，视觉读作「父 = 兄弟」（差一行）
 }
 
 export interface LaneInfo {
@@ -122,6 +125,7 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
   // 自身按合并处理——否则后切出的支线会把母分支的祖先链拖到右侧泳道，
   // 母分支反而画成拐弯的侧枝（嵌套分支场景的主视觉 bug）。
   const parentsOf = (c: { parents?: string[] | null }) => c.parents ?? [];
+  const rowOfSha = new Map(commits.map((c, i) => [c.sha, i] as const)); // sha → 行号（让位出线直连父节点用）
   const fpChildren = new Map<string, number[]>();
   commits.forEach((c, i) => {
     const ps = parentsOf(c);
@@ -132,7 +136,7 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
     }
   });
 
-  const deferred = new Map<number, number>(); // 行号 → 让位目标泳道（出线拐弯的落点）
+  const deferred = new Map<number, number>(); // 行号 → 让位目标泳道（父不可见时出线的单段落点）
   const nodeOrigins = new Array<number>(commits.length); // 行号 → 该节点出线的线身份（进入该节点的线的起始行）
   let colorSeq = 0;
   commits.forEach((c, i) => {
@@ -185,8 +189,9 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
   //           泳道压缩时 to 落在新位置，表现为折线。
   // 两类可并存（同一父被多条支线共享时，节点出线 + 穿越线同时存在）；
   // 首父接管原泳道时二者重合，只发一条。
-  // 让位节点的出线：首父由更靠左的兄弟泳道认领时，父不在本行快照里，
-  // 直接发出线拐向兄弟泳道（兄弟认领后垂直延续、随其落到共同父节点）。
+  // 让位节点的出线：首父由更靠左的兄弟泳道认领时，父不在本行快照里。
+  // 父已加载时跨行直落父节点（只画到下一行会终结在兄弟节点上，读作父边）；
+  // 未加载时单段拐向兄弟泳道，随其泳道延续线落到后续行。
   const wires: GraphWire[] = [];
   for (let i = 0; i + 1 < commits.length; i++) {
     const next = commits[i + 1];
@@ -199,7 +204,20 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
     };
     const deferTo = deferred.get(i);
     if (deferTo !== undefined) {
-      wires.push({ row: i, from: nodes[i].lane, to: deferTo, color: nodes[i].color, origin: nodeOrigins[i] });
+      const pSha = parentsOf(commits[i])[0];
+      const pRow = pSha != null ? rowOfSha.get(pSha) : undefined;
+      if (pRow != null && pRow > i) {
+        wires.push({
+          row: i,
+          from: nodes[i].lane,
+          to: nodes[pRow].lane,
+          color: nodes[i].color,
+          origin: nodeOrigins[i],
+          span: pRow - i,
+        });
+      } else {
+        wires.push({ row: i, from: nodes[i].lane, to: deferTo, color: nodes[i].color, origin: nodeOrigins[i] });
+      }
     }
 
     snapshots[i].forEach((entry, pos) => {

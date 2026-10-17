@@ -6,8 +6,9 @@
 //
 //	不变量 A（边连通）：每条 child→parent 边，从 child 节点出发存在连续线段链
 //	  到达 parent 节点；首段从 child 泳道出发，末段落到 parent 泳道。
+//	  跨行线（span > 1）视作一次跳 band 的直连段。
 //	不变量 B（无悬空线）：每段线的起点要么是本行节点的泳道（节点出线），
-//	  要么承接上一段线的终点；终点要么是下一行节点的泳道，要么有下一段延续。
+//	  要么承接上一段线的终点；终点要么是落点行节点的泳道，要么有下一段延续。
 //	不变量 C（节点占位）：节点泳道互不冲突地落在各自行的线图上（首段 From 覆盖）。
 
 import { describe, expect, it } from 'vitest';
@@ -103,23 +104,26 @@ function verifyGraphInvariants(commits: Entry[], laid: { sha: string; lane: numb
 
   // 不变量 A：每条 child→parent 边存在连续线段链。
   // 分叉点上同一泳道有多条 From 相同的线段（各父各一条），不能贪心逐段选——
-  // 用 DFS 找「一条不重用线段、从子节点泳道出发、末段落到父节点泳道」的路径。
-  const findPath = (from: number, band: number, endBand: number, endLane: number, used: Set<string>): boolean => {
-    if (band > endBand) return false;
+  // 用 DFS 找「一条不重用线段、从子节点泳道出发、末段落到父节点泳道」的路径；
+  // 跨行线（span>1）从 band 一次跳到 band+span（直连父节点，让位出线）。
+  const findPath = (from: number, band: number, endRow: number, endLane: number, used: Set<string>): boolean => {
+    if (band >= endRow) return false;
     const segs = wiresByRow.get(band) ?? [];
     for (let idx = 0; idx < segs.length; idx++) {
       const w = segs[idx];
       const key = `${band}:${idx}`;
       if (used.has(key) || w.from !== from) continue;
-      if (band === endBand) {
+      const nextRow = band + (w.span ?? 1);
+      if (nextRow === endRow) {
         if (w.to === endLane) {
           used.add(key);
           return true;
         }
         continue;
       }
+      if (nextRow > endRow) continue;
       used.add(key);
-      if (findPath(w.to, band + 1, endBand, endLane, used)) return true;
+      if (findPath(w.to, nextRow, endRow, endLane, used)) return true;
       used.delete(key);
     }
     return false;
@@ -129,24 +133,30 @@ function verifyGraphInvariants(commits: Entry[], laid: { sha: string; lane: numb
       const pRow = nodeBySha.get(p);
       expect(pRow, `父提交 ${p} 不在节点列表`).toBeDefined();
       const used = new Set<string>();
-      const ok = findPath(laid[i].lane, i, pRow! - 1, laid[pRow!].lane, used);
+      const ok = findPath(laid[i].lane, i, pRow!, laid[pRow!].lane, used);
       expect(ok, `边 ${c.sha}→${p} 无连续线段路径`).toBe(true);
     }
   });
 
-  // 不变量 B：无悬空线段
+  // 不变量 B：无悬空线段（跨行线本身就是完整边：起点是节点泳道、终点是父节点泳道）
   for (const [row, segs] of wiresByRow) {
     for (const w of segs) {
+      const s = w.span ?? 1;
       // 起点：本行节点出线，或承接上一段
       let fromOk = w.from === laid[row].lane;
       if (!fromOk) {
         fromOk = (wiresByRow.get(row - 1) ?? []).some((prev) => prev.to === w.from);
       }
       expect(fromOk, `悬空起点: band ${row} ${JSON.stringify(w)}`).toBe(true);
-      // 终点：下一行节点入线，或有下段延续
-      let toOk = w.to === laid[row + 1].lane;
-      if (!toOk && row + 1 <= laid.length - 2) {
-        toOk = (wiresByRow.get(row + 1) ?? []).some((next) => next.from === w.to);
+      // 终点：跨行线落到 row+span 的父节点泳道；单段线是下一行节点入线或有下段延续
+      let toOk: boolean;
+      if (s > 1) {
+        toOk = w.to === laid[row + s]?.lane;
+      } else {
+        toOk = w.to === laid[row + 1]?.lane;
+        if (!toOk && row + 1 <= laid.length - 2) {
+          toOk = (wiresByRow.get(row + 1) ?? []).some((next) => next.from === w.to);
+        }
       }
       expect(toOk, `悬空终点: band ${row} ${JSON.stringify(w)}`).toBe(true);
     }
@@ -251,6 +261,42 @@ describe('虚拟节点（dirty worktree 合成提交）', () => {
       { row: 1, from: 1, to: 1, color: 2, origin: 1 }, // merge → m1（首父接管原泳道）
       { row: 1, from: 1, to: 2, color: 3, origin: 1 }, // merge → f2（额外父拐弯曲线）
     ]);
+  });
+
+  it('让位出线跨行直连父节点，不终结在中间的兄弟节点上（差一行误读回归）', () => {
+    // 真实场景（xixi 仓库现场）：两个 dirty 副本的虚拟节点在顶部，第二个虚拟
+    // 节点的 HEAD（tpl）不是下一行——tpl 的另一个首父子提交 dev（主线 tip）
+    // 已等在更左泳道，触发让位。旧实现让位出线只画到下一行、恰好终结在
+    // dev 节点上，视觉读作「父 = dev」；现须一条跨行斜线直落 tpl 节点。
+    const list = [
+      { sha: 'worktree:main', parents: ['dev'] }, // 虚拟 1：把主线 tip dev 放进泳道 0
+      { sha: 'worktree:wt01', parents: ['tpl'] }, // 虚拟 2：HEAD = tpl，让位给 dev
+      { sha: 'dev', parents: ['tpl'] },
+      { sha: 'tpl', parents: ['root'] },
+      { sha: 'root', parents: [] },
+    ];
+    const { nodes, wires } = computeGraph(list);
+    verifyGraphInvariants(list, nodes, wires);
+    const rowOf = new Map(nodes.map((n, i) => [n.sha, i]));
+    const wtRow = rowOf.get('worktree:wt01')!;
+    const deferWire = wires.find((w) => w.row === wtRow && (w.span ?? 1) > 1);
+    expect(deferWire, '让位出线应为跨行直连线').toBeDefined();
+    expect(deferWire!.from).toBe(nodes[wtRow].lane);
+    expect(deferWire!.to).toBe(nodes[rowOf.get('tpl')!].lane);
+    expect(wtRow + deferWire!.span!).toBe(rowOf.get('tpl'));
+  });
+
+  it('让位时父不在已持有数据中：退回单段拐向兄弟泳道，随泳道延续下落', () => {
+    // 分页场景：父提交 tpl 在未加载页里，无法直连——保持旧的一段式出线，
+    // 落点为让位目标泳道（兄弟 dev 的泳道），由泳道延续线接到后续行/页底
+    const page = [
+      { sha: 'worktree:main', parents: ['dev'] },
+      { sha: 'worktree:wt01', parents: ['tpl'] }, // tpl 未加载
+      { sha: 'dev', parents: ['tpl'] },
+    ];
+    const { nodes, wires } = computeGraph(page);
+    const deferWire = wires.find((w) => w.row === 1 && w.from === nodes[1].lane);
+    expect(deferWire).toEqual({ row: 1, from: 1, to: 0, color: 2, origin: 1 });
   });
 });
 

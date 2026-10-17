@@ -107,7 +107,11 @@ export function CommitGraphSection({
     const lite = mode === 'lite' ? simplifyLite(decorated, LITE_KEEP_RECENT) : null;
     const { nodes, wires } = computeGraph([...virtual, ...(lite ?? decorated)]);
     const map = new Map<number, GraphWire[]>();
-    for (const w of wires) map.set(w.row, [...(map.get(w.row) ?? []), w]);
+    // 键 = 线段终结行（row+span）：跨行让位线整条画在其落点行的 svg 里向上越界绘制
+    for (const w of wires) {
+      const end = w.row + (w.span ?? 1);
+      map.set(end, [...(map.get(end) ?? []), w]);
+    }
     // 虚拟节点（未提交改动）独用灰色：与已提交节点一眼区分。
     // 置灰范围只到「虚拟节点 → 其 HEAD」为止：HEAD 之下的线属于真实历史。
     // 灰线段的键是线段的 origin（线的起始行，见 GraphWire）而非泳道号——
@@ -207,7 +211,7 @@ export function CommitGraphSection({
               key={c.sha}
               c={c}
               laneWidth={laneWidth}
-              wires={wireMap.get(i - 1) ?? []}
+              wires={wireMap.get(i) ?? []}
               virtualOriginEnd={virtualOriginEnd}
               params={params}
               active={c.sha === focusSha}
@@ -249,7 +253,8 @@ function CommitRow({
     // 行高用固定 px（与 svg 的 ROW_H 同源）：根字号随视口 clamp 缩放，
     // rem 行高会与大屏下的 svg px 几何错位
     <div data-sha={c.sha} className="group/commit flex items-stretch hover:bg-accent" style={{ height: ROW_H }}>
-      {/* 泳道列：本行 svg 画「上一节点中心 → 本节点中心」的连线段（Row = rowIndex-1）+ 本行节点。
+      {/* 泳道列：本行 svg 画「上一节点中心 → 本节点中心」的连线段（Row = rowIndex-1；
+          跨行让位线从更上方一路画到本行落点）+ 本行节点。
           节点圆心在行高中点，线段纵向须跨 -ROW_H/2 ~ +ROW_H/2（上一行圆心到本行圆心），
           svg 设 overflow visible 允许向上越界绘制 */}
       <svg
@@ -262,11 +267,24 @@ function CommitRow({
         {wires.map((w, wi) => {
           const x1 = LANE_X0 + w.from * LANE_W;
           const x2 = LANE_X0 + w.to * LANE_W;
+          const span = w.span ?? 1;
           // 虚拟节点的连线段（线身份为虚拟节点行、且尚未到其 HEAD 行）置灰
           const end = virtualOriginEnd.get(w.origin);
           const color = end !== undefined && w.row < end ? VIRTUAL_COLOR : LANE_PALETTE[w.color % LANE_PALETTE.length];
-          // 同泳道 = 竖线；切入/切出行 = 单条斜线（无曲线、无折线），其余位置恒竖线
-          return <line key={wi} x1={x1} y1={-ROW_H / 2} x2={x2} y2={ROW_H / 2} stroke={color} strokeWidth={1.5} />;
+          // 同泳道 = 竖线；切入/切出行 = 单条斜线（无曲线、无折线）；
+          // 跨行让位线 = 长斜线直落父节点（svg overflow visible 向上越界绘制，
+          // 中间行的节点从线旁掠过，不被误读为线的终点）
+          return (
+            <line
+              key={wi}
+              x1={x1}
+              y1={-(span - 1) * ROW_H - ROW_H / 2}
+              x2={x2}
+              y2={ROW_H / 2}
+              stroke={color}
+              strokeWidth={1.5}
+            />
+          );
         })}
         <circle
           cx={LANE_X0 + (c.lane ?? 0) * LANE_W}
