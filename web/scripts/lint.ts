@@ -3,8 +3,8 @@
  * 新增规则 = lint-rules/ 下实现 LintRule 并加入 RULES,由 pnpm check 统一驱动。
  */
 
-import { blockComment } from './lint-rules/block-comment.ts';
-import { checkImports } from './lint-rules/check-imports.ts';
+import { blockComment } from './lint-rules/block-comment';
+import { checkImports } from './lint-rules/check-imports';
 
 const RULES = [checkImports, blockComment];
 const FIX = process.argv.includes('--fix');

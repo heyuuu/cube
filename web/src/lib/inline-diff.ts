@@ -19,7 +19,7 @@ export function splitInlineDiff(oldText: string, newText: string): InlineDiff {
   const a = Array.from(oldText);
   const b = Array.from(newText);
   // LCS 长度表，回溯时同一路径产出两侧片段，天然对齐
-  const dp: number[][] = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array.from({ length: b.length + 1 }, () => 0));
   for (let i = a.length - 1; i >= 0; i--) {
     for (let j = b.length - 1; j >= 0; j--) {
       dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);

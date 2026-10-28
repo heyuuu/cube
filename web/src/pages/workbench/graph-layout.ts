@@ -99,9 +99,9 @@ interface graphLane {
 // commits 须为拓扑序（新→旧）；扩展字段（refs/subject 等）原样带到返回节点。
 // parents 允许 null（OpenAPI 对 Go 切片标 nullable），内部按空处理。
 export function computeGraph<T extends { sha: string; parents?: string[] | null }>(commits: readonly T[]) {
-  const nodes: (T & LaneInfo)[] = new Array(commits.length);
+  const nodes: (T & LaneInfo)[] = Array.from({ length: commits.length });
   // 每行处理完的 lanes 快照：既用于下一行定位，也用于第二遍连线推导
-  const snapshots: graphLane[][] = new Array(commits.length);
+  const snapshots: graphLane[][] = Array.from({ length: commits.length });
 
   const lanes: graphLane[] = [];
   const laneIndexOf = (sha: string): number => {
@@ -148,7 +148,7 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
   });
 
   const deferred = new Map<number, number>(); // 行号 → 让位目标泳道（父不可见时出线的单段落点）
-  const nodeOrigins = new Array<number>(commits.length); // 行号 → 该节点出线的线身份（进入该节点的线的起始行）
+  const nodeOrigins: number[] = Array.from({ length: commits.length }); // 行号 → 该节点出线的线身份（进入该节点的线的起始行）
   let colorSeq = 0;
   commits.forEach((c, i) => {
     let lane = laneIndexOf(c.sha);

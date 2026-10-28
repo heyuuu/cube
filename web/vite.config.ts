@@ -3,7 +3,8 @@ import path from 'node:path';
 import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
-import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import type { Plugin } from 'vite';
 
 // 把浏览器端的 console.error / 未捕获异常转发到 dev server 终端。
 // vite 只负责转译和 HMR，浏览器里的报错终端天然看不到，排查时得开 devtools；

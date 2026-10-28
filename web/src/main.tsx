@@ -4,9 +4,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 
-import App from './App.tsx';
-import { applyThemeEarly } from './hooks/use-theme.ts';
-import { queryClient } from './lib/query.ts';
+import App from './App';
+import { applyThemeEarly } from './hooks/use-theme';
+import { queryClient } from './lib/query';
 
 import './index.css';
 
