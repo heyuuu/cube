@@ -4,7 +4,6 @@
 import { GripVertical } from 'lucide-react';
 import { useState } from 'react';
 
-import type { Forge, ForgeAccount } from '@/api/client';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorBanner } from '@/components/error-banner';
 import { Badge } from '@/components/ui/badge';
@@ -16,10 +15,11 @@ import { cn } from '@/lib/utils';
 import {
   useForgeAccountDelete,
   useForgeAccountReorder,
-  useForgeAccountSave,
   useForgeAccounts,
+  useForgeAccountSave,
   useForges,
 } from '@/queries/forge';
+import type { Forge, ForgeAccount } from '@/api/client';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
 
@@ -58,7 +58,7 @@ function AccountForm({ draft, forges, onClose }: { draft: AccountDraft; forges: 
           {save.error && <ErrorBanner message={`保存失败：${save.error.message}`} />}
 
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">所属 forge</span>
+            <span className="text-muted-foreground text-xs">所属 forge</span>
             <div className="flex flex-wrap gap-1.5">
               {apiForges.map((f) => (
                 <button
@@ -79,7 +79,7 @@ function AccountForm({ draft, forges, onClose }: { draft: AccountDraft; forges: 
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">username（平台用户名，唯一键之一）</span>
+            <span className="text-muted-foreground text-xs">username（平台用户名，唯一键之一）</span>
             <Input
               value={form.username}
               onChange={(e) => set('username', e.target.value)}
@@ -90,7 +90,7 @@ function AccountForm({ draft, forges, onClose }: { draft: AccountDraft; forges: 
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">token（拉取必填；编辑时保持掩码 = 未修改）</span>
+            <span className="text-muted-foreground text-xs">token（拉取必填；编辑时保持掩码 = 未修改）</span>
             <Input
               type="password"
               value={form.token}
@@ -133,7 +133,7 @@ export function ForgeAccountsSection() {
     <section>
       <div className="mb-2 flex items-baseline gap-2">
         <h2 className="text-sm font-medium">Forge 账号（API 凭证）</h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           平台账号的 API token，用于拉取该账号名下仓库列表（含私有库）；一个 forge 可挂多个账号
         </span>
         <Button
@@ -166,7 +166,7 @@ export function ForgeAccountsSection() {
           <TableBody>
             {list.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-xs text-muted-foreground">
+                <TableCell colSpan={4} className="text-muted-foreground text-xs">
                   暂无账号（拉取需要账号 token，1044 起不再支持无凭证的公开拉取）
                 </TableCell>
               </TableRow>
@@ -209,7 +209,9 @@ export function ForgeAccountsSection() {
         confirmText="删除"
         danger
         onConfirm={() => {
-          if (deleting) del.mutate({ forgeHost: deleting.forgeHost, username: deleting.username });
+          if (deleting) {
+            del.mutate({ forgeHost: deleting.forgeHost, username: deleting.username });
+          }
           setDeleting(null);
         }}
         onCancel={() => setDeleting(null)}

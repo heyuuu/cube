@@ -4,7 +4,9 @@
 // 外部 URL 照常替换——与后端 renderURLTemplate 同规则），在当前浏览器新 tab 打开。
 // 返回 false 表示非 url 动作，调用方回落后端 API。
 export function tryOpenUrlAction(raw: string | undefined, paths: string[]): boolean {
-  if (!raw?.startsWith('url:')) return false;
+  if (!raw?.startsWith('url:')) {
+    return false;
+  }
   const tmpl = raw.slice(4).trimStart();
   const external = /^https?:\/\//.test(tmpl);
   const url = tmpl.replace(/\$(\d+)/g, (all, n: string) => {

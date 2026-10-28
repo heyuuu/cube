@@ -1,14 +1,14 @@
 import { useState } from 'react';
 
 import { ErrorBanner } from '@/components/error-banner';
-import { useWorkbenchInfo, useWorkbenchWorktrees, type WorktreeStatus } from '@/queries/workbench';
+import { useWorkbenchInfo, useWorkbenchWorktrees } from '@/queries/workbench';
+import type { WorktreeStatus } from '@/queries/workbench';
 
-import type { WorkbenchParams } from '../params';
 import { useWorktreeVisibility } from '../worktree-visibility';
-
 import { CommitGraphSection } from './commit-graph';
 import { WorktreeSection } from './worktree-section';
 import { BranchAddDialog, BranchDeleteDialog, WorktreeAddDialog, WorktreeRemoveDialog } from './worktree-write';
+import type { WorkbenchParams } from '../params';
 
 export function GitTreePanel({ params }: { params: WorkbenchParams }) {
   const { path } = params;
@@ -29,7 +29,7 @@ export function GitTreePanel({ params }: { params: WorkbenchParams }) {
   const mainPath = worktreesForDialogs.data?.[0]?.path ?? path; // 副本列表主目录在前
 
   if (info.isPending) {
-    return <div className="p-3 text-xs text-muted-foreground">加载中…</div>;
+    return <div className="text-muted-foreground p-3 text-xs">加载中…</div>;
   }
   if (info.isError) {
     return <ErrorBanner message={info.error.message} />;
@@ -37,7 +37,7 @@ export function GitTreePanel({ params }: { params: WorkbenchParams }) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="shrink-0 overflow-y-auto border-b border-border">
+      <div className="border-border shrink-0 overflow-y-auto border-b">
         <WorktreeSection
           path={path}
           params={params}

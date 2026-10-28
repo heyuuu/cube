@@ -2,7 +2,6 @@ import { ArrowDownWideNarrow, ChevronRight, GitBranch, Layers, RefreshCw, Rotate
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import type { Project } from '@/api/client';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorBanner } from '@/components/error-banner';
 import { Chip, CycleSortHead, FilterRow } from '@/components/filter-chips';
@@ -18,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePersistentSet } from '@/hooks/use-local-pref';
 import { matchForgeFilter, repoHostsOf } from '@/lib/forge';
-import type { IconDecl } from '@/lib/icon';
 import { renderIcon } from '@/lib/icon';
 import { guessHome, prettyPath } from '@/lib/path';
 import { formatDateTime, prettyTime } from '@/lib/time';
@@ -26,25 +24,18 @@ import { buildProjectTree, collectExpandablePaths, flattenTree } from '@/lib/tre
 import { cn } from '@/lib/utils';
 import { useForges } from '@/queries/forge';
 import { useOpenerList } from '@/queries/opener';
-import { useProjectOpen, useProjectList } from '@/queries/project';
+import { useProjectList, useProjectOpen } from '@/queries/project';
 import { useScanRules } from '@/queries/scan-rule';
+import type { Project } from '@/api/client';
+import type { IconDecl } from '@/lib/icon';
 
 import { ProjectActions, TargetKindIcon, TargetRowActions, WorktreeCountBadge } from './actions';
 import { ClickBadge, ForgeIcon, GitCell, LastUsedTime } from './cells';
 import { ProjectDrawer } from './drawer';
-import {
-  countWorkspaces,
-  gitFilters,
-  isSortMode,
-  matchGitFilter,
-  sortKeys,
-  timeOf,
-  type GitStatus,
-  type SortKey,
-  type SortMode,
-} from './filters';
+import { countWorkspaces, gitFilters, isSortMode, matchGitFilter, sortKeys, timeOf } from './filters';
 import { projectTargets, tagVariants } from './shared';
 import { TreeRowView } from './tree-view';
+import type { GitStatus, SortKey, SortMode } from './filters';
 
 export function ProjectsPage() {
   const list = useProjectList();
@@ -66,8 +57,11 @@ export function ProjectsPage() {
         (prev) => {
           const next = new URLSearchParams(prev);
           for (const [key, value] of Object.entries(patch)) {
-            if (value) next.set(key, value);
-            else next.delete(key);
+            if (value) {
+              next.set(key, value);
+            } else {
+              next.delete(key);
+            }
           }
           return next;
         },
@@ -103,7 +97,9 @@ export function ProjectsPage() {
   }
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (keywordInput !== keyword) updateParams({ q: keywordInput });
+      if (keywordInput !== keyword) {
+        updateParams({ q: keywordInput });
+      }
     }, 300);
     return () => clearTimeout(timer);
   }, [keywordInput, keyword, updateParams]);
@@ -141,20 +137,33 @@ export function ProjectsPage() {
 
   const filtered = projects.filter((p) => {
     const kw = keyword.trim().toLowerCase();
-    if (kw && !(p.name.toLowerCase().includes(kw) || p.path.toLowerCase().includes(kw))) return false;
-    if (groupFilter.length > 0 && !groupFilter.includes(p.group)) return false;
-    if (!matchGitFilter(p, gitFilter)) return false;
-    if (tagFilter !== 'all' && !(p.tags ?? []).includes(tagFilter)) return false;
-    if (wtFilter && (p.gitInfo?.worktrees?.length ?? 0) === 0) return false;
-    if (wsFilter && countWorkspaces(p) === 0) return false;
+    if (kw && !(p.name.toLowerCase().includes(kw) || p.path.toLowerCase().includes(kw))) {
+      return false;
+    }
+    if (groupFilter.length > 0 && !groupFilter.includes(p.group)) {
+      return false;
+    }
+    if (!matchGitFilter(p, gitFilter)) {
+      return false;
+    }
+    if (tagFilter !== 'all' && !(p.tags ?? []).includes(tagFilter)) {
+      return false;
+    }
+    if (wtFilter && (p.gitInfo?.worktrees?.length ?? 0) === 0) {
+      return false;
+    }
+    if (wsFilter && countWorkspaces(p) === 0) {
+      return false;
+    }
     if (
       !matchForgeFilter(
         repoHostsOf(p.gitInfo),
         forgeFilter,
         forgeList.map((f) => f.host),
       )
-    )
+    ) {
       return false;
+    }
     return true;
   });
 
@@ -229,8 +238,11 @@ export function ProjectsPage() {
   function toggleTreeNode(path: string) {
     setTreeExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
       return next;
     });
   }
@@ -248,7 +260,9 @@ export function ProjectsPage() {
   const treeRows = treeRoot ? flattenTree(treeRoot, (path) => treeExpanded.has(path)) : [];
 
   function expandAllTree() {
-    if (treeRoot) setTreeExpanded(new Set(collectExpandablePaths(treeRoot)));
+    if (treeRoot) {
+      setTreeExpanded(new Set(collectExpandablePaths(treeRoot)));
+    }
   }
 
   function collapseAllTree() {
@@ -291,7 +305,7 @@ export function ProjectsPage() {
           placeholder="搜索项目名 / 路径"
           className="w-64"
         />
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           共 <strong className="text-foreground">{filtered.length}</strong> 个
         </span>
         {/* 排序：列表模式走表头点击（SortableHead），树模式无表头、此处提供下拉 */}
@@ -299,7 +313,7 @@ export function ProjectsPage() {
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                <Button variant="ghost" size="sm" className="text-muted-foreground text-xs">
                   <ArrowDownWideNarrow data-icon="inline-start" />
                   排序：
                   {sortMode === 'default'
@@ -425,7 +439,7 @@ export function ProjectsPage() {
       {mode === 'tree' ? (
         <div className="px-6 pb-6">
           <div className="flex items-center justify-between pb-2">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               基于当前筛选结果（<strong className="text-foreground">{filtered.length}</strong> 个）的目录树
             </span>
             <div className="flex gap-1">
@@ -528,14 +542,14 @@ export function ProjectsPage() {
                               ))}
                               <WorktreeCountBadge p={p} />
                             </div>
-                            <div className="mt-0.5 font-mono text-xs text-muted-foreground" title={p.path}>
+                            <div className="text-muted-foreground mt-0.5 font-mono text-xs" title={p.path}>
                               {prettyPath(p.path, home)}
                             </div>
                           </div>
                           {multi && (
                             <button
                               type="button"
-                              className="ml-1 shrink-0 text-muted-foreground hover:text-foreground"
+                              className="text-muted-foreground hover:text-foreground ml-1 shrink-0"
                               title={expanded ? '收起目标' : `展开 ${targets.length} 个目标`}
                               aria-label={expanded ? `收起 ${p.name} 目标` : `展开 ${p.name} 目标`}
                               aria-expanded={expanded}

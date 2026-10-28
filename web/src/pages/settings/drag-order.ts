@@ -23,19 +23,25 @@ export function useDragOrder<T>(keyOf: (item: T) => string, list: T[], onReorder
 
   // 个位数列表，重排计算不值得 useMemo（直接算还免去 list 引用不稳的依赖告警）
   const rows = (() => {
-    if (order === null || order.length !== list.length) return list;
+    if (order === null || order.length !== list.length) {
+      return list;
+    }
     const byKey = new Map(list.map((item) => [keyOf(item), item] as const));
     const sorted: T[] = [];
     for (const k of order) {
       const hit = byKey.get(k);
-      if (!hit) return list;
+      if (!hit) {
+        return list;
+      }
       sorted.push(hit);
     }
     return sorted;
   })();
 
   const dropTo = (target: number) => {
-    if (dragIdx === null || dragIdx === target) return;
+    if (dragIdx === null || dragIdx === target) {
+      return;
+    }
     const next = [...rows];
     // 插入位语义：从上往下拖插到 target 之后、从下往上拖插到 target 之前（与高亮线一致）
     const insertAt = dragIdx < target ? target + 1 : target;

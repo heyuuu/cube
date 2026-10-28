@@ -5,7 +5,6 @@ import { CloudDownload, Copy, ExternalLink, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
-import type { components, Forge } from '@/api/client';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorBanner } from '@/components/error-banner';
 import { Chip, CycleSortHead, FilterRow } from '@/components/filter-chips';
@@ -14,12 +13,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { repoPathOf } from '@/lib/forge';
-import type { IconDecl } from '@/lib/icon';
 import { renderIcon } from '@/lib/icon';
 import { guessHome, prettyPath } from '@/lib/path';
 import { prettyTime } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useForgeAccountFetch, useForgeOverview, useForges } from '@/queries/forge';
+import type { components, Forge } from '@/api/client';
+import type { IconDecl } from '@/lib/icon';
 
 type RepoRow = components['schemas']['RepoRow'];
 
@@ -48,7 +48,9 @@ function isSortMode(v: string | null): v is SortMode {
 const STALE_DAYS = 7;
 
 function isStale(iso: string): boolean {
-  if (!iso) return false;
+  if (!iso) {
+    return false;
+  }
   return Date.now() - new Date(iso).getTime() > STALE_DAYS * 86400_000;
 }
 
@@ -99,8 +101,11 @@ export function ForgesPage() {
   const sortMode: SortMode = isSortMode(sortParam) ? sortParam : 'updated';
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(params);
-    if (value === null) next.delete(key);
-    else next.set(key, value);
+    if (value === null) {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
     setParams(next, { replace: true });
   };
 
@@ -180,7 +185,7 @@ export function ForgesPage() {
           );
         })}
         {accounts.length === 0 && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             暂无账号，先到
             <Link to="/settings?section=forge" target="_blank" className="mx-1 underline">
               设置 · Forge
@@ -253,7 +258,7 @@ export function ForgesPage() {
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-xs text-muted-foreground">
+                <TableCell colSpan={6} className="text-muted-foreground text-xs">
                   {overview.isLoading ? '加载中…' : '暂无仓库行——先在上方刷新账号拉取'}
                 </TableCell>
               </TableRow>
@@ -269,7 +274,7 @@ export function ForgesPage() {
                       {renderIcon(forgeIcon(r.forgeHost), null)}
                       <span title={display.title}>{display.text || '—'}</span>
                       {r.repo.defaultBranch && r.status !== 'orphan' && (
-                        <span className="font-mono text-[10px] text-muted-foreground">{r.repo.defaultBranch}</span>
+                        <span className="text-muted-foreground font-mono text-[10px]">{r.repo.defaultBranch}</span>
                       )}
                     </span>
                   </TableCell>
@@ -281,7 +286,7 @@ export function ForgesPage() {
                   <TableCell>
                     {r.local ? (
                       <span className="flex items-center gap-1.5 text-xs">
-                        <span className="max-w-48 truncate font-mono text-muted-foreground" title={r.local.path}>
+                        <span className="text-muted-foreground max-w-48 truncate font-mono" title={r.local.path}>
                           {prettyPath(r.local.path, home)}
                         </span>
                         {r.local.dirty && (
@@ -293,10 +298,10 @@ export function ForgesPage() {
                         {r.local.behind > 0 && <Badge variant="outline">↓{r.local.behind}</Badge>}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-muted-foreground text-xs">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{prettyTime(r.repo.updatedAt)}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{prettyTime(r.repo.updatedAt)}</TableCell>
                   <TableCell className="text-right">
                     {r.status === 'missing' && (
                       <Button size="sm" variant="ghost" onClick={() => copy(cloneCmd, cloneCmd)}>
@@ -332,7 +337,7 @@ export function ForgesPage() {
         </Table>
       </div>
       {rows.length > 0 && (
-        <div className="mx-6 mt-2 text-xs text-muted-foreground">
+        <div className="text-muted-foreground mx-6 mt-2 text-xs">
           {rows.length} 个仓库{copied && <span className="ml-3 text-emerald-600">已复制：{copied}</span>}
         </div>
       )}

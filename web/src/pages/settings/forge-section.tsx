@@ -4,7 +4,6 @@
 import { GripVertical } from 'lucide-react';
 import { useState } from 'react';
 
-import type { Forge } from '@/api/client';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorBanner } from '@/components/error-banner';
 import { IconField } from '@/components/icon-field';
@@ -13,10 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { IconDecl } from '@/lib/icon';
 import { renderIcon } from '@/lib/icon';
 import { cn } from '@/lib/utils';
-import { useForgeDelete, useForgeReorder, useForgeSave, useForges } from '@/queries/forge';
+import { useForgeDelete, useForgeReorder, useForges, useForgeSave } from '@/queries/forge';
+import type { Forge } from '@/api/client';
+import type { IconDecl } from '@/lib/icon';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
 
@@ -55,7 +55,9 @@ function ForgeForm({ draft, onClose }: { draft: ForgeDraft; onClose: () => void 
       {
         onSuccess: () => {
           // host 是唯一键：编辑改了 host 等价于删旧存新，补一步删旧
-          if (isEdit && newHost !== draft.host) del.mutate({ host: draft.host });
+          if (isEdit && newHost !== draft.host) {
+            del.mutate({ host: draft.host });
+          }
           onClose();
         },
       },
@@ -73,7 +75,7 @@ function ForgeForm({ draft, onClose }: { draft: ForgeDraft; onClose: () => void 
           {save.error && <ErrorBanner message={`保存失败：${save.error.message}`} />}
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">host（域名，可带端口；规则唯一键）</span>
+            <span className="text-muted-foreground text-xs">host（域名，可带端口；规则唯一键）</span>
             <Input
               value={form.host}
               onChange={(e) => set('host', e.target.value)}
@@ -83,7 +85,7 @@ function ForgeForm({ draft, onClose }: { draft: ForgeDraft; onClose: () => void 
           </label>
 
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">kind（API 方言，决定账号拉取能力）</span>
+            <span className="text-muted-foreground text-xs">kind（API 方言，决定账号拉取能力）</span>
             <div className="flex flex-wrap gap-1.5">
               {KINDS.map((k) => (
                 <button
@@ -105,7 +107,7 @@ function ForgeForm({ draft, onClose }: { draft: ForgeDraft; onClose: () => void 
           </div>
 
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">icon（可选，项目列表按 host 匹配展示）</span>
+            <span className="text-muted-foreground text-xs">icon（可选，项目列表按 host 匹配展示）</span>
             <IconField allowEmpty value={form.icon} onChange={(v) => set('icon', v)} />
           </div>
 
@@ -141,7 +143,7 @@ export function ForgeSection() {
     <section>
       <div className="mb-2 flex items-baseline gap-2">
         <h2 className="text-sm font-medium">Forge（git 托管平台）</h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           host 级平台实例（github.com / 自建 gitea 等）；项目按 repo host 匹配展示图标，account 拉取（1041）依赖
           kind；拖动 ⠿ 排序
         </span>
@@ -164,7 +166,7 @@ export function ForgeSection() {
           <TableBody>
             {d.rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-xs text-muted-foreground">
+                <TableCell colSpan={3} className="text-muted-foreground text-xs">
                   暂无 forge 配置
                 </TableCell>
               </TableRow>
@@ -213,7 +215,9 @@ export function ForgeSection() {
         confirmText="删除"
         danger
         onConfirm={() => {
-          if (deleting) del.mutate({ host: deleting });
+          if (deleting) {
+            del.mutate({ host: deleting });
+          }
           setDeleting(null);
         }}
         onCancel={() => setDeleting(null)}

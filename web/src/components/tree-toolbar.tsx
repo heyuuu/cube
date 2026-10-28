@@ -17,7 +17,7 @@ export function TreeToolbar({
   extra?: React.ReactNode;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-1 border-b border-border px-1 py-1">
+    <div className="border-border flex shrink-0 items-center gap-1 border-b px-1 py-1">
       {leading}
       <Button
         variant="ghost"

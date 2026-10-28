@@ -3,15 +3,23 @@
 export function guessHome(paths: string[]): string {
   for (const p of paths) {
     const m = p.match(/^(\/(?:Users|home)\/[^/]+)\//);
-    if (m) return m[1];
+    if (m) {
+      return m[1];
+    }
   }
   return '';
 }
 
 export function prettyPath(p: string, home: string): string {
-  if (!home) return p;
-  if (p === home) return '~';
-  if (p.startsWith(home + '/')) return '~' + p.slice(home.length);
+  if (!home) {
+    return p;
+  }
+  if (p === home) {
+    return '~';
+  }
+  if (p.startsWith(home + '/')) {
+    return '~' + p.slice(home.length);
+  }
   return p;
 }
 
@@ -27,6 +35,8 @@ export function relativeFilePath(newPath: string, oldPath: string): string {
   }
   const ups = newDir.length - common;
   const rest = oldSegs.slice(common).join('/');
-  if (ups === 0) return './' + rest;
+  if (ups === 0) {
+    return './' + rest;
+  }
   return '../'.repeat(ups) + rest;
 }

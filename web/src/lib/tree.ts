@@ -34,7 +34,9 @@ interface BuildNode {
 // 以分隔符为界逐段回退，/a/b 不会误匹配 /a/beta。
 function twoPathCommonDir(a: string, b: string): string {
   // 保证 a 较短：回退只需沿 a 的分隔符推进，不必处理 a 超出 b 长度的情形
-  if (a.length > b.length) [a, b] = [b, a];
+  if (a.length > b.length) {
+    [a, b] = [b, a];
+  }
   let prefix = a;
   while (prefix !== '' && prefix !== '/' && b !== prefix && !b.startsWith(prefix + '/')) {
     const idx = prefix.lastIndexOf('/', prefix.length - 2);
@@ -45,7 +47,9 @@ function twoPathCommonDir(a: string, b: string): string {
 
 // commonPrefixDir 求一组路径的最长公共前缀目录；单条路径取父目录；无公共前缀返回 ''。
 function commonPrefixDir(paths: string[]): string {
-  if (paths.length === 0) return '';
+  if (paths.length === 0) {
+    return '';
+  }
   if (paths.length === 1) {
     const idx = paths[0]!.lastIndexOf('/');
     return idx > 0 ? paths[0]!.slice(0, idx) : '/';
@@ -53,7 +57,9 @@ function commonPrefixDir(paths: string[]): string {
   let prefix = paths[0]!;
   for (const p of paths.slice(1)) {
     prefix = twoPathCommonDir(prefix, p);
-    if (prefix === '') return '';
+    if (prefix === '') {
+      return '';
+    }
   }
   return prefix;
 }
@@ -62,7 +68,9 @@ function commonPrefixDir(paths: string[]): string {
 // 无公共前缀（项目分散在多个根下）返回 null。
 export function buildProjectTree(projects: Project[]): TreeNode | null {
   const root = commonPrefixDir(projects.map((p) => p.path));
-  if (!root) return null;
+  if (!root) {
+    return null;
+  }
 
   const rootBuild: BuildNode = { name: root, path: root, kind: 'dir', children: new Map() };
   for (const p of projects) {
@@ -127,7 +135,9 @@ export function flattenTree(root: TreeNode, isExpanded: (path: string) => boolea
     const expanded = isRoot || isExpanded(node.path);
     rows.push({ node, depth, hasChildren, expanded, isRoot });
     if (hasChildren && expanded) {
-      for (const c of node.children) walk(c, depth + 1, false);
+      for (const c of node.children) {
+        walk(c, depth + 1, false);
+      }
     }
   };
   walk(root, 0, true);
@@ -140,7 +150,9 @@ export function collectExpandablePaths(root: TreeNode): string[] {
   const walk = (n: TreeNode) => {
     if (n.children.length > 0) {
       paths.push(n.path);
-      for (const c of n.children) walk(c);
+      for (const c of n.children) {
+        walk(c);
+      }
     }
   };
   walk(root);
@@ -197,12 +209,16 @@ export function buildFileTree(root: string, files: string[]): FileTreeNode {
 function toFileNode(n: FileBuildNode, isRoot: boolean): FileTreeNode {
   const children = [...n.children.values()]
     .sort((a, b) => {
-      if (a.kind !== b.kind) return a.kind === 'dir' ? -1 : 1;
+      if (a.kind !== b.kind) {
+        return a.kind === 'dir' ? -1 : 1;
+      }
       return a.name.localeCompare(b.name);
     })
     .map((c) => toFileNode(c, false));
   let node: FileTreeNode = { name: n.name, path: n.path, kind: n.kind, children };
-  if (isRoot) return node;
+  if (isRoot) {
+    return node;
+  }
   while (node.kind === 'dir' && node.children.length === 1 && node.children[0].kind === 'dir') {
     const c = node.children[0];
     node = { ...node, name: `${node.name}/${c.name}`, path: c.path, children: c.children };
@@ -226,7 +242,9 @@ export function flattenFileTree(root: FileTreeNode, isExpanded: (path: string) =
     const expanded = isRoot || isExpanded(node.path);
     rows.push({ node, depth, hasChildren, expanded, isRoot });
     if (hasChildren && expanded) {
-      for (const c of node.children) walk(c, depth + 1, false);
+      for (const c of node.children) {
+        walk(c, depth + 1, false);
+      }
     }
   };
   walk(root, 0, true);
@@ -257,18 +275,26 @@ export function computeDirStatuses(
   const oldSet = new Set<string>();
   for (const f of currentFiles) {
     const st = stats.get(f);
-    if (!st || st.status === 'modified' || st.status === 'deleted') oldSet.add(f);
+    if (!st || st.status === 'modified' || st.status === 'deleted') {
+      oldSet.add(f);
+    }
   }
   for (const [p, st] of stats) {
-    if (st.status === 'deleted' && !currentSet.has(p)) oldSet.add(p);
-    if (st.status === 'renamed' && st.oldPath) oldSet.add(st.oldPath);
+    if (st.status === 'deleted' && !currentSet.has(p)) {
+      oldSet.add(p);
+    }
+    if (st.status === 'renamed' && st.oldPath) {
+      oldSet.add(st.oldPath);
+    }
   }
 
   const dirsOf = (files: Iterable<string>) => {
     const dirs = new Set<string>();
     for (const f of files) {
       const segs = f.split('/');
-      for (let i = 1; i < segs.length; i++) dirs.add(segs.slice(0, i).join('/'));
+      for (let i = 1; i < segs.length; i++) {
+        dirs.add(segs.slice(0, i).join('/'));
+      }
     }
     return dirs;
   };
@@ -288,7 +314,9 @@ export function computeDirStatuses(
         const cut = st.oldPath.lastIndexOf('/');
         const parent = cut === -1 ? '' : st.oldPath.slice(0, cut);
         let set = renameParents.get(dir);
-        if (!set) renameParents.set(dir, (set = new Set()));
+        if (!set) {
+          renameParents.set(dir, (set = new Set()));
+        }
         set.add(parent);
       }
     }

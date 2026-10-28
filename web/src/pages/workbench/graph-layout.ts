@@ -28,7 +28,9 @@ export function simplifyLite<T extends { sha: string; parents?: string[] | null;
   const bySha = new Map(commits.map((c) => [c.sha, c]));
   const childrenCount = new Map<string, number>();
   for (const c of commits) {
-    for (const p of c.parents ?? []) childrenCount.set(p, (childrenCount.get(p) ?? 0) + 1);
+    for (const p of c.parents ?? []) {
+      childrenCount.set(p, (childrenCount.get(p) ?? 0) + 1);
+    }
   }
   const kept = new Set(
     commits
@@ -47,11 +49,14 @@ export function simplifyLite<T extends { sha: string; parents?: string[] | null;
   const memo = new Map<string, string | null>();
   const nearestKept = (sha: string): string | null => {
     const hit = memo.get(sha);
-    if (hit !== undefined) return hit;
+    if (hit !== undefined) {
+      return hit;
+    }
     memo.set(sha, null); // 防环兜底
     let res: string | null = null;
-    if (kept.has(sha)) res = sha;
-    else {
+    if (kept.has(sha)) {
+      res = sha;
+    } else {
       const p = bySha.get(sha)?.parents?.[0];
       res = p ? nearestKept(p) : null;
     }
@@ -100,7 +105,11 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
 
   const lanes: graphLane[] = [];
   const laneIndexOf = (sha: string): number => {
-    for (let i = 0; i < lanes.length; i++) if (lanes[i].sha === sha) return i;
+    for (let i = 0; i < lanes.length; i++) {
+      if (lanes[i].sha === sha) {
+        return i;
+      }
+    }
     return -1;
   };
   // newLane：新支线复用最靠左的空洞，没有空洞才在右侧展开（控制总宽度）
@@ -116,7 +125,9 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
   };
   // trimTrailingHoles：裁掉尾部连续空洞（不移动任何占用泳道的位置）
   const trimTrailingHoles = () => {
-    while (lanes.length > 0 && lanes[lanes.length - 1].sha === '') lanes.pop();
+    while (lanes.length > 0 && lanes[lanes.length - 1].sha === '') {
+      lanes.pop();
+    }
   };
 
   // fpChildren[p] = 把 p 作为首父的子提交行号列表。
@@ -156,14 +167,20 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
       // 让位判定：存在更靠左的首父兄弟等待条目 → 让出本泳道，出线拐向兄弟泳道
       let deferTo = -1;
       for (const j of fpChildren.get(ps[0]) ?? []) {
-        if (j === i) continue;
+        if (j === i) {
+          continue;
+        }
         const jl = laneIndexOf(commits[j].sha);
-        if (jl >= 0 && jl < lane && (deferTo < 0 || jl < deferTo)) deferTo = jl;
+        if (jl >= 0 && jl < lane && (deferTo < 0 || jl < deferTo)) {
+          deferTo = jl;
+        }
       }
       if (deferTo >= 0 || laneIndexOf(ps[0]) >= 0) {
         // 首父已被其它子提交占位（或让位）→ 合并过去，原泳道留洞（不左移）
         lanes[lane] = { sha: '', color: 0, origin: 0 };
-        if (deferTo >= 0) deferred.set(i, deferTo);
+        if (deferTo >= 0) {
+          deferred.set(i, deferTo);
+        }
       } else {
         lanes[lane] = { sha: ps[0], color, origin: lineOrigin };
       }
@@ -197,9 +214,15 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
     const next = commits[i + 1];
     const parentSet = new Set(parentsOf(commits[i]));
     const target = (entry: graphLane): number => {
-      if (entry.sha === next.sha) return nodes[i + 1].lane;
+      if (entry.sha === next.sha) {
+        return nodes[i + 1].lane;
+      }
       const snap = snapshots[i + 1];
-      for (let j = 0; j < snap.length; j++) if (snap[j].sha === entry.sha) return j;
+      for (let j = 0; j < snap.length; j++) {
+        if (snap[j].sha === entry.sha) {
+          return j;
+        }
+      }
       return -1;
     };
     const deferTo = deferred.get(i);
@@ -221,9 +244,13 @@ export function computeGraph<T extends { sha: string; parents?: string[] | null 
     }
 
     snapshots[i].forEach((entry, pos) => {
-      if (entry.sha === '') return; // 空洞
+      if (entry.sha === '') {
+        return;
+      } // 空洞
       const to = target(entry);
-      if (to < 0) return;
+      if (to < 0) {
+        return;
+      }
       const isParent = parentSet.has(entry.sha);
       // 上方是否有来线：条目由更早的行放置（首行上方无快照，必为 false）
       const incoming = i > 0 && snapshots[i - 1].some((l) => l.sha === entry.sha);

@@ -8,7 +8,9 @@ const listeners = new Set<() => void>();
 // 读初始主题：显式选择优先，否则跟随系统偏好
 function initialTheme(): Theme {
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === 'light' || saved === 'dark') return saved;
+  if (saved === 'light' || saved === 'dark') {
+    return saved;
+  }
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 

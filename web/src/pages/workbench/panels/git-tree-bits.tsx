@@ -1,13 +1,14 @@
 // git 树面板的通用小件：面板小节容器 + 可选中行（工作副本区 / 分支行 / commit 行共用）。
-import { useCallback, type MouseEvent } from 'react';
+import { useCallback } from 'react';
 import { useSearchParams } from 'react-router';
+import type { MouseEvent } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-import { selectCurrent, selectDiffSide, sameSource, type TreeSource, type WorkbenchParams } from '../params';
-
+import { sameSource, selectCurrent, selectDiffSide } from '../params';
 import { formatCommitTime } from './commit-bits';
+import type { TreeSource, WorkbenchParams } from '../params';
 
 // --- 通用可选中行 ---
 
@@ -81,7 +82,7 @@ export function SelectableRow({
       )}
       style={laneColor && selected ? { boxShadow: `inset 2px 0 0 ${laneColor}` } : undefined}
     >
-      {mono ? <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{mono}</span> : null}
+      {mono ? <span className="text-muted-foreground shrink-0 font-mono text-[10px]">{mono}</span> : null}
       {prefixBadges}
       <span className={cn('truncate', selected ? 'font-medium' : undefined)}>{label}</span>
       {badge ? <Badge variant="secondary">{badge}</Badge> : null}
@@ -89,7 +90,7 @@ export function SelectableRow({
       {isBase ? <Badge className="ml-auto shrink-0">基准</Badge> : null}
       {isCurrent ? <Badge className="ml-auto shrink-0">当前</Badge> : null}
       {time ? (
-        <span className="ml-auto shrink-0 text-[10px] text-muted-foreground" title={formatCommitTime(time).full}>
+        <span className="text-muted-foreground ml-auto shrink-0 text-[10px]" title={formatCommitTime(time).full}>
           {formatCommitTime(time).text}
         </span>
       ) : null}
@@ -110,7 +111,7 @@ export function Section({
 }) {
   return (
     <section className="p-2">
-      <div className="flex items-center gap-1.5 px-1 pb-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+      <div className="text-muted-foreground flex items-center gap-1.5 px-1 pb-1.5 text-[11px] font-semibold tracking-wide uppercase">
         {icon}
         {title}
         {action ? <div className="ml-auto">{action}</div> : null}

@@ -3,7 +3,8 @@
 // 纯浏览器 SPA 无 SSR，首渲染 lazy initializer 直接读；坏值回落 fallback。
 // 写发生在 setter 内（幂等，updater 重放无害），不用 effect 以避免 key/encode
 // 引用不稳引起的多余写入。
-import { useCallback, useState, type SetStateAction } from 'react';
+import { useCallback, useState } from 'react';
+import type { SetStateAction } from 'react';
 
 export function useLocalPref<T>(
   key: string,
@@ -74,8 +75,11 @@ export function usePersistentSet(key: string) {
     (item: string) => {
       update((prev) => {
         const next = new Set(prev);
-        if (prev.has(item)) next.delete(item);
-        else next.add(item);
+        if (prev.has(item)) {
+          next.delete(item);
+        } else {
+          next.add(item);
+        }
         return next;
       });
     },

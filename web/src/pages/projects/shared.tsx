@@ -25,7 +25,11 @@ export function projectTargets(p: Project): ProjectTarget[] {
   const g = p.gitInfo;
   const wts = g?.worktrees ?? [];
   const branchCount = new Map<string, number>();
-  for (const w of wts) if (w.branch) branchCount.set(w.branch, (branchCount.get(w.branch) ?? 0) + 1);
+  for (const w of wts) {
+    if (w.branch) {
+      branchCount.set(w.branch, (branchCount.get(w.branch) ?? 0) + 1);
+    }
+  }
   const joinDir = (root: string, rel: string) => root.replace(/\/$/, '') + '/' + rel;
 
   type Entry = ProjectTarget & { rel: string };
@@ -43,7 +47,9 @@ export function projectTargets(p: Project): ProjectTarget[] {
 
   // 撞名的 workspace 追加相对路径；worktree 根靠分支名本身已可区分，不追加
   const labelCount = new Map<string, number>();
-  for (const e of entries) labelCount.set(e.label, (labelCount.get(e.label) ?? 0) + 1);
+  for (const e of entries) {
+    labelCount.set(e.label, (labelCount.get(e.label) ?? 0) + 1);
+  }
   return entries.map(({ rel, ...e }) => ({
     ...e,
     label: e.kind === 'workspace' && (labelCount.get(e.label) ?? 0) > 1 ? `${e.label} (${rel})` : e.label,
@@ -67,7 +73,11 @@ export const quickIntents: QuickIntent[] = [
 
 // 按策略筛目标；根目录恒在（策略不排除主根）。
 export function filterTargets(targets: ProjectTarget[], policy: QuickIntent['targets']): ProjectTarget[] {
-  if (policy === 'all') return targets;
-  if (policy === 'root-only') return targets.filter((t) => t.kind === 'root');
+  if (policy === 'all') {
+    return targets;
+  }
+  if (policy === 'root-only') {
+    return targets.filter((t) => t.kind === 'root');
+  }
   return targets.filter((t) => t.kind !== 'workspace');
 }

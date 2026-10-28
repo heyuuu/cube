@@ -23,7 +23,7 @@ export function FilterRow({
 }) {
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
-      <span className="flex w-24 shrink-0 items-baseline gap-1 text-muted-foreground">
+      <span className="text-muted-foreground flex w-24 shrink-0 items-baseline gap-1">
         <span className="text-[0.625rem] opacity-70">{mode}</span>
         {label}
       </span>
@@ -72,11 +72,13 @@ export function SortHead({
         onClick={onCycle}
       >
         {label}
-        {/* 激活态：主题色箭头 + 圆形底（类似选中态），与未激活的灰色双向箭头一眼区分。
-            圆 20px / 图标 12px——留足四周 padding，视觉上箭头才在圆心 */}
+        {/*
+         * 激活态：主题色箭头 + 圆形底（类似选中态），与未激活的灰色双向箭头一眼区分。
+            圆 20px / 图标 12px——留足四周 padding，视觉上箭头才在圆心
+            */}
         {state ? (
-          <span className="flex size-5 items-center justify-center rounded-full bg-primary/15">
-            <Icon className="size-3 text-primary" />
+          <span className="bg-primary/15 flex size-5 items-center justify-center rounded-full">
+            <Icon className="text-primary size-3" />
           </span>
         ) : (
           <Icon className="size-3" />

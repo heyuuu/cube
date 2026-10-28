@@ -129,15 +129,19 @@
   }
   html {
     @apply font-sans;
-    /* 根字号随视口等比放大（间距/字号/图标全是 rem 基准，整体缩放）：
-       ≤1536px 保持 16px（MacBook 不变），2560px 起封顶 19px，缓解大屏字小 */
+    /*
+     * 根字号随视口等比放大（间距/字号/图标全是 rem 基准，整体缩放）：
+       ≤1536px 保持 16px（MacBook 不变），2560px 起封顶 19px，缓解大屏字小
+       */
     font-size: clamp(1rem, 0.71875rem + 0.293vw, 1.1875rem);
   }
 }
 
-/* md 渲染主题：通过覆盖 typography 的 --tw-prose-* 变量实现；每个主题一套
+/*
+ * md 渲染主题：通过覆盖 typography 的 --tw-prose-* 变量实现；每个主题一套
    亮色变量 + `.dark` 下的一套暗色变量，跟随整站亮暗切换（调色板取自各家官方规范：
-   Primer / Solarized / Gruvbox / Nord） */
+   Primer / Solarized / Gruvbox / Nord）
+   */
 
 /* GitHub（Primer 配色） */
 .md-theme-github {
@@ -356,10 +360,12 @@
   background-color: #3b4252;
 }
 
-/* 定位闪烁（git 树分支定位 / 文件树定位共用）：三次渐强脉冲再消退。
+/*
+ * 定位闪烁（git 树分支定位 / 文件树定位共用）：三次渐强脉冲再消退。
    用 inset box-shadow 而非 background-color——flash 类会加在带选中底色
    （bg-primary/15）的同一元素上，动画 background-color 会把选中色盖掉，
-   脉冲间隙整行变白；inset 填充叠加在既有背景之上，选中态始终可见 */
+   脉冲间隙整行变白；inset 填充叠加在既有背景之上，选中态始终可见
+   */
 @keyframes row-flash {
   0%,
   100% {

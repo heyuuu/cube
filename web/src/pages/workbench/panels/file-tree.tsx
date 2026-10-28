@@ -4,9 +4,10 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { TreeToolbar } from '@/components/tree-toolbar';
 import { Button } from '@/components/ui/button';
 import { relativeFilePath } from '@/lib/path';
-import { buildFileTree, computeDirStatuses, flattenFileTree, type FileTreeNode } from '@/lib/tree';
+import { buildFileTree, computeDirStatuses, flattenFileTree } from '@/lib/tree';
 import { cn } from '@/lib/utils';
 import { useWorkbenchTree } from '@/queries/workbench';
+import type { FileTreeNode } from '@/lib/tree';
 
 import type { TreeSource } from '../params';
 
@@ -84,14 +85,20 @@ export function FileTree({
   // 树语义是该提交的内容）；差异 = 只对变更文件集组树——不能用全量树过滤行，
   // 否则过滤后才变单链的目录（父目录的其他子项被滤掉）吃不到压缩逻辑
   const root = useMemo(() => {
-    if (filter) return buildFileTree('', [...filter]);
+    if (filter) {
+      return buildFileTree('', [...filter]);
+    }
     const list = tree.data?.list ?? [];
-    if (!list.length) return null;
+    if (!list.length) {
+      return null;
+    }
     let files = list as string[];
     if (stats && source.type === 'worktree') {
       const inList = new Set(list);
       const deleted = [...stats.entries()].filter(([p, s]) => s.status === 'deleted' && !inList.has(p)).map(([p]) => p);
-      if (deleted.length) files = [...list, ...deleted];
+      if (deleted.length) {
+        files = [...list, ...deleted];
+      }
     }
     return buildFileTree('', files);
   }, [tree.data, stats, source.type, filter]);
@@ -116,7 +123,9 @@ export function FileTree({
   }, []);
 
   const expandAll = useCallback(() => {
-    if (!root) return;
+    if (!root) {
+      return;
+    }
     setExpandedSet(allDirPaths(root));
     localStorage.setItem(TREE_EXPAND_KEY, 'all');
   }, [root]);
@@ -138,28 +147,39 @@ export function FileTree({
   });
   // 渲染期间重置/消费（React 官方的「props 变化调整 state」模式，替代 effect 回灌）：
   // source 变化先重置 done；随后首个非空树消费一次 bulk 偏好。
-  if (bulkInit.source !== sourceKey) setBulkInit({ source: sourceKey, done: false });
+  if (bulkInit.source !== sourceKey) {
+    setBulkInit({ source: sourceKey, done: false });
+  }
   if (!bulkInit.done && root && root.children.length > 0) {
     setBulkInit({ source: sourceKey, done: true });
     const saved = localStorage.getItem(TREE_EXPAND_KEY);
-    if (saved === 'all') setExpandedSet(allDirPaths(root));
-    else if (saved === 'none') setExpandedSet(new Set(['']));
+    if (saved === 'all') {
+      setExpandedSet(allDirPaths(root));
+    } else if (saved === 'none') {
+      setExpandedSet(new Set(['']));
+    }
   }
 
   const listRef = useRef<HTMLDivElement>(null);
   // 定位当前文件：展开其祖先目录 → 滚动到该行 → 闪烁高亮（class 命令式添加，同 git 树定位）
   const locateCurrent = useCallback(() => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      return;
+    }
     setExpandedSet((prev) => {
       const next = new Set(prev);
       const parts = selectedFile.split('/');
-      for (let i = 1; i < parts.length; i++) next.add(parts.slice(0, i).join('/'));
+      for (let i = 1; i < parts.length; i++) {
+        next.add(parts.slice(0, i).join('/'));
+      }
       return next;
     });
     // rAF 等展开后的 DOM 提交再滚动定位
     requestAnimationFrame(() => {
       const el = listRef.current?.querySelector(`[data-path="${selectedFile}"]`);
-      if (!el) return;
+      if (!el) {
+        return;
+      }
       el.scrollIntoView({ block: 'center' });
       el.classList.remove('row-flash');
       void (el as HTMLElement).offsetWidth; // 重启动画
@@ -172,15 +192,21 @@ export function FileTree({
   // 平摊 = 直接用接口的扁平路径清单（排序对齐树形的字典序），无目录行。
   // 根行（isRoot）不渲染，面板标题已提供上下文
   const rows = useMemo(() => {
-    if (!root) return [];
+    if (!root) {
+      return [];
+    }
     if (viewMode === 'flat') {
       return flattenFileTree(root, () => true)
         .filter((r) => r.node.kind === 'file' && (!filter || filter.has(r.node.path)))
         .map((r) => ({ node: r.node, depth: 0, expanded: false }));
     }
     return flattenFileTree(root, (p) => expandedSet.has(p)).filter((r) => {
-      if (r.isRoot) return false;
-      if (!filter) return true;
+      if (r.isRoot) {
+        return false;
+      }
+      if (!filter) {
+        return true;
+      }
       return r.node.kind === 'dir' ? hasFileUnder(filter, r.node.path) : filter.has(r.node.path);
     });
   }, [root, expandedSet, filter, viewMode]);
@@ -208,7 +234,7 @@ export function FileTree({
         extra={
           <>
             <div className="ml-auto flex items-center gap-1.5">
-              <div className="flex overflow-hidden rounded-md border border-border text-[10px]">
+              <div className="border-border flex overflow-hidden rounded-md border text-[10px]">
                 {(
                   [
                     ['tree', '树形'],
@@ -232,7 +258,7 @@ export function FileTree({
                 ))}
               </div>
               {onScope ? (
-                <div className="flex overflow-hidden rounded-md border border-border text-[10px]">
+                <div className="border-border flex overflow-hidden rounded-md border text-[10px]">
                   {(
                     [
                       ['all', '全量'],
@@ -263,11 +289,11 @@ export function FileTree({
       />
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-1 text-xs">
         {tree.isPending || statsPending ? (
-          <div className="py-1 pl-3 text-muted-foreground">加载中…</div>
+          <div className="text-muted-foreground py-1 pl-3">加载中…</div>
         ) : tree.isError ? (
-          <div className="py-1 pl-3 text-destructive">{tree.error.message}</div>
+          <div className="text-destructive py-1 pl-3">{tree.error.message}</div>
         ) : rows.length === 0 ? (
-          <div className="py-1 pl-3 text-muted-foreground">（{filter ? '无匹配文件' : '空目录'}）</div>
+          <div className="text-muted-foreground py-1 pl-3">（{filter ? '无匹配文件' : '空目录'}）</div>
         ) : (
           rows.map(({ node, depth, expanded }) =>
             node.kind === 'dir' && !flat ? (
@@ -278,7 +304,7 @@ export function FileTree({
                     key={node.path}
                     type="button"
                     data-path={node.path}
-                    className="flex w-full items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-accent"
+                    className="hover:bg-accent flex w-full items-center gap-1 rounded px-1 py-0.5 text-left"
                     style={{ paddingLeft: depth * 12 + 4 }}
                     onClick={() => toggle(node.path)}
                   >
@@ -357,14 +383,18 @@ export function FileTree({
 function hasFileUnder(filter: Set<string>, dir: string): boolean {
   const prefix = dir + '/';
   for (const f of filter) {
-    if (f.startsWith(prefix)) return true;
+    if (f.startsWith(prefix)) {
+      return true;
+    }
   }
   return false;
 }
 
 // 差异行的行数统计（+N 绿 / -N 红，右对齐）；二进制显示 bin
 function statLine(stat?: FileStat) {
-  if (!stat) return null;
+  if (!stat) {
+    return null;
+  }
   return (
     <span className="ml-auto shrink-0 font-mono text-[10px]">
       {stat.binary ? (

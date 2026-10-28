@@ -27,7 +27,9 @@ export function useOpenerOpen() {
   const run = (opener: string, path: string, isDir: boolean, opts?: { onError?: (e: Error) => void }) => {
     const op = (openers.data?.list ?? []).find((o) => o.name === opener);
     if (op && tryOpenUrlAction(op.actions?.[isDir ? 'open-dir' : 'open-file'], [path])) {
-      if (isDir) record.mutate({ project: path, opener });
+      if (isDir) {
+        record.mutate({ project: path, opener });
+      }
       return;
     }
     open.mutate({ path, opener }, { onError: opts?.onError });
@@ -44,7 +46,9 @@ export function useOpenerDiffOpen() {
   });
   const run = (opener: string, left: string, right: string, opts?: { onError?: (e: Error) => void }) => {
     const op = (openers.data?.list ?? []).find((o) => o.name === opener);
-    if (op && tryOpenUrlAction(op.actions?.['diff-dir'], [left, right])) return;
+    if (op && tryOpenUrlAction(op.actions?.['diff-dir'], [left, right])) {
+      return;
+    }
     open.mutate({ left, right, opener }, { onError: opts?.onError });
   };
   return { ...open, run };

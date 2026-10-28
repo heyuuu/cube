@@ -2,8 +2,9 @@ import Markdown from 'react-markdown';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 
-import { parseFrontmatter, type FrontMatterEntry } from '@/lib/frontmatter';
+import { parseFrontmatter } from '@/lib/frontmatter';
 import { cn } from '@/lib/utils';
+import type { FrontMatterEntry } from '@/lib/frontmatter';
 
 // markdown 渲染公共件：md 独立页（/md，带主题）与工作台内容面板预览共用同一管线
 // （react-markdown + gfm + frontmatter 剥离）。主题差异经 className 注入，
@@ -40,7 +41,9 @@ export function mdThemeCls(theme: MdThemeId): string {
 
 export function loadMdTheme(key: string): MdThemeId {
   const v = localStorage.getItem(key) ?? '';
-  if (mdThemes.some((t) => t.id === v)) return v as MdThemeId;
+  if (mdThemes.some((t) => t.id === v)) {
+    return v as MdThemeId;
+  }
   return legacyMdThemes[v] ?? 'default';
 }
 
@@ -48,10 +51,10 @@ export function loadMdTheme(key: string): MdThemeId {
 // 展示在正文前；源码视图保持原文（front-matter 本就是源码的一部分）
 export function FrontMatterBlock({ entries }: { entries: FrontMatterEntry[] }) {
   return (
-    <div className="mb-6 rounded-lg border bg-muted/30 px-4 py-2 font-mono text-xs">
+    <div className="bg-muted/30 mb-6 rounded-lg border px-4 py-2 font-mono text-xs">
       {entries.map((e) => (
         <div key={e.key} className="flex gap-3 py-1">
-          <span className="w-24 shrink-0 text-muted-foreground">{e.key}</span>
+          <span className="text-muted-foreground w-24 shrink-0">{e.key}</span>
           <span className="min-w-0 break-words whitespace-pre-line">{e.value}</span>
         </div>
       ))}

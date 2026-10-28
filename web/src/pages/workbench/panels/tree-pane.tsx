@@ -2,10 +2,10 @@ import type { ReactNode } from 'react';
 
 import { useLocalPref } from '@/hooks/use-local-pref';
 
-import type { TreeSource } from '../params';
 import { PanelSplitter } from '../splitter';
-
-import { FileTree, type FileStat } from './file-tree';
+import { FileTree } from './file-tree';
+import type { TreeSource } from '../params';
+import type { FileStat } from './file-tree';
 
 // 左侧文件树列的公共封装（code / diff 面板共用）：FileTree + 宽度拖拽 +
 // 树形/平摊、全量/差异 视图偏好持久化（localStorage，按 storageKey 隔离）。
@@ -45,7 +45,7 @@ export function FileTreePane({
   const { view, setView, scope, setScope, width, setWidth } = prefs;
   return (
     <>
-      <div className="flex shrink-0 flex-col border-r border-border" style={{ width }}>
+      <div className="border-border flex shrink-0 flex-col border-r" style={{ width }}>
         {above}
         <div className="min-h-0 flex-1">
           <FileTree {...fileTreeProps} viewMode={view} onViewMode={setView} scope={scope} onScope={setScope} />

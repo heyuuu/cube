@@ -1,8 +1,9 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiGet, apiPost } from '@/api/client';
+import { toUri } from '@/pages/workbench/params';
 import type { components } from '@/api/schema';
-import { toUri, type TreeSource } from '@/pages/workbench/params';
+import type { TreeSource } from '@/pages/workbench/params';
 
 export type WorkbenchInfo = components['schemas']['Info'];
 export type WorkbenchRefs = components['schemas']['Refs'];

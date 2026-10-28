@@ -44,13 +44,20 @@ export function splitInlineDiff(oldText: string, newText: string): InlineDiff {
       j++;
     }
   }
-  while (i < a.length) push(left, a[i++], true);
-  while (j < b.length) push(right, b[j++], true);
+  while (i < a.length) {
+    push(left, a[i++], true);
+  }
+  while (j < b.length) {
+    push(right, b[j++], true);
+  }
   return { left, right };
 }
 
 function push(segs: InlineSegment[], text: string, changed: boolean) {
   const last = segs[segs.length - 1];
-  if (last && last.changed === changed) last.text += text;
-  else segs.push({ text, changed });
+  if (last && last.changed === changed) {
+    last.text += text;
+  } else {
+    segs.push({ text, changed });
+  }
 }

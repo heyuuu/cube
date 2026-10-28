@@ -8,6 +8,8 @@ export function defaultWorktreeBranchName(localRefs: string[]): string {
   const existing = new Set(localRefs.map(refShortName));
   for (let n = 1; ; n++) {
     const name = `worktree-${String(n).padStart(2, '0')}`;
-    if (!existing.has(name)) return name;
+    if (!existing.has(name)) {
+      return name;
+    }
   }
 }

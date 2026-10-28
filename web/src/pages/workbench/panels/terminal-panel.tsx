@@ -72,7 +72,9 @@ export function TerminalPanel({ path }: { path: string }) {
     const paneId = nextId();
     setTabs((ts) =>
       ts.map((t) => {
-        if (t.id !== tabId) return t;
+        if (t.id !== tabId) {
+          return t;
+        }
         const idx = afterPaneId ? t.panes.findIndex((p) => p.id === afterPaneId) : -1;
         const pane = { id: paneId, flex: 1 };
         const panes = idx >= 0 ? [...t.panes.slice(0, idx + 1), pane, ...t.panes.slice(idx + 1)] : [...t.panes, pane];
@@ -92,10 +94,14 @@ export function TerminalPanel({ path }: { path: string }) {
   // split 拖拽：按容器宽度把像素位移折算成相邻两 pane 的 flex 增量（此消彼长）
   const adjustFlex = (tabId: number, paneIdx: number, dx: number) => {
     const width = contentRef.current?.clientWidth ?? 0;
-    if (width <= 0) return;
+    if (width <= 0) {
+      return;
+    }
     setTabs((ts) =>
       ts.map((t) => {
-        if (t.id !== tabId || paneIdx + 1 >= t.panes.length) return t;
+        if (t.id !== tabId || paneIdx + 1 >= t.panes.length) {
+          return t;
+        }
         const panes = t.panes.map((p) => ({ ...p }));
         const total = panes.reduce((sum, p) => sum + p.flex, 0);
         const delta = (dx / width) * total;
@@ -103,7 +109,9 @@ export function TerminalPanel({ path }: { path: string }) {
         const b = panes[paneIdx + 1].flex - delta;
         // 每侧至少 10% 宽度，防止拖成 0
         const lo = total * 0.1;
-        if (a < lo || b < lo) return t;
+        if (a < lo || b < lo) {
+          return t;
+        }
         panes[paneIdx].flex = a;
         panes[paneIdx + 1].flex = b;
         return { ...t, panes };
@@ -115,7 +123,7 @@ export function TerminalPanel({ path }: { path: string }) {
 
   return (
     <div
-      className="relative flex shrink-0 flex-col border-t border-border"
+      className="border-border relative flex shrink-0 flex-col border-t"
       // 高度 +1 补偿 border-t：h-9 的 header 要在内容盒里完整放下（36px 内容 + 1px 边框），
       // 否则 header 溢出内容盒 1px，标题内容整体下沉、看起来不居中
       style={{ height: (open ? height : 36) + 1 }}
@@ -130,20 +138,22 @@ export function TerminalPanel({ path }: { path: string }) {
             e.preventDefault();
           }}
           onPointerMove={(e) => {
-            if (!(e.buttons & 1)) return;
+            if (!(e.buttons & 1)) {
+              return;
+            }
             // 向上拖（dy<0）增高；夹在偏好范围内，拖完由 hook 持久化
             setHeight((h) => Math.min(Math.max(h - e.movementY, MIN_HEIGHT), MAX_HEIGHT));
           }}
         />
       )}
       <div
-        className="flex h-9 shrink-0 items-center gap-1 px-2 text-xs text-muted-foreground"
+        className="text-muted-foreground flex h-9 shrink-0 items-center gap-1 px-2 text-xs"
         onDoubleClick={toggleExpanded}
       >
         <button
           type="button"
           title={open ? '收起终端' : '展开终端'}
-          className="rounded p-1 hover:bg-accent hover:text-accent-foreground"
+          className="hover:bg-accent hover:text-accent-foreground rounded p-1"
           onClick={(e) => {
             stop(e);
             toggleExpanded();
@@ -171,7 +181,7 @@ export function TerminalPanel({ path }: { path: string }) {
               <button
                 type="button"
                 title="关闭标签"
-                className="rounded p-0.5 hover:bg-foreground/10"
+                className="hover:bg-foreground/10 rounded p-0.5"
                 onClick={() => closeTab(tab.id)}
               >
                 <X className="size-3" />
@@ -181,7 +191,7 @@ export function TerminalPanel({ path }: { path: string }) {
           <button
             type="button"
             title="新建终端"
-            className="shrink-0 rounded p-1 hover:bg-accent hover:text-accent-foreground"
+            className="hover:bg-accent hover:text-accent-foreground shrink-0 rounded p-1"
             onClick={(e) => {
               stop(e);
               addTab();
@@ -194,10 +204,12 @@ export function TerminalPanel({ path }: { path: string }) {
         <button
           type="button"
           title="分屏（在当前终端后新增一屏）"
-          className="rounded p-1 hover:bg-accent hover:text-accent-foreground"
+          className="hover:bg-accent hover:text-accent-foreground rounded p-1"
           onClick={(e) => {
             stop(e);
-            if (activeTab) splitPane(activeTab.id, activePaneId);
+            if (activeTab) {
+              splitPane(activeTab.id, activePaneId);
+            }
           }}
           onDoubleClick={stop}
         >
@@ -205,7 +217,7 @@ export function TerminalPanel({ path }: { path: string }) {
         </button>
         <div onClick={stop} onDoubleClick={stop}>
           <DropdownMenu>
-            <DropdownMenuTrigger className="rounded p-1 hover:bg-accent hover:text-accent-foreground" title="终端设置">
+            <DropdownMenuTrigger className="hover:bg-accent hover:text-accent-foreground rounded p-1" title="终端设置">
               <Settings2 className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-56">

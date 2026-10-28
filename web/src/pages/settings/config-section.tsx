@@ -10,11 +10,11 @@ export function ConfigSection() {
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         config.json 只读事实（启动期读一次）；修改请编辑 config.json 或使用 CLI
       </p>
       {config.error && <ErrorBanner message={`加载失败：${config.error.message}`} />}
-      {config.isPending && <div className="text-xs text-muted-foreground">加载中…</div>}
+      {config.isPending && <div className="text-muted-foreground text-xs">加载中…</div>}
 
       {cfg && (
         <section>

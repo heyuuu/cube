@@ -37,7 +37,9 @@ export function useIntentDefaultOpener() {
   const openers = useOpenerList();
   return (intent: string): Opener | undefined => {
     const def = intents.data?.find((i) => i.intent === intent)?.defaultOpener;
-    if (!def) return undefined;
+    if (!def) {
+      return undefined;
+    }
     return (openers.data?.list ?? []).find((o) => o.name === def);
   };
 }
@@ -45,8 +47,8 @@ export function useIntentDefaultOpener() {
 // opener 增删改（openers 数据落 settings.json，经 Web API 写，保存即生效）。
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { Opener } from '@/api/client';
 import { apiGet, apiPost } from '@/api/client';
+import type { Opener } from '@/api/client';
 
 export function useOpenerSave() {
   const qc = useQueryClient();

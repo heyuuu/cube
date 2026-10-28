@@ -5,7 +5,6 @@
 import { GripVertical } from 'lucide-react';
 import { useState } from 'react';
 
-import type { TplSource } from '@/api/client';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorBanner } from '@/components/error-banner';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useTplSourceDelete, useTplSourceReorder, useTplSourceSave, useTplSources } from '@/queries/template';
+import { useTplSourceDelete, useTplSourceReorder, useTplSources, useTplSourceSave } from '@/queries/template';
+import type { TplSource } from '@/api/client';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
 
@@ -40,7 +40,9 @@ function TplSourceForm({ draft, onClose }: { draft: TplSourceDraft; onClose: () 
       {
         onSuccess: () => {
           // name 是唯一键：编辑改了 name 等价于删旧存新，补一步删旧
-          if (isEdit && newName !== draft.name) del.mutate({ name: draft.name });
+          if (isEdit && newName !== draft.name) {
+            del.mutate({ name: draft.name });
+          }
           onClose();
         },
       },
@@ -58,7 +60,7 @@ function TplSourceForm({ draft, onClose }: { draft: TplSourceDraft; onClose: () 
           {save.error && <ErrorBanner message={`保存失败：${save.error.message}`} />}
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">name（cube create 的引用短名；core 为默认源）</span>
+            <span className="text-muted-foreground text-xs">name（cube create 的引用短名；core 为默认源）</span>
             <Input
               value={form.name}
               onChange={(e) => set('name', e.target.value)}
@@ -68,7 +70,7 @@ function TplSourceForm({ draft, onClose }: { draft: TplSourceDraft; onClose: () 
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">repoUrl（git 仓库地址）</span>
+            <span className="text-muted-foreground text-xs">repoUrl（git 仓库地址）</span>
             <Input
               value={form.repoUrl}
               onChange={(e) => set('repoUrl', e.target.value)}
@@ -111,7 +113,7 @@ export function TplSourceSection() {
     <section>
       <div className="mb-2 flex items-baseline gap-2">
         <h2 className="text-sm font-medium">模板源（cube create）</h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           source 名 ↔ git 仓库地址映射；cube create 按 name 引用（@name/模板名），缺省 source 为 {defaultSource}；拖动 ⠿
           排序
         </span>
@@ -140,7 +142,7 @@ export function TplSourceSection() {
           <TableBody>
             {d.rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-xs text-muted-foreground">
+                <TableCell colSpan={3} className="text-muted-foreground text-xs">
                   暂无模板源配置
                 </TableCell>
               </TableRow>
@@ -158,7 +160,7 @@ export function TplSourceSection() {
                     )}
                   </span>
                 </TableCell>
-                <TableCell className="max-w-[36rem] truncate font-mono text-xs text-muted-foreground" title={s.repoUrl}>
+                <TableCell className="text-muted-foreground max-w-[36rem] truncate font-mono text-xs" title={s.repoUrl}>
                   {s.repoUrl}
                 </TableCell>
                 <TableCell className={`${STICKY_RIGHT} text-right`}>
@@ -190,7 +192,9 @@ export function TplSourceSection() {
         confirmText="删除"
         danger
         onConfirm={() => {
-          if (deleting) del.mutate({ name: deleting });
+          if (deleting) {
+            del.mutate({ name: deleting });
+          }
           setDeleting(null);
         }}
         onCancel={() => setDeleting(null)}

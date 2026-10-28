@@ -13,7 +13,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { computeGraph, simplifyLite, type GraphWire } from './graph-layout';
+import { computeGraph, simplifyLite } from './graph-layout';
+import type { GraphWire } from './graph-layout';
 
 interface Entry {
   sha: string;
@@ -107,12 +108,16 @@ function verifyGraphInvariants(commits: Entry[], laid: { sha: string; lane: numb
   // 用 DFS 找「一条不重用线段、从子节点泳道出发、末段落到父节点泳道」的路径；
   // 跨行线（span>1）从 band 一次跳到 band+span（直连父节点，让位出线）。
   const findPath = (from: number, band: number, endRow: number, endLane: number, used: Set<string>): boolean => {
-    if (band >= endRow) return false;
+    if (band >= endRow) {
+      return false;
+    }
     const segs = wiresByRow.get(band) ?? [];
     for (let idx = 0; idx < segs.length; idx++) {
       const w = segs[idx];
       const key = `${band}:${idx}`;
-      if (used.has(key) || w.from !== from) continue;
+      if (used.has(key) || w.from !== from) {
+        continue;
+      }
       const nextRow = band + (w.span ?? 1);
       if (nextRow === endRow) {
         if (w.to === endLane) {
@@ -121,9 +126,13 @@ function verifyGraphInvariants(commits: Entry[], laid: { sha: string; lane: numb
         }
         continue;
       }
-      if (nextRow > endRow) continue;
+      if (nextRow > endRow) {
+        continue;
+      }
       used.add(key);
-      if (findPath(w.to, nextRow, endRow, endLane, used)) return true;
+      if (findPath(w.to, nextRow, endRow, endLane, used)) {
+        return true;
+      }
       used.delete(key);
     }
     return false;

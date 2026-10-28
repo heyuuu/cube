@@ -3,11 +3,11 @@ import { useQueryClient } from '@tanstack/react-query';
 // 入口必须在项目上下文内，不放全局 settings）。轻量自绘 overlay（同 ConfirmDialog 模式）。
 import { useState } from 'react';
 
-import type { Project } from '@/api/client';
 import { DialogShell } from '@/components/dialog-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useWorkspaceSave, useWorkspaceState } from '@/queries/project';
+import type { Project } from '@/api/client';
 
 type Member = { name: string; path: string };
 
@@ -56,17 +56,17 @@ export function WorkspaceDialog({ project, onClose }: { project: Project; onClos
 
   return (
     <DialogShell title="workspace 声明" onClose={onClose} className="flex max-h-[80vh] max-w-lg flex-col">
-      <div className="mt-1 text-xs text-muted-foreground">
+      <div className="text-muted-foreground mt-1 text-xs">
         写入项目内 .cube/cube.json（进 git）。显式声明优先生效；未声明时按探测规则自动生效。
       </div>
 
       {state.isLoading ? (
-        <div className="py-6 text-center text-xs text-muted-foreground">加载中…</div>
+        <div className="text-muted-foreground py-6 text-center text-xs">加载中…</div>
       ) : (
         <>
           <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
             {members.length === 0 && (
-              <div className="py-2 text-xs text-muted-foreground">
+              <div className="text-muted-foreground py-2 text-xs">
                 暂无成员
                 {state.data?.detected?.length ? '，可点下方「导入探测候选」' : '（未探测到标准 monorepo 声明）'}
               </div>
@@ -105,7 +105,7 @@ export function WorkspaceDialog({ project, onClose }: { project: Project; onClos
             >
               导入探测候选
             </Button>
-            {save.isError && <span className="text-xs text-destructive">{save.error.message}</span>}
+            {save.isError && <span className="text-destructive text-xs">{save.error.message}</span>}
           </div>
 
           <div className="mt-4 flex justify-end gap-2">

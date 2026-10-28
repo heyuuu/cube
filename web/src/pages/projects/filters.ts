@@ -14,7 +14,9 @@ export const sortKeys: { value: SortKey; label: string }[] = [
 ];
 
 export function isSortMode(v: string | null): v is SortMode {
-  if (v === 'default') return true;
+  if (v === 'default') {
+    return true;
+  }
   return sortKeys.some((k) => v === k.value || v === `${k.value}-desc`);
 }
 
@@ -30,12 +32,16 @@ export const gitFilters: { value: GitStatus | 'all'; label: string }[] = [
 // workspace 总数：主根 + 各 worktree 下的 workspace 成员合计（列表快照字段，读路径零探测）
 export function countWorkspaces(p: Project): number {
   const g = p.gitInfo;
-  if (!g) return 0;
+  if (!g) {
+    return 0;
+  }
   return (g.workspaces?.length ?? 0) + (g.worktrees ?? []).reduce((n, w) => n + (w.workspaces?.length ?? 0), 0);
 }
 
 export function timeOf(iso: string | null | undefined): number {
-  if (!iso) return 0;
+  if (!iso) {
+    return 0;
+  }
   const t = new Date(iso).getTime();
   return Number.isNaN(t) || t <= 0 ? 0 : t;
 }
@@ -44,8 +50,12 @@ export function timeOf(iso: string | null | undefined): number {
 // 筛 ahead 应包含所有 ahead > 0 的项目，而不是被 dirty 优先级吞掉。
 export function matchGitFilter(p: Project, filter: GitStatus | 'all'): boolean {
   const g = p.gitInfo;
-  if (filter === 'all') return true;
-  if (!g) return filter === 'none';
+  if (filter === 'all') {
+    return true;
+  }
+  if (!g) {
+    return filter === 'none';
+  }
   switch (filter) {
     case 'none':
       return false;

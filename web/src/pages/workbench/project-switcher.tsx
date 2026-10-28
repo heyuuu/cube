@@ -1,4 +1,4 @@
-import { ChevronDown, Check } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -38,7 +38,7 @@ export function ProjectSwitcher({ current, onSwitch }: { current: string; onSwit
         <DropdownMenuGroup>
           <DropdownMenuLabel>切换项目（最近使用）</DropdownMenuLabel>
         </DropdownMenuGroup>
-        {recents.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">暂无最近使用的项目</div>}
+        {recents.length === 0 && <div className="text-muted-foreground px-2 py-1.5 text-xs">暂无最近使用的项目</div>}
         {recents.map((p) => (
           <DropdownMenuItem key={p.path} onClick={() => p.path !== current && onSwitch(p.path)}>
             <Check className={cn('size-3 shrink-0', p.path !== current && 'invisible')} />

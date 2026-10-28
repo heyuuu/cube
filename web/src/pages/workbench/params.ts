@@ -40,7 +40,9 @@ export function toUri(src: TreeSource): string {
 // 展示与 commit 图 decorate 徽标（短名）的比对共用。
 export function refShortName(id: string): string {
   for (const p of ['refs/heads/', 'refs/tags/', 'refs/remotes/']) {
-    if (id.startsWith(p)) return id.slice(p.length);
+    if (id.startsWith(p)) {
+      return id.slice(p.length);
+    }
   }
   return id;
 }
@@ -50,8 +52,11 @@ function readSource(params: URLSearchParams, key: 'current' | 'base'): TreeSourc
 }
 
 function writeSource(params: URLSearchParams, key: 'current' | 'base', src: TreeSource | null) {
-  if (src) params.set(key, toUri(src));
-  else params.delete(key);
+  if (src) {
+    params.set(key, toUri(src));
+  } else {
+    params.delete(key);
+  }
 }
 
 export function readWorkbenchParams(params: URLSearchParams): WorkbenchParams {
@@ -86,7 +91,9 @@ export function selectDiffSide(params: URLSearchParams, src: TreeSource) {
     writeSource(params, 'current', null);
     return;
   }
-  if (sameSource(cur.base, src)) return;
+  if (sameSource(cur.base, src)) {
+    return;
+  }
   writeSource(params, 'current', src);
 }
 
@@ -95,8 +102,14 @@ export function sameSource(a: TreeSource | null, b: TreeSource | null): boolean 
 }
 
 export function sourceLabel(src: TreeSource | null): string {
-  if (!src) return '';
-  if (src.type === 'commit') return src.id.slice(0, 7);
-  if (src.type === 'ref') return refShortName(src.id);
+  if (!src) {
+    return '';
+  }
+  if (src.type === 'commit') {
+    return src.id.slice(0, 7);
+  }
+  if (src.type === 'ref') {
+    return refShortName(src.id);
+  }
   return src.id.split('/').pop() || src.id;
 }

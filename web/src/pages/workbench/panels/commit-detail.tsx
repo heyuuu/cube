@@ -4,10 +4,9 @@ import { useLocalPref } from '@/hooks/use-local-pref';
 import { cn } from '@/lib/utils';
 import { useWorkbenchCommit } from '@/queries/workbench';
 
-import type { TreeSource } from '../params';
 import { RowSplitter } from '../splitter';
-
 import { formatCommitTime, REF_BADGE_STYLE } from './commit-bits';
+import type { TreeSource } from '../params';
 
 // 提交详情区（内容面板目录树下方的 split 区）：当前源为 ref/commit 时展示指向提交的
 // 完整信息。解决 AI 时代 commit 信息长且多行、commit 图行内展示不全的问题。
@@ -83,7 +82,7 @@ export function CommitDetailPane({ path, source }: { path: string; source: TreeS
               </DetailRow>
               {d.body ? (
                 <DetailRow label="正文" block>
-                  <pre className="font-mono text-[11px] leading-5 whitespace-pre-wrap break-words text-foreground/90">
+                  <pre className="text-foreground/90 font-mono text-[11px] leading-5 break-words whitespace-pre-wrap">
                     {d.body}
                   </pre>
                 </DetailRow>
@@ -91,7 +90,7 @@ export function CommitDetailPane({ path, source }: { path: string; source: TreeS
             </dl>
           </div>
         ) : (
-          <div className="px-2 py-1 text-[10px] text-muted-foreground">提交信息加载中…</div>
+          <div className="text-muted-foreground px-2 py-1 text-[10px]">提交信息加载中…</div>
         )}
       </div>
     </>
@@ -102,7 +101,7 @@ export function CommitDetailPane({ path, source }: { path: string; source: TreeS
 function DetailRow({ label, block, children }: { label: string; block?: boolean; children: React.ReactNode }) {
   return (
     <div className={block ? 'flex flex-col gap-0.5' : 'flex gap-2'}>
-      <dt className="shrink-0 text-[10px] leading-5 text-muted-foreground">{block ? label : `${label}：`}</dt>
+      <dt className="text-muted-foreground shrink-0 text-[10px] leading-5">{block ? label : `${label}：`}</dt>
       <dd className={block ? '' : 'min-w-0 flex-1'}>{children}</dd>
     </div>
   );

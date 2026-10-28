@@ -20,7 +20,9 @@ function unquote(v: string): string {
 // 内联数组 [a, b] 拍平成逗号串；非数组返回 null（与「空数组」区分）
 function inlineArray(v: string): string | null {
   const m = /^\[(.*)\]$/.exec(v);
-  if (!m) return null;
+  if (!m) {
+    return null;
+  }
   return m[1]
     .split(',')
     .map((s) => unquote(s.trim()))
@@ -33,14 +35,18 @@ function parseYamlish(lines: string[]): FrontMatterEntry[] {
   // 挂起条目：key 后 value 为空（等块列表）或为 |/（等多行标量），收集后续缩进行
   let pending: Pending | null = null;
   const flush = () => {
-    if (!pending || pending.buf.length === 0) return;
+    if (!pending || pending.buf.length === 0) {
+      return;
+    }
     out.push({ key: pending.key, value: pending.buf.join(pending.sep) });
     pending = null;
   };
 
   for (const line of lines) {
     const t = line.trim();
-    if (!t || t.startsWith('#')) continue;
+    if (!t || t.startsWith('#')) {
+      continue;
+    }
 
     const kv = /^([^\s:]+):\s*(.*)$/.exec(t);
     if (kv && !/^\s/.test(line)) {
@@ -59,10 +65,14 @@ function parseYamlish(lines: string[]): FrontMatterEntry[] {
       continue;
     }
 
-    if (!pending) continue; // 无归属的缩进行（嵌套 map 子字段等）跳过
+    if (!pending) {
+      continue;
+    } // 无归属的缩进行（嵌套 map 子字段等）跳过
     const item = /^-\s*(.*)$/.exec(t);
     if (item) {
-      if (item[1]) pending.buf.push(unquote(item[1]));
+      if (item[1]) {
+        pending.buf.push(unquote(item[1]));
+      }
     } else if (pending.mode === 'scalar') {
       pending.buf.push(t);
     }
@@ -76,8 +86,12 @@ function parseYamlish(lines: string[]): FrontMatterEntry[] {
 // 无可识别字段时返回空数组
 export function parseFrontmatter(content: string): FrontMatterEntry[] {
   const lines = content.split(/\r?\n/);
-  if (!FENCE_RE.test(lines[0])) return [];
+  if (!FENCE_RE.test(lines[0])) {
+    return [];
+  }
   const end = lines.findIndex((l, i) => i > 0 && FENCE_RE.test(l));
-  if (end === -1) return [];
+  if (end === -1) {
+    return [];
+  }
   return parseYamlish(lines.slice(1, end));
 }

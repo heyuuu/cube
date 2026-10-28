@@ -1,4 +1,4 @@
-import { EditorState, Compartment } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
@@ -45,7 +45,9 @@ export function CodeEditor({
   });
 
   useEffect(() => {
-    if (!holderRef.current) return;
+    if (!holderRef.current) {
+      return;
+    }
     const view = new EditorView({
       state: EditorState.create({
         doc: valueRef.current,

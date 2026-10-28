@@ -3,7 +3,6 @@
 import { ChevronDown, GripVertical } from 'lucide-react';
 import { useState } from 'react';
 
-import type { Opener } from '@/api/client';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorBanner } from '@/components/error-banner';
 import { IconField } from '@/components/icon-field';
@@ -12,17 +11,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { IconDecl } from '@/lib/icon';
 import { renderIcon } from '@/lib/icon';
 import {
   useIntentDefaultDelete,
   useIntentDefaultSave,
   useOpenerDelete,
+  useOpenerIntents,
   useOpenerList,
   useOpenerReorder,
   useOpenerSave,
-  useOpenerIntents,
 } from '@/queries/opener';
+import type { Opener } from '@/api/client';
+import type { IconDecl } from '@/lib/icon';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
 
@@ -58,7 +58,7 @@ function fromOpener(op: Opener): Draft {
   return {
     name: op.name,
     title: op.title === `用 ${op.name} 打开` ? '' : op.title,
-    actions: { ...(op.actions ?? {}) },
+    actions: { ...op.actions },
     icon:
       op.icon?.type === 'image'
         ? { type: 'image', value: op.icon.value ?? '' }
@@ -76,8 +76,11 @@ function OpenerForm({ draft, onClose }: { draft: Draft; onClose: () => void }) {
   const toggleRole = (role: string, on: boolean) =>
     setForm((f) => {
       const actions = { ...f.actions };
-      if (on) actions[role] = actions[role] ?? '';
-      else delete actions[role];
+      if (on) {
+        actions[role] = actions[role] ?? '';
+      } else {
+        delete actions[role];
+      }
       return { ...f, actions };
     });
 
@@ -106,17 +109,17 @@ function OpenerForm({ draft, onClose }: { draft: Draft; onClose: () => void }) {
           {save.error && <ErrorBanner message={`保存失败：${save.error.message}`} />}
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">name（唯一标识）</span>
+            <span className="text-muted-foreground text-xs">name（唯一标识）</span>
             <Input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="code" />
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">title（展示文案，缺省生成「用 name 打开」）</span>
+            <span className="text-muted-foreground text-xs">title（展示文案，缺省生成「用 name 打开」）</span>
             <Input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="打开所在目录" />
           </label>
 
           <div className="flex flex-col gap-2">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               actions（每个用途一条动作串：exec: 命令 / url: 链接；$0/$1 占位路径槽位，站内路由如 url:
               /workbench?path=$0）
             </span>
@@ -139,7 +142,7 @@ function OpenerForm({ draft, onClose }: { draft: Draft; onClose: () => void }) {
           </div>
 
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">icon（必有值，未选择时用默认图）</span>
+            <span className="text-muted-foreground text-xs">icon（必有值，未选择时用默认图）</span>
             <IconField
               value={form.icon}
               onChange={(v) => set('icon', v ?? { type: 'lucide', value: DEFAULT_LUCIDE })}
@@ -173,15 +176,18 @@ function IntentSection() {
   const del = useIntentDefaultDelete();
 
   const onChange = (intent: string, opener: string) => {
-    if (opener === '') del.mutate({ intent });
-    else save.mutate({ intent, opener });
+    if (opener === '') {
+      del.mutate({ intent });
+    } else {
+      save.mutate({ intent, opener });
+    }
   };
 
   return (
     <div className="mt-6">
       <div className="mb-2 flex items-baseline gap-2">
         <h2 className="text-sm font-medium">打开意图（intents）</h2>
-        <span className="text-xs text-muted-foreground">每个场景一个默认 opener；CLI 不传 -o 时直接使用默认</span>
+        <span className="text-muted-foreground text-xs">每个场景一个默认 opener；CLI 不传 -o 时直接使用默认</span>
       </div>
       {intents.error && <ErrorBanner message={`加载失败：${intents.error.message}`} />}
       {(save.error || del.error) && (
@@ -193,7 +199,7 @@ function IntentSection() {
             <span className="font-mono text-xs/relaxed">{it.intent}</span>
             <div className="relative">
               <select
-                className="h-7 w-full appearance-none rounded-md border border-input bg-input/20 px-2 pr-7 text-xs/relaxed transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+                className="border-input bg-input/20 focus-visible:border-ring focus-visible:ring-ring/30 dark:bg-input/30 h-7 w-full appearance-none rounded-md border px-2 pr-7 text-xs/relaxed transition-colors outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
                 value={it.defaultOpener ?? ''}
                 disabled={save.isPending || del.isPending}
                 onChange={(e) => onChange(it.intent, e.target.value)}
@@ -205,9 +211,9 @@ function IntentSection() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
+              <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 size-3 -translate-y-1/2" />
             </div>
-            <span className="text-xs/relaxed text-muted-foreground">
+            <span className="text-muted-foreground text-xs/relaxed">
               {it.defaultOpener ? '' : '未配置默认'}
               {it.openers.length} 个候选
             </span>
@@ -236,7 +242,7 @@ export function OpenerSection() {
     <section>
       <div className="mb-2 flex items-baseline gap-2">
         <h2 className="text-sm font-medium">打开工具（openers）</h2>
-        <span className="text-xs text-muted-foreground">settings.json，保存即生效；拖动 ⠿ 排序</span>
+        <span className="text-muted-foreground text-xs">settings.json，保存即生效；拖动 ⠿ 排序</span>
         <Button size="sm" variant="outline" className="ml-auto" onClick={() => setEditing(EMPTY_DRAFT)}>
           新增
         </Button>
@@ -259,7 +265,7 @@ export function OpenerSection() {
           <TableBody>
             {d.rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-xs text-muted-foreground">
+                <TableCell colSpan={6} className="text-muted-foreground text-xs">
                   暂无 opener
                 </TableCell>
               </TableRow>
@@ -272,7 +278,7 @@ export function OpenerSection() {
                     {op.name}
                   </span>
                 </TableCell>
-                <TableCell>{renderIcon(op?.icon, <span className="text-xs text-muted-foreground">-</span>)}</TableCell>
+                <TableCell>{renderIcon(op?.icon, <span className="text-muted-foreground text-xs">-</span>)}</TableCell>
                 <TableCell className="text-xs">{op.title}</TableCell>
                 <TableCell className="font-mono text-xs">{op.summary || '-'}</TableCell>
                 <TableCell className="font-mono text-xs">{Object.keys(op.actions ?? {}).join(', ') || '-'}</TableCell>
@@ -296,7 +302,9 @@ export function OpenerSection() {
         confirmText="删除"
         danger
         onConfirm={() => {
-          if (deleting) del.mutate({ name: deleting });
+          if (deleting) {
+            del.mutate({ name: deleting });
+          }
           setDeleting(null);
         }}
         onCancel={() => setDeleting(null)}

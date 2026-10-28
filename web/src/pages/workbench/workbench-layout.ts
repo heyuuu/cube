@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { PANEL_ORDER, type PanelId } from './panels/registry';
+import { PANEL_ORDER } from './panels/registry';
+import type { PanelId } from './panels/registry';
 
 // 工作台布局（提案 1015 + 增强）：主区面板槽位列表横向分栏。
 // slots = 面板顺序（标题栏拖拽排序），sizes = 各槽 flexGrow 比例（分隔条拖拽调宽）。
@@ -23,7 +24,9 @@ export type WorkbenchLayoutState = {
 };
 
 function normalizeSizes(slots: PanelId[], sizes: unknown): number[] {
-  if (!Array.isArray(sizes)) return slots.map(() => 1);
+  if (!Array.isArray(sizes)) {
+    return slots.map(() => 1);
+  }
   const picked = slots.map((_, i) => {
     const v = sizes[i];
     return typeof v === 'number' && v > 0 ? v : 1;
@@ -39,14 +42,20 @@ function loadLayout(): WorkbenchLayoutState {
   });
   try {
     const raw = localStorage.getItem(LAYOUT_KEY);
-    if (!raw) return fallback();
+    if (!raw) {
+      return fallback();
+    }
     const parsed: unknown = JSON.parse(raw);
     const arr: unknown = Array.isArray(parsed) ? parsed : (parsed as { slots?: unknown })?.slots;
-    if (!Array.isArray(arr) || arr.length === 0) return fallback();
+    if (!Array.isArray(arr) || arr.length === 0) {
+      return fallback();
+    }
     const valid = arr
       .map((p) => (typeof p === 'string' ? (LEGACY_CONTENT[p] ?? p) : p))
       .filter((p): p is PanelId => typeof p === 'string' && PANEL_ORDER.includes(p as PanelId));
-    if (valid.length === 0) return fallback();
+    if (valid.length === 0) {
+      return fallback();
+    }
     const slots = [...new Set(valid)];
     const sizes = Array.isArray(parsed) ? null : (parsed as { sizes?: unknown }).sizes;
     const slimRaw = Array.isArray(parsed) ? [] : ((parsed as { slim?: unknown }).slim ?? []);
@@ -67,7 +76,9 @@ export function useWorkbenchLayout() {
 
   const addPanel = useCallback((id: PanelId) => {
     setState((cur) => {
-      if (cur.slots.includes(id) || cur.slots.length >= MAX_SLOTS) return cur;
+      if (cur.slots.includes(id) || cur.slots.length >= MAX_SLOTS) {
+        return cur;
+      }
       return { slots: [...cur.slots, id], sizes: [...cur.sizes, 1], slim: cur.slim };
     });
   }, []);
@@ -75,7 +86,9 @@ export function useWorkbenchLayout() {
   const removePanel = useCallback((id: PanelId) => {
     setState((cur) => {
       const idx = cur.slots.indexOf(id);
-      if (idx < 0 || cur.slots.length <= 1) return cur; // 至少保留一个槽位
+      if (idx < 0 || cur.slots.length <= 1) {
+        return cur;
+      } // 至少保留一个槽位
       return {
         slots: cur.slots.filter((p) => p !== id),
         sizes: cur.sizes.filter((_, i) => i !== idx),
@@ -95,7 +108,9 @@ export function useWorkbenchLayout() {
   // 拖拽排序：把 from 槽移动到 to 槽的位置
   const reorderPanel = useCallback((from: number, to: number) => {
     setState((cur) => {
-      if (from === to || from < 0 || to < 0 || from >= cur.slots.length || to >= cur.slots.length) return cur;
+      if (from === to || from < 0 || to < 0 || from >= cur.slots.length || to >= cur.slots.length) {
+        return cur;
+      }
       const slots = [...cur.slots];
       const sizes = [...cur.sizes];
       const [slot] = slots.splice(from, 1);
@@ -109,11 +124,15 @@ export function useWorkbenchLayout() {
   // 分隔条拖拽：delta 为相邻两槽 flexGrow 比例的转移量
   const resizePanels = useCallback((index: number, delta: number) => {
     setState((cur) => {
-      if (index < 0 || index + 1 >= cur.sizes.length) return cur;
+      if (index < 0 || index + 1 >= cur.sizes.length) {
+        return cur;
+      }
       const min = 0.15; // 单槽最小比例，防止拖成 0 宽
       const next = cur.sizes[index] + delta;
       const other = cur.sizes[index + 1] - delta;
-      if (next < min || other < min) return cur;
+      if (next < min || other < min) {
+        return cur;
+      }
       const sizes = [...cur.sizes];
       sizes[index] = next;
       sizes[index + 1] = other;

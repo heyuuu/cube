@@ -6,7 +6,7 @@
  * 不依赖 git 状态，可与其他改动并行执行。
  */
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -23,7 +23,9 @@ function fail(message: string): never {
 const components = readdirSync(uiDir)
   .filter((f) => f.endsWith('.tsx'))
   .map((f) => path.basename(f, '.tsx'));
-if (components.length === 0) fail('src/components/ui 下没有找到任何组件');
+if (components.length === 0) {
+  fail('src/components/ui 下没有找到任何组件');
+}
 
 // 逐组件拉取：批跑 --view 时 CLI 会截断大输出，多文件 section 会整段丢失
 const registryFiles = new Map<string, string>();
@@ -34,7 +36,9 @@ for (const component of components) {
     stdio: 'pipe',
     encoding: 'utf8',
   });
-  if (view.status !== 0) fail(`拉取 ${component} 失败：\n${view.stderr}`);
+  if (view.status !== 0) {
+    fail(`拉取 ${component} 失败：\n${view.stderr}`);
+  }
   parseRegistrySections(view.stdout, registryFiles);
 }
 
@@ -71,7 +75,9 @@ function parseRegistrySections(output: string, into: Map<string, string>) {
 const tmpDir = mkdtempSync(path.join(os.tmpdir(), 'cube-verify-shadcn-'));
 const tmpUiDir = path.join(tmpDir, 'src/components/ui');
 const uiFiles = [...registryFiles.keys()].filter((p) => p.startsWith('src/components/ui/'));
-if (uiFiles.length === 0) fail('--view 输出解析失败，没有提取到任何组件内容（CLI 输出格式可能已变更）');
+if (uiFiles.length === 0) {
+  fail('--view 输出解析失败，没有提取到任何组件内容（CLI 输出格式可能已变更）');
+}
 for (const file of uiFiles) {
   const target = path.join(tmpDir, file);
   mkdirSync(path.dirname(target), { recursive: true });
@@ -102,7 +108,9 @@ for (const component of components) {
   }
 }
 // 失败时保留临时目录，供 cube diff 人工比对（成功才清理）
-if (!mismatched) rmSync(tmpDir, { recursive: true, force: true });
+if (!mismatched) {
+  rmSync(tmpDir, { recursive: true, force: true });
+}
 
 if (mismatched) {
   console.error(`\n用对比工具查看具体差异：`);

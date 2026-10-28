@@ -5,6 +5,8 @@ import {
   ChevronRight,
   Cloud,
   Copy,
+  Ellipsis,
+  Eraser,
   ExternalLink,
   Eye,
   EyeOff,
@@ -14,8 +16,6 @@ import {
   Plus,
   RotateCcw,
   Trash2,
-  Ellipsis,
-  Eraser,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -34,22 +34,17 @@ import { useCopied } from '@/hooks/use-copied';
 import { usePersistentSet } from '@/hooks/use-local-pref';
 import { renderIcon } from '@/lib/icon';
 import { cn } from '@/lib/utils';
-import { filterTargets, quickIntents, type QuickIntent, type TargetKind } from '@/pages/projects/shared';
+import { filterTargets, quickIntents } from '@/pages/projects/shared';
 import { useIntentDefaultOpener, useOpenerList } from '@/queries/opener';
 import { useOpenerDiffOpen, useOpenerOpen } from '@/queries/project';
-import {
-  useWorkbenchRefs,
-  useWorkbenchRemotes,
-  useWorkbenchWorktrees,
-  useWorktreePrune,
-  type RemoteEntry,
-  type WorktreeStatus,
-} from '@/queries/workbench';
+import { useWorkbenchRefs, useWorkbenchRemotes, useWorkbenchWorktrees, useWorktreePrune } from '@/queries/workbench';
+import type { QuickIntent, TargetKind } from '@/pages/projects/shared';
+import type { RemoteEntry, WorktreeStatus } from '@/queries/workbench';
 
-import { refShortName, sameSource, type TreeSource, type WorkbenchParams } from '../params';
-
+import { refShortName, sameSource } from '../params';
 import { Section, SelectableRow } from './git-tree-bits';
 import { WorktreeResetDialog } from './worktree-write';
+import type { TreeSource, WorkbenchParams } from '../params';
 
 // workspace 子行展开态持久化（与 worktree-visibility 同款模式）
 const WS_EXPANDED_KEY = 'cube.workbench.wsExpanded';
@@ -165,7 +160,9 @@ export function WorktreeSection({
 function RemoteSection({ path }: { path: string }) {
   const remotes = useWorkbenchRemotes(path);
   const list = remotes.data ?? [];
-  if (list.length === 0) return null;
+  if (list.length === 0) {
+    return null;
+  }
   return (
     <Section title="远端" icon={<Cloud className="size-3.5" />}>
       {list.map((r) => (
@@ -178,9 +175,9 @@ function RemoteSection({ path }: { path: string }) {
 function RemoteRow({ remote }: { remote: RemoteEntry }) {
   const { copied, copy } = useCopied();
   return (
-    <div className="flex items-center px-2 leading-7 text-xs">
+    <div className="flex items-center px-2 text-xs leading-7">
       <span className="shrink-0 font-medium">{remote.name}</span>
-      <span className="ml-2 min-w-0 truncate font-mono text-[10px] text-muted-foreground" title={remote.url}>
+      <span className="text-muted-foreground ml-2 min-w-0 truncate font-mono text-[10px]" title={remote.url}>
         {remote.url}
       </span>
       <Button
@@ -348,7 +345,7 @@ function WorktreeRow({
             </>
           }
         />
-        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100">
+        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100">
           <Button variant="ghost" size="icon-sm" title="删除该 worktree" aria-label={`删除 ${name}`} onClick={onRemove}>
             <Trash2 className="size-3.5" />
           </Button>
@@ -433,7 +430,9 @@ function WorktreeOpenActions({
         .filter((q) => filterTargets([{ dir: path, label: name, kind }], q.targets).length > 0)
         .map((q) => {
           const op = defaultOpenerOf(q.intent);
-          if (!op) return null; // 未配默认的槽位隐藏，不回落
+          if (!op) {
+            return null;
+          } // 未配默认的槽位隐藏，不回落
           return (
             <Button
               key={q.intent}

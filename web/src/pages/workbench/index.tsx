@@ -14,13 +14,14 @@ import { useWorkbenchInfo } from '@/queries/workbench';
 import { ContentViewPanel } from './panels/content-view-panel';
 import { GitTreePanel } from './panels/git-tree-panel';
 import { ContentPanelPlaceholder } from './panels/placeholders';
-import { PANEL_REGISTRY, PANEL_ORDER, type PanelId } from './panels/registry';
+import { PANEL_ORDER, PANEL_REGISTRY } from './panels/registry';
 import { TerminalPanel } from './panels/terminal-panel';
 import { readWorkbenchParams, writePathParam } from './params';
 import { PathEntry } from './path-entry';
 import { ProjectSwitcher } from './project-switcher';
 import { PanelSplitter } from './splitter';
 import { useWorkbenchLayout } from './workbench-layout';
+import type { PanelId } from './panels/registry';
 
 // 工作台页面（1010 基座 → 1011 选择 → 1015 面板组装）：以任意本机 git 目录为输入，
 // 聚合 git 可视化 / 代码阅读 / diff / PTY。挂全局壳（1023），Layout 按本前缀切铺满型 main。
@@ -42,7 +43,9 @@ export function WorkbenchPage() {
   // 进入成功补记 usage（workbench 打开不走后端打开链路，靠触发接口补信号；
   // opener 留空——不参与 opener 偏好统计，只贡献项目最近使用）
   useEffect(() => {
-    if (params.path && info.isSuccess) recordUsageMutate({ project: params.path });
+    if (params.path && info.isSuccess) {
+      recordUsageMutate({ project: params.path });
+    }
   }, [params.path, info.isSuccess, recordUsageMutate]);
 
   const submitPath = (value: string) => {
@@ -61,7 +64,7 @@ export function WorkbenchPage() {
 
   if (!params.path || info.isError) {
     return (
-      <main className="h-full bg-background px-4">
+      <main className="bg-background h-full px-4">
         <PathEntry
           initial={params.path}
           initialError={
@@ -91,15 +94,15 @@ export function WorkbenchPage() {
   const addable = PANEL_ORDER.filter((p) => !layout.slots.includes(p));
 
   return (
-    <div className="flex h-full flex-col bg-background text-foreground">
-      <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+    <div className="bg-background text-foreground flex h-full flex-col">
+      <header className="border-border flex shrink-0 items-center gap-2 border-b px-3 py-2">
         <span className="text-xs font-semibold tracking-wide">工作台</span>
         {/* 项目下拉（1023）：沉浸场景下不退回列表直接横跳其他项目；非项目目录（任意 git 目录入口）时菜单仍可用 */}
         <ProjectSwitcher current={params.path} onSwitch={switchProject} />
         <div className="ml-auto flex items-center gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex items-center gap-1 rounded-md px-2 py-1 text-xs"
               render={
                 <button type="button">
                   <LayoutGrid className="mr-1 inline size-3.5" />
@@ -110,7 +113,7 @@ export function WorkbenchPage() {
             />
             <DropdownMenuContent align="end">
               {addable.length === 0 ? (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">所有面板均已打开（同类型单实例）</div>
+                <div className="text-muted-foreground px-2 py-1.5 text-xs">所有面板均已打开（同类型单实例）</div>
               ) : null}
               {PANEL_ORDER.map((id) => {
                 const item = PANEL_REGISTRY[id];
@@ -126,14 +129,14 @@ export function WorkbenchPage() {
           <button
             type="button"
             title="恢复默认布局"
-            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            className="text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md px-2 py-1 text-xs"
             onClick={layout.resetLayout}
           >
             <RotateCcw className="size-3.5" />
           </button>
           <button
             type="button"
-            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            className="text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md px-2 py-1 text-xs"
             onClick={() => submitPath('')}
           >
             更换目录
@@ -148,12 +151,12 @@ export function WorkbenchPage() {
             <Fragment key={id}>
               {slim ? (
                 // 收窄态：细条整条都是展开按钮（竖排标签保持可辨识），宽度固定不参与 flexGrow
-                <section className="flex w-10 shrink-0 flex-col items-center border-r border-border bg-muted/30">
+                <section className="border-border bg-muted/30 flex w-10 shrink-0 flex-col items-center border-r">
                   <button
                     type="button"
                     title={`${item.label}：展开`}
                     aria-label={`${item.label}：展开`}
-                    className="flex h-full w-full flex-col items-center gap-2 py-2 text-muted-foreground hover:text-accent-foreground"
+                    className="text-muted-foreground hover:text-accent-foreground flex h-full w-full flex-col items-center gap-2 py-2"
                     onClick={() => layout.toggleSlim(id)}
                   >
                     <ChevronsRight className="size-3.5" />
@@ -168,12 +171,14 @@ export function WorkbenchPage() {
                       dragFrom.current = i;
                     }}
                     onDragOver={(e) => {
-                      if (dragFrom.current === null || dragFrom.current === i) return;
+                      if (dragFrom.current === null || dragFrom.current === i) {
+                        return;
+                      }
                       e.preventDefault();
                       layout.reorderPanel(dragFrom.current, i);
                       dragFrom.current = i;
                     }}
-                    className="flex h-7 shrink-0 cursor-grab items-center gap-1.5 border-b border-border bg-muted/30 px-2 text-[11px] text-muted-foreground active:cursor-grabbing"
+                    className="border-border bg-muted/30 text-muted-foreground flex h-7 shrink-0 cursor-grab items-center gap-1.5 border-b px-2 text-[11px] active:cursor-grabbing"
                     title="拖拽调整面板顺序"
                     onDoubleClick={() => layout.toggleSlim(id)}
                   >
@@ -183,7 +188,7 @@ export function WorkbenchPage() {
                     <button
                       type="button"
                       title="收窄面板（再点展开）"
-                      className="ml-auto rounded p-0.5 hover:bg-accent hover:text-accent-foreground"
+                      className="hover:bg-accent hover:text-accent-foreground ml-auto rounded p-0.5"
                       onClick={() => layout.toggleSlim(id)}
                       onDoubleClick={(e) => e.stopPropagation()}
                     >
@@ -192,7 +197,7 @@ export function WorkbenchPage() {
                     <button
                       type="button"
                       title="移除面板"
-                      className="rounded p-0.5 hover:bg-accent hover:text-accent-foreground"
+                      className="hover:bg-accent hover:text-accent-foreground rounded p-0.5"
                       onClick={() => layout.removePanel(id)}
                       onDoubleClick={(e) => e.stopPropagation()}
                     >
@@ -207,7 +212,9 @@ export function WorkbenchPage() {
                   onDelta={(dx) => {
                     // 像素位移换算为 flexGrow 比例：总宽 / 总比例 = 单位比例的像素数
                     const pxPerGrow = (slotsRef.current?.clientWidth ?? 0) / layout.sizes.reduce((a, b) => a + b, 0);
-                    if (pxPerGrow > 0) layout.resizePanels(i, dx / pxPerGrow);
+                    if (pxPerGrow > 0) {
+                      layout.resizePanels(i, dx / pxPerGrow);
+                    }
                   }}
                 />
               ) : null}

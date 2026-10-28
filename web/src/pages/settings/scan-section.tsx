@@ -4,7 +4,6 @@
 import { GripVertical } from 'lucide-react';
 import { useState } from 'react';
 
-import type { ScanRule } from '@/api/client';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorBanner } from '@/components/error-banner';
 import { IconField } from '@/components/icon-field';
@@ -12,9 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { IconDecl } from '@/lib/icon';
 import { renderIcon } from '@/lib/icon';
-import { useScanRuleDelete, useScanRuleReorder, useScanRuleSave, useScanRules } from '@/queries/scan-rule';
+import { useScanRuleDelete, useScanRuleReorder, useScanRules, useScanRuleSave } from '@/queries/scan-rule';
+import type { ScanRule } from '@/api/client';
+import type { IconDecl } from '@/lib/icon';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
 
@@ -59,7 +59,9 @@ function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => voi
       {
         onSuccess: () => {
           // path 是规则唯一键：编辑改了 path 等价于删旧存新，补一步删旧
-          if (isEdit && newPath !== draft.path) del.mutate({ path: draft.path });
+          if (isEdit && newPath !== draft.path) {
+            del.mutate({ path: draft.path });
+          }
           onClose();
         },
       },
@@ -77,12 +79,12 @@ function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => voi
           {save.error && <ErrorBanner message={`保存失败：${save.error.message}`} />}
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">group（扫描出的项目组名）</span>
+            <span className="text-muted-foreground text-xs">group（扫描出的项目组名）</span>
             <Input value={form.group} onChange={(e) => set('group', e.target.value)} placeholder="work" />
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">path（扫描根目录，绝对路径或 ~/ 前缀；规则唯一键）</span>
+            <span className="text-muted-foreground text-xs">path（扫描根目录，绝对路径或 ~/ 前缀；规则唯一键）</span>
             <Input
               value={form.path}
               onChange={(e) => set('path', e.target.value)}
@@ -92,7 +94,7 @@ function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => voi
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">maxDepth（扫描最大深度）</span>
+            <span className="text-muted-foreground text-xs">maxDepth（扫描最大深度）</span>
             <Input
               type="number"
               min={1}
@@ -103,14 +105,14 @@ function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => voi
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               tags（可选，逗号分隔，命中规则的项目统一追加，如：个人,公司,开源）
             </span>
             <Input value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="个人,公司" />
           </label>
 
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">icon（可选，项目页 group 元素展示）</span>
+            <span className="text-muted-foreground text-xs">icon（可选，项目页 group 元素展示）</span>
             <IconField allowEmpty value={form.icon} onChange={(v) => set('icon', v)} />
           </div>
 
@@ -146,7 +148,7 @@ export function ScanSection() {
     <section>
       <div className="mb-2 flex items-baseline gap-2">
         <h2 className="text-sm font-medium">扫描规则（scanRules）</h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           决定项目列表来源（group / 根目录 / 深度）；顺序即展示序，拖动 ⠿ 排序
         </span>
         <Button size="sm" variant="outline" className="ml-auto" onClick={() => setEditing(EMPTY_SCAN_DRAFT)}>
@@ -171,7 +173,7 @@ export function ScanSection() {
           <TableBody>
             {d.rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-xs text-muted-foreground">
+                <TableCell colSpan={6} className="text-muted-foreground text-xs">
                   暂无扫描规则
                 </TableCell>
               </TableRow>
@@ -220,7 +222,9 @@ export function ScanSection() {
         confirmText="删除"
         danger
         onConfirm={() => {
-          if (deleting) del.mutate({ path: deleting });
+          if (deleting) {
+            del.mutate({ path: deleting });
+          }
           setDeleting(null);
         }}
         onCancel={() => setDeleting(null)}

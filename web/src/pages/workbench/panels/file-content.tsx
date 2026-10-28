@@ -1,13 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
-import type { UseQueryResult } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
+import type { UseQueryResult } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 
-import type { components } from '@/api/schema';
 import { CodeEditor } from '@/components/code-editor';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorBanner } from '@/components/error-banner';
-import { loadMdTheme, mdThemeCls, mdThemes, MarkdownView, type MdThemeId } from '@/components/markdown-render';
+import { loadMdTheme, MarkdownView, mdThemeCls, mdThemes } from '@/components/markdown-render';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,9 +17,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
-import { splitInlineDiff, type InlineSegment } from '@/lib/inline-diff';
+import { splitInlineDiff } from '@/lib/inline-diff';
 import { cn } from '@/lib/utils';
 import { saveWorkbenchFile } from '@/queries/workbench';
+import type { components } from '@/api/schema';
+import type { MdThemeId } from '@/components/markdown-render';
+import type { InlineSegment } from '@/lib/inline-diff';
 import type { FileDiffResult, FileResult } from '@/queries/workbench';
 
 import type { TreeSource } from '../params';
@@ -84,12 +87,22 @@ const BINARY_EXTS = [
 ];
 export function previewKindOf(file: string): PreviewKind {
   const dot = file.lastIndexOf('.');
-  if (dot < 0) return null;
+  if (dot < 0) {
+    return null;
+  }
   const ext = file.slice(dot).toLowerCase();
-  if (IMAGE_EXTS.includes(ext)) return 'image';
-  if (BINARY_EXTS.includes(ext)) return 'binary';
-  if (ext === '.md' || ext === '.markdown') return 'md';
-  if (ext === '.html' || ext === '.htm') return 'html';
+  if (IMAGE_EXTS.includes(ext)) {
+    return 'image';
+  }
+  if (BINARY_EXTS.includes(ext)) {
+    return 'binary';
+  }
+  if (ext === '.md' || ext === '.markdown') {
+    return 'md';
+  }
+  if (ext === '.html' || ext === '.htm') {
+    return 'html';
+  }
   return null;
 }
 
@@ -127,8 +140,11 @@ export function useFileEditing(path: string, src: TreeSource, file: string, file
   };
 
   const requestEdit = (on: boolean) => {
-    if (on) setConfirmEdit(true);
-    else guardSwitch(() => setEditState(null)); // 关编辑 = 取消：脏改动先丢弃确认
+    if (on) {
+      setConfirmEdit(true);
+    } else {
+      guardSwitch(() => setEditState(null));
+    } // 关编辑 = 取消：脏改动先丢弃确认
   };
 
   const doSave = async () => {
@@ -234,7 +250,7 @@ export function FileContentArea({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5 text-xs">
+      <div className="border-border flex shrink-0 items-center gap-2 border-b px-3 py-1.5 text-xs">
         {headerLeading}
         {mode !== 'diff' && fileMissing ? (
           <Badge variant="outline" className="shrink-0 text-amber-600 dark:text-amber-400">
@@ -251,7 +267,7 @@ export function FileContentArea({
         ) : null}
         {isSourceView && dirty ? <Badge variant="destructive">未保存</Badge> : null}
         <div className="ml-auto flex items-center gap-1.5">
-          <div className="flex overflow-hidden rounded-md border border-border text-[10px]">
+          <div className="border-border flex overflow-hidden rounded-md border text-[10px]">
             {(
               [
                 ['preview', '预览'],
@@ -286,31 +302,31 @@ export function FileContentArea({
       <div className="min-h-0 flex-1 overflow-hidden">
         {mode === 'diff' ? (
           !file ? (
-            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+            <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
               在左侧选择一个变更文件查看双栏对比
             </div>
           ) : fileDiffQuery.isPending ? (
-            <div className="p-3 text-xs text-muted-foreground">计算 diff…</div>
+            <div className="text-muted-foreground p-3 text-xs">计算 diff…</div>
           ) : fileDiffQuery.isError ? (
             <ErrorBanner message={fileDiffQuery.error.message} />
           ) : fileDiffQuery.data?.binary ? (
-            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">二进制文件差异</div>
+            <div className="text-muted-foreground flex h-full items-center justify-center text-xs">二进制文件差异</div>
           ) : (
             <SideBySideHunks hunks={fileDiffQuery.data?.hunks ?? []} />
           )
         ) : !file ? (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+          <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
             在左侧选择一个文件
           </div>
         ) : contentQuery.isPending && contentQuery.fetchStatus === 'fetching' ? (
-          <div className="p-3 text-xs text-muted-foreground">读取中…</div>
+          <div className="text-muted-foreground p-3 text-xs">读取中…</div>
         ) : contentQuery.data?.deleted ? (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+          <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
             该文件已从工作区删除（diff 模式可查看删除前的内容）
           </div>
         ) : isImage ? (
           // 图片预览：直连 raw 端点取原始字节（文本 API 对二进制只给标记不给内容）
-          <div className="flex h-full items-center justify-center overflow-auto bg-muted/30 p-4">
+          <div className="bg-muted/30 flex h-full items-center justify-center overflow-auto p-4">
             <img src={rawFileUrl} alt={file} className="max-h-full max-w-full object-contain" />
           </div>
         ) : previewKind === 'html' ? (
@@ -319,7 +335,7 @@ export function FileContentArea({
         ) : previewKind === 'md' ? (
           // 主题选择固定顶部不随滚动；正文单独滚动
           <div className="flex h-full min-h-0 flex-col">
-            <div className="flex shrink-0 justify-end border-b border-border px-2 py-1">
+            <div className="border-border flex shrink-0 justify-end border-b px-2 py-1">
               <DropdownMenu>
                 <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 text-xs" />}>
                   主题：{mdThemes.find((t) => t.id === mdTheme)?.label ?? mdTheme}
@@ -339,14 +355,14 @@ export function FileContentArea({
             </div>
           </div>
         ) : isBinaryFile ? (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+          <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
             二进制文件不支持预览{contentQuery.data ? `（${contentQuery.data.size} 字节）` : ''}
           </div>
         ) : (
           // 编辑开关/保存浮动在代码区右上角（不占标题栏，标题栏元素随模式稳定）
           <div className="relative h-full">
             {canEdit ? (
-              <div className="absolute top-2 right-3 z-10 flex items-center gap-2 rounded-md border border-border bg-background/80 px-2 py-1 text-xs backdrop-blur-sm">
+              <div className="border-border bg-background/80 absolute top-2 right-3 z-10 flex items-center gap-2 rounded-md border px-2 py-1 text-xs backdrop-blur-sm">
                 <span className="text-muted-foreground" title="预览 / 编辑切换">
                   <span className={cn(!isEditing && 'font-medium text-foreground')}>预览</span>
                   <Switch
@@ -392,13 +408,13 @@ export function FileContentArea({
 // 恒显示行号（长行自动换行后靠行号区分行边界）
 function SideBySideHunks({ hunks }: { hunks: components['schemas']['Hunk'][] }) {
   if (hunks.length === 0) {
-    return <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">两侧内容一致</div>;
+    return <div className="text-muted-foreground flex flex-1 items-center justify-center text-xs">两侧内容一致</div>;
   }
   return (
     <div className="h-full min-h-0 overflow-auto font-mono text-[12px] leading-5">
       {hunks.map((h, i) => (
         <div key={i}>
-          <div className="bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          <div className="bg-muted text-muted-foreground px-2 py-0.5 text-[11px]">
             @@ -{h.oldStart},{h.oldCount} +{h.newStart},{h.newCount} @@
           </div>
           <HunkRows hunk={h} />

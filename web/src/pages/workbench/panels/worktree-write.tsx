@@ -6,16 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { refShortName, selectCurrent, writePathParam, type TreeSource } from '@/pages/workbench/params';
-import { useWorkbenchRefs } from '@/queries/workbench';
+import { refShortName, selectCurrent, writePathParam } from '@/pages/workbench/params';
 import {
   useBranchAdd,
   useBranchDelete,
+  useWorkbenchRefs,
   useWorktreeAdd,
   useWorktreeRemove,
   useWorktreeReset,
-  type WorktreeStatus,
 } from '@/queries/workbench';
+import type { TreeSource } from '@/pages/workbench/params';
+import type { WorktreeStatus } from '@/queries/workbench';
 
 import { defaultWorktreeBranchName } from '../branch-name';
 
@@ -45,7 +46,9 @@ export function WorktreeAddDialog({
   const [, setSearchParams] = useSearchParams();
 
   const submit = () => {
-    if (add.isPending) return; // 回车与按钮共用入口，防 pending 期间重复提交
+    if (add.isPending) {
+      return;
+    } // 回车与按钮共用入口，防 pending 期间重复提交
     add.mutate(
       {
         branch: branch.trim() || undefined,
@@ -96,7 +99,9 @@ export function BranchAddDialog({ path, onClose }: { path: string; onClose: () =
   const [, setSearchParams] = useSearchParams();
 
   const submit = () => {
-    if (add.isPending || branch.trim() === '') return; // 回车与按钮共用入口
+    if (add.isPending || branch.trim() === '') {
+      return;
+    } // 回车与按钮共用入口
     add.mutate(
       { branch: branch.trim(), commitish: commitish.trim() || undefined },
       {
@@ -162,13 +167,15 @@ export function WorktreeResetDialog({
   const reset = useWorktreeReset(wtPath);
 
   const submit = () => {
-    if (reset.isPending || target.trim() === '') return;
+    if (reset.isPending || target.trim() === '') {
+      return;
+    }
     reset.mutate({ target: target.trim(), hard }, { onSuccess: () => onClose() });
   };
 
   return (
     <WriteDialogShell title="重置 worktree" onClose={onClose}>
-      <div className="font-mono text-[11px] break-all text-muted-foreground">{wtPath}</div>
+      <div className="text-muted-foreground font-mono text-[11px] break-all">{wtPath}</div>
       {branch ? <Badge>{branch}</Badge> : null}
       <form
         className="flex flex-col gap-2.5"
@@ -232,7 +239,9 @@ export function WorktreeRemoveDialog({
             setDenied(res.reasons ?? []);
             return;
           }
-          if (deleteBranch && wt.branch) branchDelete.mutate({ branch: wt.branch, force: true });
+          if (deleteBranch && wt.branch) {
+            branchDelete.mutate({ branch: wt.branch, force: true });
+          }
           // 删的是工作台正在查看的目录 → 导航回主副本（1032 的「主项目 + 目标」模型）
           if (path === wt.path) {
             setSearchParams(
@@ -253,7 +262,7 @@ export function WorktreeRemoveDialog({
   const branch = wt.branch;
   return (
     <WriteDialogShell title="删除 worktree" onClose={onClose}>
-      <div className="font-mono text-[11px] break-all text-muted-foreground">{wt.path}</div>
+      <div className="text-muted-foreground font-mono text-[11px] break-all">{wt.path}</div>
       <div className="flex flex-wrap gap-1">
         {branch ? <Badge>{branch}</Badge> : null}
         {wt.dirty ? <Badge tone="danger">脏 {wt.staged + wt.unstaged + wt.untracked}</Badge> : null}
@@ -261,14 +270,14 @@ export function WorktreeRemoveDialog({
         {wt.detached ? <Badge>detached</Badge> : null}
       </div>
       {denied ? (
-        <div className="rounded border border-destructive/40 bg-destructive/10 p-2 text-xs leading-relaxed">
+        <div className="border-destructive/40 bg-destructive/10 rounded border p-2 text-xs leading-relaxed">
           <div className="font-medium">存在未保存内容：</div>
           <ul className="mt-1 list-disc pl-4">
             {denied.map((r) => (
               <li key={r}>{r}</li>
             ))}
           </ul>
-          <div className="mt-1 text-muted-foreground">勾选强制删除后重试，未提交/未推送内容将丢失。</div>
+          <div className="text-muted-foreground mt-1">勾选强制删除后重试，未提交/未推送内容将丢失。</div>
         </div>
       ) : null}
       <CheckLine checked={force} onCheckedChange={setForce} label="强制删除（丢弃未提交/未推送内容）" />
@@ -315,7 +324,7 @@ export function BranchDeleteDialog({
 
   return (
     <WriteDialogShell title="删除分支" onClose={onClose}>
-      <div className="font-mono text-[11px] text-muted-foreground">{branch}</div>
+      <div className="text-muted-foreground font-mono text-[11px]">{branch}</div>
       <CheckLine checked={force} onCheckedChange={setForce} label="强制删除（丢弃未合并提交）" />
       {del.isError ? <ErrorLine message={del.error.message} /> : null}
       <DialogActions confirmText="删除" danger pending={del.isPending} onConfirm={submit} onCancel={onClose} />
@@ -353,7 +362,9 @@ function BranchQuickPicks({
   limit?: number; // 省略 = 全部
 }) {
   const picks = limit ? locals.slice(0, limit) : locals;
-  if (picks.length === 0) return null;
+  if (picks.length === 0) {
+    return null;
+  }
   return (
     <div className="flex flex-wrap gap-1">
       {picks.map((b) => {
@@ -383,7 +394,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     <label className="flex flex-col gap-1">
       <span className="text-xs font-medium">{label}</span>
       {children}
-      {hint ? <span className="text-[10px] text-muted-foreground">{hint}</span> : null}
+      {hint ? <span className="text-muted-foreground text-[10px]">{hint}</span> : null}
     </label>
   );
 }
@@ -421,7 +432,7 @@ function Badge({ children, tone }: { children: React.ReactNode; tone?: 'danger' 
 }
 
 function ErrorLine({ message }: { message: string }) {
-  return <div className="rounded border border-destructive/40 bg-destructive/10 p-2 text-xs">{message}</div>;
+  return <div className="border-destructive/40 bg-destructive/10 rounded border p-2 text-xs">{message}</div>;
 }
 
 function DialogActions({

@@ -20,10 +20,12 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
   return (
     <DialogShell title={title} onClose={onCancel}>
-      <div className="mt-2 text-xs leading-relaxed text-muted-foreground">{message}</div>
+      <div className="text-muted-foreground mt-2 text-xs leading-relaxed">{message}</div>
       <div className="mt-4 flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={onCancel}>
           取消

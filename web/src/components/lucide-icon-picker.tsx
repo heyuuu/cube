@@ -1,7 +1,8 @@
 // lucide 图标选择器：当前值预览 + 搜索过滤 + 网格点选（icon 编辑表单用，见 IconField）。
 // icons 映射键是 PascalCase，存储值是 kebab-case，此处预计算双名做过滤与高亮。
-import { icons, type LucideIcon } from 'lucide-react';
+import { icons } from 'lucide-react';
 import { createElement, useMemo, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -29,7 +30,7 @@ export function LucideIconPicker({ value, onChange }: { value: string; onChange:
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
         {preview && createElement(preview, { className: 'size-8' })}
-        <span className="text-xs text-muted-foreground">{value || '未选择'}</span>
+        <span className="text-muted-foreground text-xs">{value || '未选择'}</span>
       </div>
       <Input
         value={query}
@@ -54,12 +55,12 @@ export function LucideIconPicker({ value, onChange }: { value: string; onChange:
           </button>
         ))}
         {hits.length === 0 && (
-          <div className="col-span-8 py-4 text-center text-xs text-muted-foreground">无匹配图标</div>
+          <div className="text-muted-foreground col-span-8 py-4 text-center text-xs">无匹配图标</div>
         )}
       </div>
       {/* 命中裁剪提示：选中项可能不在可视区，当前值以上方预览为准 */}
       {ALL.length > MAX_SHOWN && hits.length === MAX_SHOWN && (
-        <div className="text-[10px] text-muted-foreground">
+        <div className="text-muted-foreground text-[10px]">
           显示前 {MAX_SHOWN} / {ALL.length} 个，搜索缩小范围
         </div>
       )}

@@ -47,10 +47,10 @@ export function Layout() {
 
   return (
     <div className="flex h-dvh">
-      <aside className="flex w-12 shrink-0 flex-col items-center border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      <aside className="border-sidebar-border bg-sidebar text-sidebar-foreground flex w-12 shrink-0 flex-col items-center border-r">
         <HintTip label="cube">
           <NavLink to="/projects" className="flex size-9 items-center justify-center" aria-label="cube 首页">
-            <Box className="size-4 text-sidebar-primary" />
+            <Box className="text-sidebar-primary size-4" />
           </NavLink>
         </HintTip>
         <nav className="mt-2 flex flex-col gap-1 px-1.5">
@@ -79,7 +79,7 @@ export function Layout() {
               href="/docs"
               target="_blank"
               rel="noreferrer"
-              className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-9 items-center justify-center rounded-md transition-colors"
               aria-label="API Docs"
             >
               <BookOpen className="size-4" />

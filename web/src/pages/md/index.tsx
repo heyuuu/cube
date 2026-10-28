@@ -1,11 +1,11 @@
-import { ChevronDown, ChevronRight, ArrowLeft, Ellipsis, Folder, FileText } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { ArrowLeft, ChevronDown, ChevronRight, Ellipsis, FileText, Folder } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
-import type { Opener } from '@/api/client';
 import { ErrorBanner } from '@/components/error-banner';
 // front-matter 渲染管线与工作台内容面板预览共用（components/markdown-render）
-import { mdThemeCls, mdThemes, MarkdownView, type MdThemeId } from '@/components/markdown-render';
+import { MarkdownView, mdThemeCls, mdThemes } from '@/components/markdown-render';
 import { OpenWithGroup } from '@/components/open-with-menu';
 import { TreeToolbar } from '@/components/tree-toolbar';
 import { Button } from '@/components/ui/button';
@@ -17,11 +17,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLocalPref } from '@/hooks/use-local-pref';
-import { buildFileTree, flattenFileTree, type FileTreeRow } from '@/lib/tree';
+import { buildFileTree, flattenFileTree } from '@/lib/tree';
 import { cn } from '@/lib/utils';
 import { useMdContent, useMdList } from '@/queries/md';
 import { useOpenerList } from '@/queries/opener';
 import { useOpenerOpen } from '@/queries/project';
+import type { Opener } from '@/api/client';
+import type { MdThemeId } from '@/components/markdown-render';
+import type { FileTreeRow } from '@/lib/tree';
 
 // md 渲染页：独立于主应用 Layout（文档查看器，不带业务侧栏）。
 // 路由 /md?path=<abs>，由 `cube md` 命令打开；渲染全在前端（后端只给原文与文件列表）。
@@ -65,9 +68,14 @@ function resolveRel(currentFile: string, href: string): string {
   const dir = currentFile.slice(0, currentFile.lastIndexOf('/'));
   const out: string[] = [];
   for (const p of `${dir}/${rel}`.split('/')) {
-    if (p === '' || p === '.') continue;
-    if (p === '..') out.pop();
-    else out.push(p);
+    if (p === '' || p === '.') {
+      continue;
+    }
+    if (p === '..') {
+      out.pop();
+    } else {
+      out.push(p);
+    }
   }
   return `/${out.join('/')}`;
 }
@@ -218,20 +226,26 @@ function MdContent({
   const sourceRef = useRef<HTMLDivElement>(null);
   const syncing = useRef(false);
   function syncScroll(from: 'render' | 'source') {
-    if (syncing.current) return;
+    if (syncing.current) {
+      return;
+    }
     const a = (from === 'render' ? renderRef : sourceRef).current;
     const b = (from === 'render' ? sourceRef : renderRef).current;
-    if (!a || !b) return;
+    if (!a || !b) {
+      return;
+    }
     const aMax = a.scrollHeight - a.clientHeight;
     const bMax = b.scrollHeight - b.clientHeight;
-    if (aMax <= 0 || bMax <= 0) return;
+    if (aMax <= 0 || bMax <= 0) {
+      return;
+    }
     syncing.current = true;
     b.scrollTop = (a.scrollTop / aMax) * bMax;
     syncing.current = false;
   }
 
   if (!file) {
-    return <div className="mt-10 text-center text-xs text-muted-foreground">此目录没有 README.md，从左侧选择文件</div>;
+    return <div className="text-muted-foreground mt-10 text-center text-xs">此目录没有 README.md，从左侧选择文件</div>;
   }
 
   const fileName = file.split('/').pop() || '未命名';
@@ -240,7 +254,7 @@ function MdContent({
       <header className="mb-6 flex items-start justify-between gap-4 border-b pb-4">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold">{fileName}</h1>
-          <div className="mt-1 font-mono text-xs text-muted-foreground" title={file}>
+          <div className="text-muted-foreground mt-1 font-mono text-xs" title={file}>
             {file}
           </div>
         </div>
@@ -275,7 +289,7 @@ function MdContent({
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
-      {q.isPending && <div className="text-xs text-muted-foreground">加载中…</div>}
+      {q.isPending && <div className="text-muted-foreground text-xs">加载中…</div>}
       {q.error && <ErrorBanner message={`读取失败：${q.error.message}`} />}
       {q.data && viewMode === 'render' && (
         <MarkdownView
@@ -291,7 +305,7 @@ function MdContent({
         />
       )}
       {q.data && viewMode === 'source' && (
-        <pre className="mb-10 rounded-lg border bg-muted/30 p-4 font-mono text-xs break-words whitespace-pre-wrap">
+        <pre className="bg-muted/30 mb-10 rounded-lg border p-4 font-mono text-xs break-words whitespace-pre-wrap">
           {q.data.content}
         </pre>
       )}
@@ -319,7 +333,7 @@ function MdContent({
             onScroll={() => syncScroll('source')}
             className="max-h-[calc(100dvh-11rem)] overflow-y-auto pr-1"
           >
-            <pre className="rounded-lg border bg-muted/30 p-4 font-mono text-xs break-words whitespace-pre-wrap">
+            <pre className="bg-muted/30 rounded-lg border p-4 font-mono text-xs break-words whitespace-pre-wrap">
               {q.data.content}
             </pre>
           </div>
@@ -374,7 +388,9 @@ export function MdPage() {
   const rows = tree ? flattenFileTree(tree, (p) => expanded.has(p)) : [];
 
   function expandAll() {
-    if (!tree) return;
+    if (!tree) {
+      return;
+    }
     const next = new Set<string>();
     const walk = (n: typeof tree) => {
       if (n.children.length > 0) {
@@ -438,7 +454,9 @@ export function MdPage() {
   // block:'nearest' 保证已在视野内时不跳动；用户手动折叠不受影响（再点击会重新展开）。
   const selectedRowRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!dirMode || !selected) return;
+    if (!dirMode || !selected) {
+      return;
+    }
     // setState 放进 rAF 异步执行（React Compiler 禁止 effect 内同步 setState
     // 触发级联渲染）；双 rAF 等展开后的行渲染完成再滚动定位
     const raf = requestAnimationFrame(() => {
@@ -476,8 +494,11 @@ export function MdPage() {
     // 点目录只做折叠/展开，不切正文——折叠时误切当前文档并非本意（初始根 README 见上方 selected 推导）
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(dirPath)) next.delete(dirPath);
-      else next.add(dirPath);
+      if (next.has(dirPath)) {
+        next.delete(dirPath);
+      } else {
+        next.add(dirPath);
+      }
       return next;
     });
   }
@@ -500,7 +521,7 @@ export function MdPage() {
   ) : null;
 
   return (
-    <div className="flex h-dvh bg-background text-foreground">
+    <div className="bg-background text-foreground flex h-dvh">
       {dirMode && (
         <>
           <aside className="shrink-0 overflow-y-auto border-r p-3" style={{ width: sidebarW - 4 }}>
@@ -508,10 +529,10 @@ export function MdPage() {
             {backButton}
             {/* 共用目录树工具条（与工作台代码阅读面板同款）；额外按钮经 extra 注入 */}
             <TreeToolbar onExpandAll={expandAll} onCollapseAll={collapseAll} />
-            {list.isPending && <div className="text-xs text-muted-foreground">加载中…</div>}
-            {listError && <div className="text-xs text-muted-foreground">{listError}</div>}
+            {list.isPending && <div className="text-muted-foreground text-xs">加载中…</div>}
+            {listError && <div className="text-muted-foreground text-xs">{listError}</div>}
             {!list.isPending && !listError && rows.length <= 1 && (
-              <div className="text-xs text-muted-foreground">未找到 markdown 文件</div>
+              <div className="text-muted-foreground text-xs">未找到 markdown 文件</div>
             )}
             {rows.map((row) => (
               <MdTreeRow
@@ -528,7 +549,7 @@ export function MdPage() {
             ))}
           </aside>
           {/* 拖拽调宽的把手：独立成列（不放进 aside），侧栏滚动条再长也不挡它 */}
-          <div onMouseDown={startResize} className="w-1 shrink-0 cursor-col-resize hover:bg-primary/40" aria-hidden />
+          <div onMouseDown={startResize} className="hover:bg-primary/40 w-1 shrink-0 cursor-col-resize" aria-hidden />
         </>
       )}
 
@@ -537,7 +558,7 @@ export function MdPage() {
       <main className="min-w-0 flex-1 overflow-y-auto px-6 py-8">
         <div className={cn(viewMode === 'split' ? 'w-full' : 'mx-auto max-w-3xl')}>
           {openError && <ErrorBanner message={openError} />}
-          {list.isPending && <div className="text-xs text-muted-foreground">加载中…</div>}
+          {list.isPending && <div className="text-muted-foreground text-xs">加载中…</div>}
           {listError && <ErrorBanner message={listError} />}
           {!list.isPending && !listError && (
             <MdContent

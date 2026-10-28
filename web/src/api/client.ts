@@ -1,4 +1,5 @@
-import createClient, { type ClientPathsWithMethod, type MethodResponse } from 'openapi-fetch';
+import createClient from 'openapi-fetch';
+import type { ClientPathsWithMethod, MethodResponse } from 'openapi-fetch';
 
 import type { components, paths } from './schema';
 
@@ -37,8 +38,12 @@ export async function unwrap<T extends Envelope>(
     const err = error as { detail?: string; title?: string };
     throw new Error(err.detail || err.title || `请求失败（HTTP ${response.status}）`);
   }
-  if (!data) throw new Error(`响应为空或非 JSON（HTTP ${response.status}）`);
-  if (!data.ok) throw new Error(data.message || '请求失败');
+  if (!data) {
+    throw new Error(`响应为空或非 JSON（HTTP ${response.status}）`);
+  }
+  if (!data.ok) {
+    throw new Error(data.message || '请求失败');
+  }
   return data.data;
 }
 

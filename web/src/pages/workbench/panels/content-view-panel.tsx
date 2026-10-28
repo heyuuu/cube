@@ -12,11 +12,12 @@ import {
   useWorkbenchTree,
 } from '@/queries/workbench';
 
-import { sourceLabel, toUri, writeFileParam, type TreeSource, type WorkbenchParams } from '../params';
-
+import { sourceLabel, toUri, writeFileParam } from '../params';
 import { CommitDetailPane } from './commit-detail';
-import { FileContentArea, previewKindOf, useFileEditing, type ContentMode } from './file-content';
+import { FileContentArea, previewKindOf, useFileEditing } from './file-content';
 import { SourcePanelShell, useTreePanePrefs } from './tree-pane';
+import type { TreeSource, WorkbenchParams } from '../params';
+import type { ContentMode } from './file-content';
 
 // 内容面板（code + diff 合并）：统一为「current [+ base]」视图模型——
 //   current = 当前查看的版本；base 空 = diff 模式与相对基准比
@@ -47,9 +48,15 @@ export function ContentViewPanel({ params }: { params: WorkbenchParams }) {
   // （无富预览格式的文件自动等同源码，行为无损）
   const defaultMode = (): ContentMode => {
     const saved = localStorage.getItem(MODE_KEY);
-    if (saved === 'diff') return 'diff';
-    if (saved === 'preview' || saved === 'source') return saved;
-    if (saved === 'file') return 'source';
+    if (saved === 'diff') {
+      return 'diff';
+    }
+    if (saved === 'preview' || saved === 'source') {
+      return saved;
+    }
+    if (saved === 'file') {
+      return 'source';
+    }
     return viewBase ? 'diff' : 'preview';
   };
   const [mode, setMode] = useState<ContentMode>(defaultMode);
@@ -128,14 +135,16 @@ export function ContentViewPanel({ params }: { params: WorkbenchParams }) {
       ),
     );
 
-  if (!viewSource) return null;
+  if (!viewSource) {
+    return null;
+  }
 
   const headerLeading = viewBase ? (
     <>
       <Badge variant="secondary">{sourceLabel(viewBase)}</Badge>
-      <ArrowRight className="size-3 text-muted-foreground" />
+      <ArrowRight className="text-muted-foreground size-3" />
       <Badge variant="secondary" className="max-w-48" title={viewSource.id}>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-muted-foreground text-[10px]">
           {viewSource.type === 'worktree' ? '工作副本' : viewSource.type === 'ref' ? '分支' : '提交'}
         </span>
         <span className="ml-1 truncate font-mono">{sourceLabel(viewSource)}</span>
@@ -145,7 +154,7 @@ export function ContentViewPanel({ params }: { params: WorkbenchParams }) {
   ) : (
     <>
       <Badge variant="secondary" className="max-w-48 shrink-0" title={viewSource.id}>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-muted-foreground text-[10px]">
           {viewSource.type === 'worktree' ? '工作副本' : viewSource.type === 'ref' ? '分支' : '提交'}
         </span>
         <span className="ml-1 truncate font-mono">{sourceLabel(viewSource)}</span>
@@ -158,7 +167,7 @@ export function ContentViewPanel({ params }: { params: WorkbenchParams }) {
     <SourcePanelShell
       prefs={treePrefs}
       above={
-        <div className="shrink-0 border-b border-border px-2 py-1.5">
+        <div className="border-border shrink-0 border-b px-2 py-1.5">
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -175,7 +184,7 @@ export function ContentViewPanel({ params }: { params: WorkbenchParams }) {
       }
       toolbarExtra={
         !listPending && (viewBase || treePrefs.scope === 'diff') ? (
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-muted-foreground text-[10px]">
             {viewBase
               ? `${diff.data?.mode === 'fs' ? '文件系统扫描' : 'git 模式'} · ${entries.length} 项`
               : `${entries.length} 项变更`}

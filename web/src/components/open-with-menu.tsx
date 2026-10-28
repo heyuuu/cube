@@ -4,8 +4,8 @@
 import { Copy } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import type { Opener } from '@/api/client';
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import type { Opener } from '@/api/client';
 
 export function CopyPathItem({ path }: { path: string }) {
   return (
@@ -27,7 +27,7 @@ export function OpenWithGroup({
     <DropdownMenuGroup>
       <DropdownMenuLabel>打开方式</DropdownMenuLabel>
       {openerList.map(renderItem)}
-      {openerList.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">未配置 opener</div>}
+      {openerList.length === 0 && <div className="text-muted-foreground px-2 py-1.5 text-xs">未配置 opener</div>}
     </DropdownMenuGroup>
   );
 }

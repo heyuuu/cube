@@ -3,7 +3,9 @@
 // 无法解析返回空串（按未匹配处理）。host 匹配前统一小写、去尾部点号（后端 NormalizeHost 同规则）。
 export function repoHostOf(raw: string | null | undefined): string {
   const s = (raw ?? '').trim();
-  if (!s) return '';
+  if (!s) {
+    return '';
+  }
   if (s.startsWith('git@')) {
     return s.slice(4).split(':')[0].toLowerCase().replace(/\.$/, '');
   }
@@ -25,12 +27,16 @@ interface GitInfoLike {
 // 项目的全部 forge host（1042 修：多 remote 项目同时匹配多个 forge）——
 // repoUrl（origin）在前，其余 remotes 按序去重；无法解析的 URL 产生空串由调用方忽略。
 export function repoHostsOf(gitInfo: GitInfoLike | null | undefined): string[] {
-  if (!gitInfo) return [];
+  if (!gitInfo) {
+    return [];
+  }
   const urls = [gitInfo.repoUrl, ...(gitInfo.remotes ?? []).map((r) => r.url)];
   const hosts: string[] = [];
   for (const u of urls) {
     const h = repoHostOf(u);
-    if (h && !hosts.includes(h)) hosts.push(h);
+    if (h && !hosts.includes(h)) {
+      hosts.push(h);
+    }
   }
   return hosts;
 }
@@ -41,9 +47,15 @@ export function repoHostsOf(gitInfo: GitInfoLike | null | undefined): string[] {
 //   - 'other'：有 remote 但没有任何 host 命中已配置 forge（含无法解析的 URL）；
 //   - 'none'：无 remote（含未采集 gitInfo）。
 export function matchForgeFilter(hosts: readonly string[], filter: string, forgeHosts: readonly string[]): boolean {
-  if (filter === 'all') return true;
-  if (filter === 'none') return hosts.length === 0;
-  if (filter === 'other') return hosts.length > 0 && !hosts.some((h) => forgeHosts.includes(h));
+  if (filter === 'all') {
+    return true;
+  }
+  if (filter === 'none') {
+    return hosts.length === 0;
+  }
+  if (filter === 'other') {
+    return hosts.length > 0 && !hosts.some((h) => forgeHosts.includes(h));
+  }
   return hosts.includes(filter);
 }
 
@@ -52,7 +64,9 @@ export function matchForgeFilter(hosts: readonly string[], filter: string, forge
 export function repoPathOf(raw: string | null | undefined): string {
   const host = repoHostOf(raw);
   const s = (raw ?? '').trim();
-  if (!s || !host) return '';
+  if (!s || !host) {
+    return '';
+  }
   const path = s.startsWith('git@')
     ? s.slice(4 + host.length + 1)
     : s.replace(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^/]+\//, '');

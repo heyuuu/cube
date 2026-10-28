@@ -9,18 +9,20 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useLocalPref } from '@/hooks/use-local-pref';
 import { cn } from '@/lib/utils';
-import { useWorkbenchCommits, useWorkbenchWorktrees, type CommitEntry, type WorktreeStatus } from '@/queries/workbench';
+import { useWorkbenchCommits, useWorkbenchWorktrees } from '@/queries/workbench';
+import type { CommitEntry, WorktreeStatus } from '@/queries/workbench';
 
-import { computeGraph, simplifyLite, type GraphWire, type LaneInfo } from '../graph-layout';
+import { computeGraph, simplifyLite } from '../graph-layout';
+import type { GraphWire, LaneInfo } from '../graph-layout';
 
 // 虚拟节点：dirty worktree 的「未提交状态」合成提交（父 = 该副本 HEAD，无 msg，时间 = 当前）；
 // 选中即浏览该工作副本现场（worktree 源）
 type WorktreeNode = CommitEntry & { worktree: WorktreeStatus };
 type RowCommit = (CommitEntry | WorktreeNode) & LaneInfo;
-import { refShortName, type WorkbenchParams } from '../params';
-
+import { refShortName } from '../params';
 import { formatCommitTime, REF_BADGE_STYLE } from './commit-bits';
 import { SelectableRow } from './git-tree-bits';
+import type { WorkbenchParams } from '../params';
 
 // commit 图展示模式持久化（与 wsExpanded 同款模式）：
 // full = 全量提交；lite = 轻量拓扑（只留 ref/merge/分叉点，见 simplifyLite）
@@ -53,7 +55,9 @@ export function CommitGraphSection({
   // 无限滚动：哨兵进入视口即拉下一页
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const observer = new IntersectionObserver((entries) => {
       if (entries[0]?.isIntersecting && commits.hasNextPage && !commits.isFetchingNextPage) {
         commits.fetchNextPage();
@@ -73,7 +77,9 @@ export function CommitGraphSection({
     const list: CommitEntry[] = [];
     for (const page of commits.data?.pages ?? []) {
       for (const c of page.list ?? []) {
-        if (seen.has(c.sha)) continue;
+        if (seen.has(c.sha)) {
+          continue;
+        }
         seen.add(c.sha);
         list.push({ ...c, parents: c.parents ?? [], refs: c.refs ?? [] });
       }
@@ -84,8 +90,12 @@ export function CommitGraphSection({
     const decorated = list.map((c) => ({ ...c }));
     const virtual: WorktreeNode[] = [];
     for (const wt of worktrees.data ?? []) {
-      if (hiddenWorktrees.has(wt.path)) continue; // 关闭开关的副本不进图（虚拟节点与装饰都不注入）
-      if (wt.bare) continue; // bare 无工作区，无未提交概念
+      if (hiddenWorktrees.has(wt.path)) {
+        continue;
+      } // 关闭开关的副本不进图（虚拟节点与装饰都不注入）
+      if (wt.bare) {
+        continue;
+      } // bare 无工作区，无未提交概念
       const label = wt.path.split('/').pop() || wt.path;
       if (wt.dirty) {
         virtual.push({
@@ -100,7 +110,9 @@ export function CommitGraphSection({
         });
       } else {
         const hit = decorated.find((c) => c.sha === wt.head);
-        if (hit) hit.refs = [...(hit.refs ?? []), { name: label, kind: 'worktree' }];
+        if (hit) {
+          hit.refs = [...(hit.refs ?? []), { name: label, kind: 'worktree' }];
+        }
       }
     }
 
@@ -124,7 +136,9 @@ export function CommitGraphSection({
       lite && decorated.length > LITE_KEEP_RECENT ? (nodesOf.get(decorated[LITE_KEEP_RECENT - 1].sha) ?? -1) : -1;
     const virtualOriginEnd = new Map<number, number>();
     nodes.forEach((n, i) => {
-      if (!('worktree' in n && n.worktree)) return;
+      if (!('worktree' in n && n.worktree)) {
+        return;
+      }
       const head = n.parents?.[0];
       const headRow = head != null ? (nodesOf.get(head) ?? nodes.length) : 0;
       virtualOriginEnd.set(i, headRow);
@@ -137,14 +151,18 @@ export function CommitGraphSection({
   // 行上的 commit source 永不相等），定位与高亮共用 focusSha 才能对准同一行。
   const focusSha = useMemo(() => {
     const src = params.current;
-    if (!src) return null;
+    if (!src) {
+      return null;
+    }
     if (src.type === 'ref') {
       const short = refShortName(src.id);
       return rows.find((r) => (r.refs ?? []).some((x) => x.name === short))?.sha ?? null;
     }
     if (src.type === 'worktree') {
       const wt = (worktrees.data ?? []).find((w) => w.path === src.id);
-      if (!wt) return null;
+      if (!wt) {
+        return null;
+      }
       return wt.dirty ? `worktree:${wt.path}` : wt.head;
     }
     return src.id;
@@ -156,7 +174,9 @@ export function CommitGraphSection({
   // 或 ref 的 tip 行尚未加载（memo 在 rows 里找不到）——后者要继续翻页。
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!focusSha && !params.current) return;
+    if (!focusSha && !params.current) {
+      return;
+    }
     const el = scrollRef.current?.querySelector(`[data-sha="${focusSha}"]`);
     if (el) {
       el.scrollIntoView({ block: 'center' });
@@ -174,8 +194,14 @@ export function CommitGraphSection({
 
   const maxLane = useMemo(() => {
     let m = 0;
-    for (const r of rows) m = Math.max(m, r.lane ?? 0);
-    for (const ws of wireMap.values()) for (const w of ws) m = Math.max(m, w.from, w.to);
+    for (const r of rows) {
+      m = Math.max(m, r.lane ?? 0);
+    }
+    for (const ws of wireMap.values()) {
+      for (const w of ws) {
+        m = Math.max(m, w.from, w.to);
+      }
+    }
     return m;
   }, [rows, wireMap]);
 
@@ -191,7 +217,7 @@ export function CommitGraphSection({
 
   return (
     <>
-      <div className="flex shrink-0 items-center justify-end gap-1.5 border-b border-border px-2 py-1 text-muted-foreground">
+      <div className="border-border text-muted-foreground flex shrink-0 items-center justify-end gap-1.5 border-b px-2 py-1">
         <span className="text-[10px]" title="轻量模式：只保留分支/tag/merge/分叉点，隐藏其余提交">
           轻量拓扑
         </span>
@@ -202,7 +228,7 @@ export function CommitGraphSection({
           {/* 轻量模式「最近 N 个」下边界：overlay 画虚线，不占行高（不破坏行内 SVG 对齐） */}
           {dividerRow >= 0 ? (
             <div
-              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-muted-foreground/50"
+              className="border-muted-foreground/50 pointer-events-none absolute inset-x-0 z-10 border-t border-dashed"
               style={{ top: (dividerRow + 1) * ROW_H }}
             />
           ) : null}
@@ -220,9 +246,9 @@ export function CommitGraphSection({
           ))}
           <div ref={sentinelRef} className="h-8" />
           {commits.isFetchingNextPage ? (
-            <div className="pb-2 text-center text-xs text-muted-foreground">加载中…</div>
+            <div className="text-muted-foreground pb-2 text-center text-xs">加载中…</div>
           ) : !commits.hasNextPage && rows.length > 0 ? (
-            <div className="pb-2 text-center text-xs text-muted-foreground">— 没有更多了 —</div>
+            <div className="text-muted-foreground pb-2 text-center text-xs">— 没有更多了 —</div>
           ) : null}
         </div>
       </div>
@@ -252,11 +278,13 @@ function CommitRow({
   return (
     // 行高用固定 px（与 svg 的 ROW_H 同源）：根字号随视口 clamp 缩放，
     // rem 行高会与大屏下的 svg px 几何错位
-    <div data-sha={c.sha} className="group/commit flex items-stretch hover:bg-accent" style={{ height: ROW_H }}>
-      {/* 泳道列：本行 svg 画「上一节点中心 → 本节点中心」的连线段（Row = rowIndex-1；
+    <div data-sha={c.sha} className="group/commit hover:bg-accent flex items-stretch" style={{ height: ROW_H }}>
+      {/*
+       * 泳道列：本行 svg 画「上一节点中心 → 本节点中心」的连线段（Row = rowIndex-1；
           跨行让位线从更上方一路画到本行落点）+ 本行节点。
           节点圆心在行高中点，线段纵向须跨 -ROW_H/2 ~ +ROW_H/2（上一行圆心到本行圆心），
-          svg 设 overflow visible 允许向上越界绘制 */}
+          svg 设 overflow visible 允许向上越界绘制
+          */}
       <svg
         width={laneWidth}
         height={ROW_H}

@@ -10,16 +10,20 @@ export function PanelSplitter({ onDelta }: { onDelta: (dx: number) => void }) {
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!(e.buttons & 1)) return;
+    if (!(e.buttons & 1)) {
+      return;
+    }
     const dx = e.clientX - lastX.current;
     lastX.current = e.clientX;
-    if (dx !== 0) onDelta(dx);
+    if (dx !== 0) {
+      onDelta(dx);
+    }
   };
   return (
     <div
       role="separator"
       aria-orientation="vertical"
-      className="w-1 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-primary/50"
+      className="bg-border hover:bg-primary/50 w-1 shrink-0 cursor-col-resize transition-colors"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
     />
@@ -36,16 +40,20 @@ export function RowSplitter({ onDelta }: { onDelta: (dy: number) => void }) {
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!(e.buttons & 1)) return;
+    if (!(e.buttons & 1)) {
+      return;
+    }
     const dy = e.clientY - lastY.current;
     lastY.current = e.clientY;
-    if (dy !== 0) onDelta(dy);
+    if (dy !== 0) {
+      onDelta(dy);
+    }
   };
   return (
     <div
       role="separator"
       aria-orientation="horizontal"
-      className="h-1 shrink-0 cursor-row-resize bg-border transition-colors hover:bg-primary/50"
+      className="bg-border hover:bg-primary/50 h-1 shrink-0 cursor-row-resize transition-colors"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
     />

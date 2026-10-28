@@ -1,7 +1,7 @@
 // 项目详情抽屉：点行内项目名滑出。数据直接用列表项（与旧 UI 一致，不单独 fetch info）。
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 
-import type { Opener, Project } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -10,6 +10,7 @@ import { useCopied } from '@/hooks/use-copied';
 import { prettyPath } from '@/lib/path';
 import { formatDateTime } from '@/lib/time';
 import { useProjectOpen, useWorkspaceState } from '@/queries/project';
+import type { Opener, Project } from '@/api/client';
 
 import { ProjectActions, TagBadges } from './actions';
 import { WorkspaceDialog } from './workspace-dialog';
@@ -17,7 +18,7 @@ import { WorkspaceDialog } from './workspace-dialog';
 function KV({ k, children }: { k: string; children: ReactNode }) {
   return (
     <>
-      <dt className="w-20 shrink-0 text-muted-foreground">{k}</dt>
+      <dt className="text-muted-foreground w-20 shrink-0">{k}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </>
   );
@@ -26,7 +27,7 @@ function KV({ k, children }: { k: string; children: ReactNode }) {
 function DrawerSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <div className="mb-2 text-xs font-medium text-muted-foreground">{title}</div>
+      <div className="text-muted-foreground mb-2 text-xs font-medium">{title}</div>
       {children}
     </section>
   );
@@ -57,7 +58,9 @@ export function ProjectDrawer({
     <Sheet
       open={project !== null}
       onOpenChange={(o) => {
-        if (!o) onClose();
+        if (!o) {
+          onClose();
+        }
       }}
     >
       {project && (
@@ -116,7 +119,7 @@ export function ProjectDrawer({
                 ) : (
                   <span className="text-muted-foreground">无</span>
                 )}
-                <span className="text-xs text-muted-foreground">{wsState.data?.effective?.length ?? 0} 个成员</span>
+                <span className="text-muted-foreground text-xs">{wsState.data?.effective?.length ?? 0} 个成员</span>
                 <Button variant="outline" size="sm" className="ml-auto" onClick={() => setWsEditOpen(true)}>
                   编辑
                 </Button>
@@ -126,7 +129,7 @@ export function ProjectDrawer({
                   {wsState.data!.effective!.map((w) => (
                     <div key={w.path} className="flex items-baseline gap-2 text-xs">
                       <span className="font-medium">{w.name}</span>
-                      <span className="font-mono text-muted-foreground">{w.path}</span>
+                      <span className="text-muted-foreground font-mono">{w.path}</span>
                     </div>
                   ))}
                 </div>

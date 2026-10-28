@@ -1,17 +1,17 @@
 // Projects 页·树视图行（根 = 分组目录、叶 = 项目）：与列表视图同源的单元格复用 cells。
 import { ChevronRight, Folder, FolderGit2 } from 'lucide-react';
 
-import type { Opener, Project } from '@/api/client';
-import type { IconDecl } from '@/lib/icon';
 import { prettyPath } from '@/lib/path';
-import type { TreeRow } from '@/lib/tree';
 import { cn } from '@/lib/utils';
 import { useProjectOpen } from '@/queries/project';
+import type { Opener, Project } from '@/api/client';
+import type { IconDecl } from '@/lib/icon';
+import type { TreeRow } from '@/lib/tree';
 
 import { ProjectActions, WorktreeCountBadge } from './actions';
 import { ClickBadge, ForgeIcon, GitCell, LastUsedTime } from './cells';
-import type { GitStatus } from './filters';
 import { tagVariants } from './shared';
+import type { GitStatus } from './filters';
 
 export function TreeRowView({
   row,
@@ -46,8 +46,11 @@ export function TreeRowView({
       )}
       style={{ paddingLeft: row.depth * 20 + 12 }}
       onClick={() => {
-        if (p) onDetail(p);
-        else if (row.hasChildren) onToggle(n.path);
+        if (p) {
+          onDetail(p);
+        } else if (row.hasChildren) {
+          onToggle(n.path);
+        }
       }}
     >
       {row.hasChildren ? (
@@ -58,9 +61,9 @@ export function TreeRowView({
         <span className="w-3.5 shrink-0" />
       )}
       {p ? (
-        <FolderGit2 className="size-3.5 shrink-0 text-primary" />
+        <FolderGit2 className="text-primary size-3.5 shrink-0" />
       ) : (
-        <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+        <Folder className="text-muted-foreground size-3.5 shrink-0" />
       )}
       {p ? (
         <button
@@ -72,7 +75,7 @@ export function TreeRowView({
           {row.isRoot ? prettyPath(n.path, home) : n.name}
         </button>
       ) : (
-        <span className="truncate text-xs text-muted-foreground" title={n.path}>
+        <span className="text-muted-foreground truncate text-xs" title={n.path}>
           {n.name}
         </span>
       )}

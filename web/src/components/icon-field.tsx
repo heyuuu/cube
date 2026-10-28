@@ -6,9 +6,9 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { IconDecl } from '@/lib/icon';
 import { renderIcon } from '@/lib/icon';
 import { useIconExtract } from '@/queries/icon';
+import type { IconDecl } from '@/lib/icon';
 
 import { LucideIconPicker } from './lucide-icon-picker';
 
@@ -93,7 +93,7 @@ export function IconField({ value, onChange, allowEmpty = false, defaultLucide }
           />
         </div>
       )}
-      {extract.error && <span className="text-xs text-destructive">提取失败：{extract.error.message}</span>}
+      {extract.error && <span className="text-destructive text-xs">提取失败：{extract.error.message}</span>}
     </div>
   );
 }

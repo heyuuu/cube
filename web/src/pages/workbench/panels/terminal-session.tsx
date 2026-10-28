@@ -73,7 +73,9 @@ export function TerminalSession({
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host) return;
+    if (!host) {
+      return;
+    }
     setPhase('connecting');
     setExitCode(null);
     setErrorMsg('');
@@ -91,15 +93,20 @@ export function TerminalSession({
     // preventDefault 阻断浏览器默认（cmd+D 收藏页面）、stopPropagation 阻断全局快捷键
     // （use-theme 的 ⌘D 暗黑切换）
     term.attachCustomKeyEventHandler((ev) => {
-      if (ev.type !== 'keydown') return true;
+      if (ev.type !== 'keydown') {
+        return true;
+      }
       const key = ev.key.toLowerCase();
       const plainCmdD = ev.metaKey && !ev.ctrlKey && !ev.altKey && !ev.shiftKey && key === 'd';
       const ctrlShiftW = ev.ctrlKey && ev.shiftKey && !ev.metaKey && !ev.altKey && key === 'w';
       if (plainCmdD || ctrlShiftW) {
         ev.preventDefault();
         ev.stopPropagation();
-        if (plainCmdD) handlers.current.onSplit();
-        else handlers.current.onClose();
+        if (plainCmdD) {
+          handlers.current.onSplit();
+        } else {
+          handlers.current.onClose();
+        }
         return false;
       }
       return true;
@@ -126,7 +133,9 @@ export function TerminalSession({
     ws.onmessage = (ev) => {
       try {
         const msg = JSON.parse(String(ev.data));
-        if (msg.type === 'output') term.write(msg.data);
+        if (msg.type === 'output') {
+          term.write(msg.data);
+        }
         if (msg.type === 'exit') {
           setExitCode(msg.code ?? 0);
           setPhase('exited');
@@ -171,7 +180,9 @@ export function TerminalSession({
 
   useEffect(() => {
     const term = termRef.current;
-    if (!term) return;
+    if (!term) {
+      return;
+    }
     term.options.fontFamily = fontFamily;
     term.options.fontSize = fontSize;
     fitRef.current?.fit();
@@ -192,7 +203,7 @@ export function TerminalSession({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-black">
-      <div className="flex h-6 shrink-0 items-center gap-2 px-2 text-[10px] text-muted-foreground">
+      <div className="text-muted-foreground flex h-6 shrink-0 items-center gap-2 px-2 text-[10px]">
         <span className={cn(phase === 'open' && 'text-green-500', phase === 'error' && 'text-destructive')}>
           {phase === 'exited' && exitCode !== null ? `已退出（${exitCode}）` : PHASE_TEXT[phase]}
         </span>
@@ -203,7 +214,7 @@ export function TerminalSession({
                 type="button"
                 title="减小字号"
                 disabled={fontSize <= MIN_FONT_SIZE}
-                className="rounded p-0.5 hover:bg-accent hover:text-accent-foreground disabled:opacity-30"
+                className="hover:bg-accent hover:text-accent-foreground rounded p-0.5 disabled:opacity-30"
                 onClick={() => onFontSizeChange(-1)}
               >
                 <Minus className="size-3" />
@@ -213,7 +224,7 @@ export function TerminalSession({
                 type="button"
                 title="增大字号"
                 disabled={fontSize >= MAX_FONT_SIZE}
-                className="rounded p-0.5 hover:bg-accent hover:text-accent-foreground disabled:opacity-30"
+                className="hover:bg-accent hover:text-accent-foreground rounded p-0.5 disabled:opacity-30"
                 onClick={() => onFontSizeChange(1)}
               >
                 <span className="text-[11px] font-bold">A</span>
@@ -223,7 +234,7 @@ export function TerminalSession({
           <button
             type="button"
             title="重开会话"
-            className="rounded p-0.5 hover:bg-accent hover:text-accent-foreground"
+            className="hover:bg-accent hover:text-accent-foreground rounded p-0.5"
             onClick={restart}
           >
             <RotateCw className="size-3" />
@@ -231,7 +242,7 @@ export function TerminalSession({
           <button
             type="button"
             title="关闭终端（ctrl+shift+W）"
-            className="rounded p-0.5 hover:bg-accent hover:text-accent-foreground"
+            className="hover:bg-accent hover:text-accent-foreground rounded p-0.5"
             onClick={onClose}
           >
             <X className="size-3" />
@@ -241,7 +252,7 @@ export function TerminalSession({
       <div className="relative min-h-0 flex-1 px-2 pb-2">
         <div ref={hostRef} className="h-full" />
         {phase === 'error' && (
-          <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/70 text-xs text-muted-foreground">
+          <div className="text-muted-foreground absolute inset-0 flex items-center justify-center gap-3 bg-black/70 text-xs">
             {errorMsg}
             <Button variant="outline" size="sm" onClick={restart}>
               <RotateCw className="mr-1 size-3" />

@@ -1,10 +1,11 @@
 // Projects 页的展示单元格：可点徽标、git 状态格、最近使用时间、forge icon 组。
 import type { ReactNode } from 'react';
 
-import type { Project } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
-import { renderIcon, type IconDecl } from '@/lib/icon';
+import { renderIcon } from '@/lib/icon';
 import { formatDateTime, prettyTime } from '@/lib/time';
+import type { Project } from '@/api/client';
+import type { IconDecl } from '@/lib/icon';
 
 import type { GitStatus } from './filters';
 
@@ -27,7 +28,7 @@ export function ClickBadge({
         e.stopPropagation();
         onClick();
       }}
-      className="cursor-pointer hover:ring-2 hover:ring-ring/40"
+      className="hover:ring-ring/40 cursor-pointer hover:ring-2"
     >
       {children}
     </Badge>
@@ -45,7 +46,7 @@ export function GitCell({ p, onFilter }: { p: Project; onFilter: (s: GitStatus) 
   }
   return (
     <div className="flex items-center gap-1.5">
-      <span className="font-mono text-xs text-muted-foreground">⎇ {g.currentBranch || g.defaultBranch || '-'}</span>
+      <span className="text-muted-foreground font-mono text-xs">⎇ {g.currentBranch || g.defaultBranch || '-'}</span>
       {g.dirty && (
         <ClickBadge variant="destructive" title="筛选 git：dirty" onClick={() => onFilter('dirty')}>
           dirty
@@ -70,7 +71,7 @@ export function GitCell({ p, onFilter }: { p: Project; onFilter: (s: GitStatus) 
 export function LastUsedTime({ iso }: { iso: string }) {
   return (
     <span
-      className="shrink-0 font-mono text-[0.6875rem] text-muted-foreground/70"
+      className="text-muted-foreground/70 shrink-0 font-mono text-[0.6875rem]"
       title={`最近使用：${formatDateTime(iso)}`}
     >
       {prettyTime(iso)}
@@ -81,9 +82,11 @@ export function LastUsedTime({ iso }: { iso: string }) {
 // 项目 forge 图标：remote host 匹配到已配置 forge 时展示其 icon（1040）；
 // 多 remote 项目可同时展示多个（1042 修）；未配置 forge 或 forge 未配 icon 时不展示（无兜底图标）
 export function ForgeIcon({ matches }: { matches: { host: string; icon: IconDecl }[] }) {
-  if (matches.length === 0) return null;
+  if (matches.length === 0) {
+    return null;
+  }
   return (
-    <span className="flex shrink-0 items-center gap-0.5 text-muted-foreground">
+    <span className="text-muted-foreground flex shrink-0 items-center gap-0.5">
       {matches.map((m) => (
         <span key={m.host} title={`forge：${m.host}`}>
           {renderIcon(m.icon, null)}

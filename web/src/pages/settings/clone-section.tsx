@@ -4,14 +4,14 @@
 import { GripVertical } from 'lucide-react';
 import { useState } from 'react';
 
-import type { CloneRule } from '@/api/client';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useCloneRuleDelete, useCloneRuleReorder, useCloneRuleSave, useCloneRules } from '@/queries/scan-rule';
+import { useCloneRuleDelete, useCloneRuleReorder, useCloneRules, useCloneRuleSave } from '@/queries/scan-rule';
+import type { CloneRule } from '@/api/client';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
 
@@ -55,12 +55,12 @@ function CloneRuleForm({ draft, onClose }: { draft: CloneDraft; onClose: () => v
           {save.error && <ErrorBanner message={`保存失败：${save.error.message}`} />}
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">repoHost（源域名，无协议；与 repoPrefix 组成唯一键）</span>
+            <span className="text-muted-foreground text-xs">repoHost（源域名，无协议；与 repoPrefix 组成唯一键）</span>
             <Input value={form.repoHost} onChange={(e) => set('repoHost', e.target.value)} placeholder="github.com" />
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">repoPrefix（uri 前缀，须以 / 开头或留空）</span>
+            <span className="text-muted-foreground text-xs">repoPrefix（uri 前缀，须以 / 开头或留空）</span>
             <Input
               value={form.repoPrefix}
               onChange={(e) => set('repoPrefix', e.target.value)}
@@ -70,7 +70,7 @@ function CloneRuleForm({ draft, onClose }: { draft: CloneDraft; onClose: () => v
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">localPath（对应本地目录，绝对路径或 ~/ 前缀）</span>
+            <span className="text-muted-foreground text-xs">localPath（对应本地目录，绝对路径或 ~/ 前缀）</span>
             <Input
               value={form.localPath}
               onChange={(e) => set('localPath', e.target.value)}
@@ -113,7 +113,7 @@ export function CloneSection() {
     <section>
       <div className="mb-2 flex items-baseline gap-2">
         <h2 className="text-sm font-medium">clone 路由（cloneRules）</h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           按 repoHost / repoPrefix 匹配 cube clone 的落地路径；前缀最长优先
         </span>
         <Button size="sm" variant="outline" className="ml-auto" onClick={() => setEditing(EMPTY_CLONE_DRAFT)}>
@@ -136,7 +136,7 @@ export function CloneSection() {
           <TableBody>
             {d.rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-xs text-muted-foreground">
+                <TableCell colSpan={4} className="text-muted-foreground text-xs">
                   暂无 clone 规则
                 </TableCell>
               </TableRow>
@@ -177,7 +177,9 @@ export function CloneSection() {
         confirmText="删除"
         danger
         onConfirm={() => {
-          if (deleting) del.mutate({ repoHost: deleting.repoHost, repoPrefix: deleting.repoPrefix ?? '' });
+          if (deleting) {
+            del.mutate({ repoHost: deleting.repoHost, repoPrefix: deleting.repoPrefix ?? '' });
+          }
           setDeleting(null);
         }}
         onCancel={() => setDeleting(null)}

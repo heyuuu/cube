@@ -1,4 +1,5 @@
-import { useState, type SubmitEvent } from 'react';
+import { useState } from 'react';
+import type { SubmitEvent } from 'react';
 
 import { apiGet } from '@/api/client';
 import { Button } from '@/components/ui/button';
@@ -27,7 +28,9 @@ export function PathEntry({
   const submit = async (e: SubmitEvent) => {
     e.preventDefault();
     const trimmed = value.trim();
-    if (!trimmed || checking) return;
+    if (!trimmed || checking) {
+      return;
+    }
     setError('');
     setChecking(true);
     try {
@@ -54,19 +57,19 @@ export function PathEntry({
           {checking ? '校验中…' : '进入'}
         </Button>
       </div>
-      {error ? <div className="text-center text-xs text-destructive">{error}</div> : null}
-      <div className="text-center text-xs text-muted-foreground">
+      {error ? <div className="text-destructive text-center text-xs">{error}</div> : null}
+      <div className="text-muted-foreground text-center text-xs">
         任意本机 git 仓库目录均可（含 worktree 目录），不要求已被 cube 扫描管理
       </div>
       {!initial && (recents.data?.list?.length ?? 0) > 0 ? (
         <div className="flex flex-col gap-1 pt-2">
-          <div className="text-center text-xs text-muted-foreground">最近打开</div>
+          <div className="text-muted-foreground text-center text-xs">最近打开</div>
           {recents.data!.list!.map((r) => (
             <button
               key={r.path}
               type="button"
               title={new Date(r.time).toLocaleString()}
-              className="truncate rounded-md px-2 py-1 text-left text-xs font-mono text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              className="text-muted-foreground hover:bg-accent hover:text-accent-foreground truncate rounded-md px-2 py-1 text-left font-mono text-xs"
               onClick={() => onSubmit(r.path)}
             >
               {r.path}
