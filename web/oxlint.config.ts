@@ -46,6 +46,10 @@ export default defineConfig({
     // 代价仅是编辑时 fast refresh 粒度变粗，不值得拆文件；
     // shadcn vendored 组件（src/components/ui）同理。
     'react/only-export-components': 'off',
+
+    /* vitest */
+    // 拓扑不变量校验收敛在 verifyGraphInvariants 内部断言，告诉规则它是断言函数
+    'vitest/expect-expect': ['warn', { assertFunctionNames: ['expect', 'verifyGraphInvariants'] }],
   },
   // 不进行 lint 的文件 (比如代码生成文件)
   ignorePatterns: [],
