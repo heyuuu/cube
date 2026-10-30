@@ -15,14 +15,14 @@ const (
 )
 
 // Paths 数据目录的路径
-// 零值不可用，必须用 NewPaths() 构造。
+// 零值不可用，必须用 MakePaths() 构造。
 type Paths struct {
 	dataDir string // 展开后的绝对路径（已 MkdirAll）
 }
 
-// NewPaths 构造数据目录路径集；dataDir 必须是绝对路径，目录不存在则创建。
+// MakePaths 构造数据目录路径集；dataDir 必须是绝对路径，目录不存在则创建。
 // 目录校验或创建失败直接 panic——没有数据目录 app 无法工作，属启动期致命错。
-func NewPaths(dataDir string) *Paths {
+func MakePaths(dataDir string) Paths {
 	// guard 数据路径必须是绝对路径
 	if !filepath.IsAbs(dataDir) {
 		panic(fmt.Errorf("数据目录必须是绝对路径: dir=%s", dataDir))
@@ -31,7 +31,7 @@ func NewPaths(dataDir string) *Paths {
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		panic(fmt.Errorf("创建数据目录失败: dir=%s err=%w", dataDir, err))
 	}
-	return &Paths{dataDir: dataDir}
+	return Paths{dataDir: dataDir}
 }
 
 // SettingsFile 用户可管理数据文件 settings.json 的完整路径。

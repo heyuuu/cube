@@ -45,7 +45,7 @@ func (a *App) Init(cfgFile string, debug bool, local bool) error {
 		return fmt.Errorf("加载配置文件失败: %w", err)
 	}
 
-	paths := config.NewPaths(cfg.DataDir)
+	paths := config.MakePaths(cfg.DataDir)
 
 	// 尽量在其他行为前初始化 Logger
 	logger.Init(paths.LogDir(), debug)

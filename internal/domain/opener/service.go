@@ -26,7 +26,7 @@ type Service struct {
 }
 
 // NewServiceInject di 装配入口：从 config/paths 组装 settings 路径与 baseURL。
-func NewServiceInject(cfg config.Config, paths config.Paths) *Service {
+func NewServiceInject(cfg *config.Config, paths config.Paths) *Service {
 	return NewService(paths.SettingsFile(), nil, server.BaseURL(cfg.Server))
 }
 
