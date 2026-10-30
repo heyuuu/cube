@@ -19,6 +19,11 @@ ldflags     := "-X " + version_pkg + ".version=" + version + " -X " + version_pk
 
 zsh_completion_file := "~/.config/cube/zsh.sh"
 
+# 主命令入口包
+main_cmd := "./cmd/cube"
+# 工具命令入口包
+devtool_cmd := "./cmd/devtool"
+
 ui_src := "./web"
 concurrently := "web/node_modules/.bin/concurrently"
 
@@ -49,6 +54,9 @@ dev-link-config:
 
 fmt:
     golangci-lint fmt
+
+# 依赖对账：按实际 import 重算 go.mod / go.sum（加删依赖后手动跑，不属于日常 fmt）
+tidy:
     go mod tidy
 
 lint:
@@ -94,12 +102,15 @@ install: build-ui
     @cube completion zsh > {{zsh_completion_file}}
     @cat ./scripts/zsh-append.sh >> {{zsh_completion_file}}
 
+# 执行一次主命令
+run *args:
+    go run {{ main_cmd }} {{ args }}
 
 # 代码生成（生成逻辑在 cmd/devtool/internal/generate/，模板在其 tpl/ 下）
 #   just gen domain <name>                        生成业务 domain 脚手架
 #   just gen api <GET|POST> <domain> <base-name>  在已有 domain 的 handler 追加 api 端点
 gen *args:
-    go run ./cmd/devtool generate {{args}}
+    go run {{ devtool_cmd }} generate {{args}}
     just fix
 
 # 生成 api

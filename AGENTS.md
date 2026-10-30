@@ -42,26 +42,28 @@
 
 ## 常用命令
 
-构建 / 安装（根 Makefile 编排，go 侧动作与 version ldflags 注入在 `server/Makefile`）：
+构建 / 安装 / 校验统一走 justfile（仓库根 `justfile`，`just --list` 看全量；Makefile 只保留 `make tag` / `make last-proposal`）：
 
 ```bash
-make build        # 先 pnpm -C web build 并拷 web/dist 到 server/web/ui (go:embed)，再转发 server/Makefile 的 build（产物 server/tmp/cube）
-make install      # server/Makefile 的 go install + 安装校验 + 停旧服 + 安装 zsh completion
-make tag          # 当前位置打递增版本 tag（末位 +1）
+just build        # 先 build-ui（pnpm -C web build，产物 web/dist 由 web/embed.go 直接 go:embed），再 go build + ldflags 注入 version（产物 tmp/main，可用 OUTPUT 覆盖）并跑 version 自验
+just install      # build-ui + go install + 安装校验 + 停旧服 + 安装 zsh completion
+just fmt          # 格式化（gofmt + goimports，按 .golangci.yml 的 formatters 配置）
+just lint         # 校验（golangci-lint run ./...）
+just test         # go test -race ./...
 ```
 
-Web 开发热重载（`server/.air.toml`，已内置 `goimports -w .` + `go vet ./...` 预检）：
+Web 开发热重载（`.air.toml` 在仓库根，pre_cmd 已内置 `just lint`）：
 
 ```bash
-cd server && air               # 需安装 air；args_bin = ["--debug", "server"]（端口读 dev config 的 6001）
-./run.sh [args]                # 手动：goimports -> go vet -> go build -> 运行（在 server/ 下）
+just dev           # 需安装 air；concurrently 同时起 air（--debug server start，端口读 dev config 的 6001）与 vite
+./run.sh [args]    # 手动：just lint -> go build -> 运行（在仓库根）
 ```
 
-测试（标准 go test，在 `server/` 下执行；无额外 harness）：
+测试（标准 go test，在仓库根执行；无额外 harness）：
 
 ```bash
-cd server && go test ./...
-cd server && go test ./opener/...     # 聚焦某个包
+go test ./...
+go test ./internal/domain/opener/...     # 聚焦某个包
 ```
 
 ### 测试辅助包 `internal/testfixture`
@@ -101,10 +103,10 @@ ws.MakeProjectDir("scanroot/g1/proj", testfixture.WithGodot())
 
 1. **Go 代码修改后必须先格式化与校验再提交/收工**——这是强制规则：
    ```bash
-   goimports -w .     # 格式化 + 整理 import（本地已安装：~/go/bin/goimports）
-   go vet ./...       # 静态校验
+   just fmt    # 格式化（gofmt + goimports，按 .golangci.yml 的 formatters 配置）
+   just lint   # 校验（golangci-lint run，默认集含 govet / staticcheck / errcheck 等）
    ```
-   每次改完 `.go` 文件都要跑，不要跳过。`air` 与 `run.sh` 也已内置这两步，保持一致。**命令在 `server/` 目录下执行**（go.mod 在那里）。
+   每次改完 `.go` 文件都要跑，不要跳过。`air` 的 pre_cmd 与 `run.sh` 都已内置 `just lint`，保持一致。**命令在仓库根执行**（go.mod 在仓库根）。
 1b. **前端代码修改后必须先 `pnpm check:fix` 再提交/收工**——与 Go 侧规则 1 同级的强制规则：
    ```bash
    pnpm check:fix    # oxfmt 格式化 + oxlint 自动修复并报出剩余问题（error 不会自动消失，须手工修）+ tsgo 类型检查
@@ -176,7 +178,7 @@ ws.MakeProjectDir("scanroot/g1/proj", testfixture.WithGodot())
 
 ## 已知 gotcha
 
-- **go 源码根在 `server/`**，不是仓库根。`go build` / `go test` / `goimports` / `go vet` 都要在 `server/` 下跑（Makefile 和 run.sh 已处理 `cd`，手动执行时别忘）。
+- **go.mod 在仓库根**（重构后 go 源码与 justfile / .air.toml / run.sh 同在仓库根，`cmd/` `internal/` `pkg/` 分目录）。`go build` / `go test` / `just` 各命令都在仓库根跑。
 - **module path 是 `cube`**（不是 `github.com/heyuuu/cube`——README 里写的旧值，以 go.mod 为准）。import 路径写 `cube/...`。
 - `logger` 包用 `runtime.Callers` 在 `init()` 里推算项目绝对路径（`relativeProjPath = "../../"`），移动/重命名 logger 源文件位置会让日志里的 `file` 相对路径错位。
 - `.gitignore` 忽略：`tmp/`、`runtime/`（测试产物）、`server/web/ui`（`make build-ui` 从 `web/dist` 复制而来，go:embed 嵌入）、`openapi.json`、`.zcode/plans` / `.claude/plans` / `.cursor/plans`。不要提交这些。

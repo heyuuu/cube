@@ -20,7 +20,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "new-page": "tsx scripts/new-page.ts",
-    "gen:api": "../run.sh openapi -o openapi.json && openapi-typescript openapi.json -o src/api/schema.d.ts && oxfmt src/api/schema.d.ts",
+    "gen:api": "just -f ../justfile run openapi -o openapi.json && openapi-typescript openapi.json -o src/api/schema.d.ts && oxfmt src/api/schema.d.ts",
     "verify:shadcn": "node scripts/verify-shadcn.ts"
   },
   "dependencies": {
