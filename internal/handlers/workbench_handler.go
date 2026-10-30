@@ -316,7 +316,7 @@ func (h *WorkbenchHandler) ptyWs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 	if err := h.workbenchService.ServePty(r.Context(), conn, dir, cols, rows); err != nil {
 		slog.Warn("pty 会话异常结束", "dir", dir, "err", err)
 		_ = conn.Close(websocket.StatusInternalError, err.Error())

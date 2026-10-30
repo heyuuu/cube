@@ -60,9 +60,9 @@ func TestDefaultBonusScorer_MatchAndMiss(t *testing.T) {
 	if _, ok := DefaultBonusScorer("xyz", "cube"); ok {
 		t.Fatalf("无公共字符应不匹配")
 	}
-	// 空查询（BonusScorer 内部对空 query 的处理）
+	// 空查询（BonusScorer 内部对空 query 的处理）：空 query 默认认为匹配（score=0）
 	if _, ok := DefaultBonusScorer("", "cube"); !ok {
-		// 空 query 默认认为匹配（score=0）
+		t.Fatalf("空 query 应默认匹配")
 	}
 }
 

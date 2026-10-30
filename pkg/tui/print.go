@@ -22,5 +22,5 @@ import (
 func Print(s string) {
 	// colorprofile.NewWriter 在 Write 时按 os.Stdout 探测档位并降级。
 	w := colorprofile.NewWriter(os.Stdout, os.Environ())
-	fmt.Fprint(w, s)
+	_, _ = fmt.Fprint(w, s)
 }

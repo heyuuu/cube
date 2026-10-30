@@ -43,7 +43,6 @@ func newCheckCmd(a *app.App) *cobra.Command {
 				switch option {
 				case checkItemCloneRules:
 					checkCloneRules(a.ProjectService())
-					break
 				case checkItemGitDirty:
 					checkGitDirty(a.ProjectService())
 				default:

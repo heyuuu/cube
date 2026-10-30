@@ -418,7 +418,6 @@ func setupDiffRepo(t *testing.T, env *testEnv) (repo, head string) {
 	if err := git.Commit(repo, "base"); err != nil {
 		t.Fatalf("提交 base 失败: %v", err)
 	}
-	head = gitHead(t, repo)
 
 	// 工作区改动：mod 改、del 删、new 增（untracked）、ignored.log 增（ignored）、
 	// ren-old 改名 ren-new（内容不变）

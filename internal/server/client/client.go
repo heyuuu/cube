@@ -120,7 +120,7 @@ func doJsonRequest[T any](method string, url string, body any) (*T, error) {
 	if err != nil {
 		return nil, fmt.Errorf("发送 request 请求失败: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// 状态码
 	if resp.StatusCode != http.StatusOK {

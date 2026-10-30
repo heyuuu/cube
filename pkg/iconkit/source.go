@@ -70,7 +70,7 @@ func FetchImage(url string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("请求图标 URL 失败: url=%s err=%w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("图标 URL 返回非 200: url=%s status=%d", url, resp.StatusCode)
 	}
@@ -113,7 +113,7 @@ func EncodeImageScaled(img image.Image, max int) ([]byte, error) {
 		return out.Bytes(), nil
 	}
 
-	nw, nh := w, h
+	var nw, nh int
 	if w >= h {
 		nw, nh = max, max*h/w
 	} else {

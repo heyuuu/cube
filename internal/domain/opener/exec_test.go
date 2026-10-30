@@ -28,15 +28,6 @@ func mkmk(pairs ...any) map[Role]string {
 	return m
 }
 
-// mkurl 构造 url 动作的 actions（exec 用 mkmk，url 用这个）。
-func mkurl(pairs ...any) map[Role]string {
-	m := map[Role]string{}
-	for i := 0; i+1 < len(pairs); i += 2 {
-		m[pairs[i].(Role)] = "url: " + pairs[i+1].(string)
-	}
-	return m
-}
-
 // ---------- renderArgs ----------
 
 func TestRenderArgs(t *testing.T) {

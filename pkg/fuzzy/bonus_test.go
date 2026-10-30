@@ -439,6 +439,4 @@ func contains(s, sub string) bool {
 	return false
 }
 
-// 为测试 MatchBy 泛型，用 string slice 适配
-func pathsToAny(ps []string) []string { return ps }
-func identityGetter(s string) string  { return s }
+func identityGetter(s string) string { return s }

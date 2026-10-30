@@ -268,20 +268,20 @@ func readFileDiff(root string, base TreeSource, current TreeSource, file string,
 	if err != nil {
 		return nil, fmt.Errorf("创建临时文件失败: %w", err)
 	}
-	defer os.Remove(tmpA.Name())
+	defer func() { _ = os.Remove(tmpA.Name()) }()
 	tmpB, err := os.CreateTemp("", "cube-diff-b-*")
 	if err != nil {
 		return nil, fmt.Errorf("创建临时文件失败: %w", err)
 	}
-	defer os.Remove(tmpB.Name())
+	defer func() { _ = os.Remove(tmpB.Name()) }()
 	if _, err := tmpA.Write(baseData); err != nil {
 		return nil, err
 	}
 	if _, err := tmpB.Write(currentData); err != nil {
 		return nil, err
 	}
-	tmpA.Close()
-	tmpB.Close()
+	_ = tmpA.Close()
+	_ = tmpB.Close()
 
 	out, err := git.DiffNoIndex(tmpA.Name(), tmpB.Name())
 	if err != nil {

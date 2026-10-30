@@ -83,7 +83,7 @@ func decodeIcoDib(dib []byte) (image.Image, error) {
 	biHeight := int(int32(binary.LittleEndian.Uint32(dib[8:12])))
 	planes := int(binary.LittleEndian.Uint16(dib[12:14]))
 	bitCount := int(binary.LittleEndian.Uint16(dib[14:16]))
-	compression := uint32(binary.LittleEndian.Uint32(dib[16:20]))
+	compression := binary.LittleEndian.Uint32(dib[16:20])
 
 	if planes != 1 {
 		return nil, fmt.Errorf("ICO DIB planes=%d 不支持（仅 1）", planes)

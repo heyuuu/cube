@@ -52,7 +52,7 @@ func (c *baseClient) doGet(ctx context.Context, path string, query url.Values, o
 		if err != nil {
 			return &retryableError{err}
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			return ErrUnauthorized
 		}
