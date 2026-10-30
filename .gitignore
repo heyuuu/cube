@@ -1,11 +1,13 @@
-tmp
-runtime
-# web/ui 是构建产物（make build-ui 拷入），仅 .keep 提交——保证空目录存在，go:embed all:ui 才能编译
-server/web/ui/*
-!server/web/ui/.keep
-openapi.json
+# IDE
+.idea
 
-#
+# AI 相关临时目录
 .claude/plans
 .cursor/plans
 .zcode/plans
+
+# 临时目录
+tmp/
+runtime/
+
+#

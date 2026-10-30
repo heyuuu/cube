@@ -28,3 +28,6 @@ dist-ssr
 .claude/
 .zcode/
 .agents/
+
+# generate file
+openapi.json

@@ -1,0 +1,298 @@
+package server
+
+// web 框架集成测试：拉起真实 Server（huma 路由 + envelope + nil 序列化 + 静态资源），
+// 打真实 HTTP 请求验证框架自身的契约（system 端点 / openapi / SPA fallback / 缓存头 / 端口）。
+//
+// 框架自测不依赖任何业务 handler——用 testHandler 注册一条最小路由即可覆盖注册链路；
+// 静态资源契约向 StaticHandler 注入假 FS（fstest.MapFS）确定性覆盖，不依赖 make build-ui 产物；
+// 业务 handler 的契约测试（路由 / DTO / envelope）在 cube/handlers 包。
+
+import (
+	"encoding/json"
+	"io"
+	"io/fs"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"testing/fstest"
+
+	"cube/internal/config"
+)
+
+// testHandler 框架自测用的最小 handler：一条 GET 路由，覆盖注册链路与 envelope。
+type testHandler struct{}
+
+func (testHandler) Register(r *Routes) {
+	r.Get("/api/test/ping", "测试探活", JsonHandler(func(_ struct{}) (string, error) {
+		return "pong", nil
+	}))
+}
+
+func newTestServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	// NewServer 内置 system + static，否则相关契约测试全部打 404
+	// 静态资源注入假 FS——内容与这组测试无关
+	srv := NewServer(config.ServerConfig{Port: 6101}, []Handler{
+		NewSystemHandler(),
+		NewStaticHandler(fakeUiFS()),
+		testHandler{},
+	})
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+// --- HTTP 断言辅助 ---
+
+// envelope 与 JsonOutput 的 JSON 形态对应；data 延迟到调用方按需解码。
+type envelope struct {
+	Ok      bool            `json:"ok"`
+	Message string          `json:"message"`
+	Data    json.RawMessage `json:"data"`
+}
+
+// getJSON 打 GET 请求并断言 200 + envelope 解码成功，返回 envelope。
+func getJSON(t *testing.T, url string) envelope {
+	t.Helper()
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET %s 失败: %v", url, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET %s 应为 200, got %d", url, resp.StatusCode)
+	}
+	var env envelope
+	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+		t.Fatalf("GET %s 响应不是合法 envelope: %v", url, err)
+	}
+	return env
+}
+
+// decodeData 把 envelope.data 解码到目标类型。
+func decodeData[T any](t *testing.T, env envelope, out *T) {
+	t.Helper()
+	if !env.Ok {
+		t.Fatalf("envelope.ok 应为 true, message=%q", env.Message)
+	}
+	if err := json.Unmarshal(env.Data, out); err != nil {
+		t.Fatalf("envelope.data 解码失败: %v, raw=%s", err, env.Data)
+	}
+}
+
+// --- system ---
+
+func TestStatus(t *testing.T) {
+	ts := newTestServer(t)
+	env := getJSON(t, ts.URL+"/api/system/status")
+	var got struct {
+		App      string `json:"app"`
+		Version  string `json:"version"`
+		Instance string `json:"instance"`
+	}
+	decodeData(t, env, &got)
+	if got.App != "cube" {
+		t.Errorf("app 应为 cube, got %q", got.App)
+	}
+	if got.Version == "" {
+		t.Error("version 不应为空")
+	}
+	if got.Instance == "" {
+		t.Error("instance 不应为空")
+	}
+
+	// 实例标识应进程级随机：两个 Server 实例（模拟重启前后）不得同值
+	env2 := getJSON(t, newTestServer(t).URL+"/api/system/status")
+	var got2 struct {
+		Instance string `json:"instance"`
+	}
+	decodeData(t, env2, &got2)
+	if got.Instance == got2.Instance {
+		t.Errorf("不同 Server 实例的 instance 不应相同: %q", got.Instance)
+	}
+}
+
+// TestShutdownUnauthorized shutdown 缺 body 参数被 huma 校验拒绝（400），
+// 非法 token 走 envelope（200 + ok:false）。
+// 鉴权通过路径会给本进程发 SIGTERM，无法在测试里安全覆盖（shutdown_token_test 已单测 token 逻辑）。
+func TestShutdownUnauthorized(t *testing.T) {
+	ts := newTestServer(t)
+
+	resp, err := http.Post(ts.URL+"/api/system/shutdown", "", nil)
+	if err != nil {
+		t.Fatalf("POST shutdown 失败: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("无 body 的 shutdown 应为 400, got %d", resp.StatusCode)
+	}
+
+	resp2, err := http.Post(ts.URL+"/api/system/shutdown", "application/json",
+		strings.NewReader(`{"token":"0.deadbeef"}`))
+	if err != nil {
+		t.Fatalf("POST shutdown 失败: %v", err)
+	}
+	defer resp2.Body.Close()
+	var env envelope
+	if err := json.NewDecoder(resp2.Body).Decode(&env); err != nil {
+		t.Fatalf("非法 token 应返回 envelope: %v", err)
+	}
+	if resp2.StatusCode != http.StatusOK || env.Ok {
+		t.Fatalf("非法 token 应为 200 + ok:false, got %d %+v", resp2.StatusCode, env)
+	}
+}
+
+// --- openapi 与静态资源 ---
+
+func TestOpenAPIJSON(t *testing.T) {
+	ts := newTestServer(t)
+	resp, err := http.Get(ts.URL + "/openapi.json")
+	if err != nil {
+		t.Fatalf("GET /openapi.json 失败: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("/openapi.json 应为 200, got %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !contains(string(body), "/api/test/ping") {
+		t.Error("spec 应包含注册的路由 /api/test/ping")
+	}
+}
+
+func TestStaticSPAFallback(t *testing.T) {
+	ts := newStaticTestServer(t, fakeUiFS())
+	for _, path := range []string{"/", "/projects", "/projects?view=tree", "/config"} {
+		resp, err := http.Get(ts.URL + path)
+		if err != nil {
+			t.Fatalf("GET %s 失败: %v", path, err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("GET %s 应为 200, got %d", path, resp.StatusCode)
+			continue
+		}
+		if !contains(string(body), "<!doctype html") {
+			t.Errorf("GET %s 应回退 index.html, body=%q", path, truncate(body, 80))
+		}
+	}
+}
+
+// TestStaticPureBackendMode index.html 缺失（纯后端模式）时页面路径按 404 处理，
+// 但已嵌入的产物文件仍正常返回。
+func TestStaticPureBackendMode(t *testing.T) {
+	ts := newStaticTestServer(t, fstest.MapFS{
+		"favicon.svg": &fstest.MapFile{Data: []byte("<svg/>")},
+	})
+	for _, path := range []string{"/", "/projects"} {
+		resp, err := http.Get(ts.URL + path)
+		if err != nil {
+			t.Fatalf("GET %s 失败: %v", path, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("纯后端模式 GET %s 应为 404, got %d", path, resp.StatusCode)
+		}
+	}
+	resp, err := http.Get(ts.URL + "/favicon.svg")
+	if err != nil {
+		t.Fatalf("GET /favicon.svg 失败: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("纯后端模式产物文件仍应 200, got %d", resp.StatusCode)
+	}
+}
+
+// TestStaticAPIPathNoFallback API 路径未命中必须 404 而非回退 HTML，
+// 否则打错路径的前端拿到 HTML 200，错误被吞成解析失败。
+// 注入含 index.html 的假 FS——index 存在才有「错误回退」可暴露，断言才有强度。
+// /openapi.json 与 /docs 是 huma 注册的真实路由（spec/文档端点），不在此列。
+func TestStaticAPIPathNoFallback(t *testing.T) {
+	ts := newStaticTestServer(t, fakeUiFS())
+	for _, path := range []string{"/api/not-exist", "/docs/", "/api/system/status"} {
+		resp, err := http.Get(ts.URL + path)
+		if err != nil {
+			t.Fatalf("GET %s 失败: %v", path, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("GET %s 应为 404（不参与 fallback）, got %d", path, resp.StatusCode)
+		}
+	}
+}
+
+func TestStaticRootFileAndAssets(t *testing.T) {
+	ts := newStaticTestServer(t, fakeUiFS())
+
+	// dist 根级文件存在即返回原文件
+	resp, err := http.Get(ts.URL + "/favicon.svg")
+	if err != nil {
+		t.Fatalf("GET /favicon.svg 失败: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("/favicon.svg 应为 200, got %d", resp.StatusCode)
+	}
+
+	// /assets/* 构建产物按普通静态文件返回（不走 FileServer，须自带 Content-Type）
+	resp2, err := http.Get(ts.URL + "/assets/app-abc123.js")
+	if err != nil {
+		t.Fatalf("GET /assets/app-abc123.js 失败: %v", err)
+	}
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK {
+		t.Errorf("/assets/app-abc123.js 应为 200, got %d", resp2.StatusCode)
+	}
+	if ct := resp2.Header.Get("Content-Type"); ct == "" {
+		t.Error("/assets/app-abc123.js 应带 Content-Type（按扩展名识别）")
+	}
+}
+
+// fakeUiFS 构造一份最小前端产物：index.html、根级文件与一个 assets 构建产物。
+func fakeUiFS() fs.FS {
+	return fstest.MapFS{
+		"index.html":           &fstest.MapFile{Data: []byte("<!doctype html><html>cube-ui</html>")},
+		"favicon.svg":          &fstest.MapFile{Data: []byte("<svg/>")},
+		"assets/app-abc123.js": &fstest.MapFile{Data: []byte("console.log(1)")},
+	}
+}
+
+// newStaticTestServer 只挂 StaticHandler 拉起 server——静态资源契约与业务路由无关。
+func newStaticTestServer(t *testing.T, fsys fs.FS) *httptest.Server {
+	t.Helper()
+	srv := NewServer(config.ServerConfig{Port: 6101}, []Handler{NewStaticHandler(fsys)})
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+func contains(s, sub string) bool {
+	return len(sub) > 0 && len(s) >= len(sub) && strings.Contains(s, sub)
+}
+
+func truncate(b []byte, n int) string {
+	if len(b) > n {
+		return string(b[:n]) + "..."
+	}
+	return string(b)
+}
+
+func TestServerPortAndURL(t *testing.T) {
+	srv := NewServer(config.ServerConfig{Port: 6101}, nil)
+	if srv.Port() != 6101 {
+		t.Errorf("Port() = %d, want 6101", srv.Port())
+	}
+	if got := srv.ServerURL(); got != "http://localhost:6101/" {
+		t.Errorf("ServerURL() = %q, want http://localhost:6101/", got)
+	}
+}
+
+func TestServerStartWithoutPort(t *testing.T) {
+	srv := NewServer(config.ServerConfig{}, nil)
+	if err := srv.Start(); err == nil {
+		t.Fatal("port=0 时 Start 应返回中文错误，得到 nil")
+	}
+}
