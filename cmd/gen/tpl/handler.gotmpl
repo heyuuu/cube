@@ -1,0 +1,33 @@
+{{/* 坑：动作紧邻 `{` 时（如 Handler{ {{...}} ）须留一个空格，format.Source 会收掉；直接写三连 `{` 模板解析会失败 */}}
+package handlers
+
+import (
+	"{{.module}}/internal/domain/{{.domain}}"
+	"{{.module}}/internal/server"
+)
+
+// {{.exported}}Handler {{.domain}} 领域的 HTTP handler。
+type {{.exported}}Handler struct {
+	{{.domain}}Service *{{.domain}}.Service
+}
+
+// New{{.exported}}Handler 构造 {{.exported}}Handler。
+func New{{.exported}}Handler({{.domain}}Service *{{.domain}}.Service) *{{.exported}}Handler {
+	return &{{.exported}}Handler{ {{.domain}}Service: {{.domain}}Service }
+}
+
+// Register 注册 {{.domain}} 领域路由。
+func (h *{{.exported}}Handler) Register(r *server.Routes) {
+	r.Get("/api/{{.domain}}/hello", "示例端点（mock）", server.JSONHandler(h.hello))
+}
+
+// {{.exported}}HelloResult hello 端点输出。
+type {{.exported}}HelloResult struct {
+	Result string `json:"result"`
+}
+
+func (h *{{.exported}}Handler) hello(input struct {
+	Name string `query:"name" required:"true"`
+}) ({{.exported}}HelloResult, error) {
+	return {{.exported}}HelloResult{Result: h.{{.domain}}Service.Hello(input.Name)}, nil
+}

@@ -10,10 +10,9 @@ tmp_dir = "tmp"
   pre_cmd = [
     # GOMODCACHE 指空目录：禁止 goimports 全量扫描 module cache 建候选包索引（否则 18GB cache 要扫 9s）；
     # 已写明的 import 整理/排序不受影响，只损失「自动补未写 import」的能力（交给编辑器）
-    "GOMODCACHE=/tmp/empty-modcache goimports -w .",
-    "go vet ./..."
+    "just lint"
   ]
-  cmd = "go build -o ./tmp/main ."
+  cmd = "go build -o ./tmp/main ./cmd/cube"
   post_cmd = []
   # 启动
   entrypoint = ["./tmp/main"]

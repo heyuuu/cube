@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
+    "new-page": "tsx scripts/new-page.ts",
     "gen:api": "../run.sh openapi -o openapi.json && openapi-typescript openapi.json -o src/api/schema.d.ts && oxfmt src/api/schema.d.ts",
     "verify:shadcn": "node scripts/verify-shadcn.ts"
   },
@@ -70,6 +71,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/ui": "5.0.4",
     "babel-plugin-react-compiler": "^1.0.0",
+    "concurrently": "^10.0.6",
     "openapi-typescript": "^7.13.0",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.89.0",

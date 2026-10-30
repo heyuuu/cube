@@ -1,0 +1,16 @@
+package {{.domain}}
+
+// Service 全局单例
+type Service struct {
+}
+
+// NewService 构造入口
+func NewService() *Service {
+	return &Service{}
+}
+
+// Hello 演示代码
+// TODO 演示代码，待删除
+func (s *Service) Hello(name string) string {
+	return "Hello " + name
+}

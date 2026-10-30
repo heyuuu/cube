@@ -1,0 +1,24 @@
+{{/* 追加到 {domain}_handler.go 文件尾部：端点的 Input/Output 类型与 handler 方法 */}}
+{{/* 坑：动作紧邻 `{` 时须留一个空格，format.Source 会收掉；直接写三连 `{` 模板解析会失败 */}}
+
+/**
+ * {{.upperMethod}} /api/{{.domain}}/{{.baseName}}
+ */
+
+type {{.domain}}{{.baseExported}}Input struct {
+{{- if eq .method "Post"}}
+	// TODO: 请求体字段挂在 Body 里，如 Name string `json:"name"`
+	Body struct{}
+{{- else}}
+	// TODO: 查询参数字段，如 Name string `query:"name"`
+{{- end}}
+}
+
+type {{.domain}}{{.baseExported}}Output struct {
+	// TODO: 输出字段，如 Result string `json:"result"`
+}
+
+func ({{.recv}} *{{.handlerType}}) {{.domain}}{{.baseExported}}(input {{.domain}}{{.baseExported}}Input) ({{.domain}}{{.baseExported}}Output, error) {
+	// TODO: 业务逻辑（可调 {{.recv}}.{{.domain}}Service）
+	return {{.domain}}{{.baseExported}}Output{}, nil
+}
