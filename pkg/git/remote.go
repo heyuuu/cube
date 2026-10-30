@@ -76,9 +76,9 @@ func parseRemotesVerbose(out string) []Remote {
 	return remotes
 }
 
-// RemoteUrl 返回 path 处仓库 origin remote 的抓取地址——Remotes 的 origin 特化查找，
+// RemoteURL 返回 path 处仓库 origin remote 的抓取地址——Remotes 的 origin 特化查找，
 // 多 URL 取第一条的口径与 Remotes 一致。无 origin remote 时返回 ("", nil)，不视为错误。
-func RemoteUrl(path string) (string, error) {
+func RemoteURL(path string) (string, error) {
 	remotes, err := Remotes(path)
 	if err != nil {
 		return "", err

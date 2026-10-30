@@ -11,10 +11,12 @@ import (
 	"cube/internal/server"
 )
 
+// StaticHandler 前端静态资源出口（go:embed 产物）。
 type StaticHandler struct {
 	fs fs.FS
 }
 
+// NewStaticHandler 构造 StaticHandler。
 func NewStaticHandler(fs fs.FS) *StaticHandler {
 	return &StaticHandler{fs: fs}
 }

@@ -220,7 +220,7 @@ func TestExtractFromSource_URL(t *testing.T) {
 	if _, err := ExtractFromSource(srv.URL + "/missing"); err == nil {
 		t.Fatalf("404 应报错")
 	}
-	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("not an image"))
 	}))
 	t.Cleanup(bad.Close)

@@ -1,4 +1,5 @@
 // icon 声明：跨领域共享的「怎么渲染一个图标」语义（opener / scanRules 等数据共用）。
+
 package iconkit
 
 import "fmt"

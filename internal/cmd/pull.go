@@ -50,7 +50,7 @@ remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选
 非 TTY 环境（脚本）改用 flag 显式指定：--remote / --ref（可多次），
 跳过对应交互；--yes 跳过最终确认。单条失败不中断，最后汇总结果。`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			// 定位项目：query 匹配（规则同 push），以项目根为仓库
 			query := getArg(args, 0)
 			proj, err := pickProject(a.ProjectService(), query, a.Local())

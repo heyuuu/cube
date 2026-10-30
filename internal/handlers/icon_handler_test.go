@@ -97,7 +97,7 @@ func TestIconExtract(t *testing.T) {
 	decodeIconValue(t, out)
 
 	// URL（favicon.ico 场景：ICO 内嵌 PNG）
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Write(buildTestIco(pngData, 32))
 	}))
 	t.Cleanup(srv.Close)

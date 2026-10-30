@@ -16,10 +16,12 @@ type UsageHandler struct {
 	service *usage.Service
 }
 
+// NewUsageHandler 构造 UsageHandler。
 func NewUsageHandler(service *usage.Service) *UsageHandler {
 	return &UsageHandler{service: service}
 }
 
+// Register 注册 usage 域全部路由。
 func (h *UsageHandler) Register(r *server.Routes) {
 	r.Get("/api/usage/recent-paths", "获取最近使用的路径清单（去重取最新，最近使用倒序）", server.JSONHandler(h.recentPaths))
 	r.Post("/api/usage/record", "补记一条使用记录（web 直开不经过后端记录的场景，如 url 型 opener 动作、workbench 进入）", server.JSONHandler(h.record))

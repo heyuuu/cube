@@ -69,7 +69,7 @@ func newDoctorCmd(a *app.App) *cobra.Command {
   worktree）。修复后重跑检查复核，剩余问题照常输出。
 
 不传 items 时，依次执行全部检查项。后续新增的损坏类检查统一收到本命令下。`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			checks := make([]doctorCheck, 0, len(allDoctorChecks))
 			if len(args) == 0 {
 				checks = allDoctorChecks

@@ -1,4 +1,4 @@
-// 管理配置目录下 settings.json 的节级读写。
+// Package config 管理配置目录下 settings.json 的节级读写。
 //
 // settings.json 是「运行中可变更的用户可管理数据」的载体（与 config.json 切割：
 // 后者启动加载、不热更），形状为多节 JSON 文档，各领域只读写自己的节。

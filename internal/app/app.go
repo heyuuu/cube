@@ -88,6 +88,7 @@ func (a *App) checkInit() {
 	}
 }
 
+// Local 返回 --local 标志是否生效（以 cwd 定位项目）。
 func (a *App) Local() bool {
 	a.checkInit()
 	return a.local
@@ -116,31 +117,37 @@ func (a *App) StopBackgroundJobs() {
 
 /* 快捷方法 */
 
+// Server 返回 server 单例（Init 后可用）。
 func (a *App) Server() *server.Server {
 	a.checkInit()
 	return di.MustGet[*server.Server](a.container)
 }
 
+// ProjectService 返回 project 服务单例（Init 后可用）。
 func (a *App) ProjectService() *project.Service {
 	a.checkInit()
 	return di.MustGet[*project.Service](a.container)
 }
 
+// OpenerService 返回 opener 服务单例（Init 后可用）。
 func (a *App) OpenerService() *opener.Service {
 	a.checkInit()
 	return di.MustGet[*opener.Service](a.container)
 }
 
+// UsageService 返回 usage 服务单例（Init 后可用）。
 func (a *App) UsageService() *usage.Service {
 	a.checkInit()
 	return di.MustGet[*usage.Service](a.container)
 }
 
+// TemplateService 返回 template 服务单例（Init 后可用）。
 func (a *App) TemplateService() *template.Service {
 	a.checkInit()
 	return di.MustGet[*template.Service](a.container)
 }
 
+// ForgeService 返回 forge 服务单例（Init 后可用）。
 func (a *App) ForgeService() *forge.Service {
 	a.checkInit()
 	return di.MustGet[*forge.Service](a.container)

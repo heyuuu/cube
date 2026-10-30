@@ -64,8 +64,8 @@ func ValidateHost(host string) error {
 
 // RepoHost 解析 repo remote URL 的 host（兼容 git@host:path 与 https?://、ssh:// 形态），
 // 归一化小写；无法解析返回空串（调用方按未匹配处理，不报错）。
-func RepoHost(repoUrl string) string {
-	u, err := git.ParseRepoUrl(repoUrl)
+func RepoHost(repoURL string) string {
+	u, err := git.ParseRepoURL(repoURL)
 	if err != nil || u == nil || u.Host == "" {
 		return ""
 	}

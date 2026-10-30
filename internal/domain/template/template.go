@@ -12,9 +12,10 @@ import (
 // Template 模板
 type Template struct {
 	path string
-	meta *TemplateMeta
+	meta *Meta
 }
 
+// LoadTemplate 加载模板目录：校验并解析根目录 template.yaml。
 func LoadTemplate(tplPath string) (*Template, error) {
 	if !oskit.IsDir(tplPath) {
 		return nil, fmt.Errorf("模板目录不存在或不是目录: %s", tplPath)
@@ -41,9 +42,13 @@ func LoadTemplate(tplPath string) (*Template, error) {
 	}, nil
 }
 
-func (t *Template) Path() string        { return t.path }
-func (t *Template) Meta() *TemplateMeta { return t.meta }
+// Path 返回模板根目录路径。
+func (t *Template) Path() string { return t.path }
 
+// Meta 返回模板协议声明。
+func (t *Template) Meta() *Meta { return t.meta }
+
+// WalkFile 遍历模板内文件（以相对路径回调，跳过 .git 与 template.yaml，目录不回调）。
 func (t *Template) WalkFile(fn func(rel string) error) error {
 	err := filepath.WalkDir(t.path, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -72,6 +77,7 @@ func (t *Template) WalkFile(fn func(rel string) error) error {
 	return err
 }
 
+// ReadFile 按相对路径读取模板内文件。
 func (t *Template) ReadFile(relPath string) ([]byte, error) {
 	return os.ReadFile(filepath.Join(t.path, relPath))
 }

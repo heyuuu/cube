@@ -75,22 +75,22 @@ func TestWorkbenchRefs(t *testing.T) {
 func TestWorkbenchRemotes(t *testing.T) {
 	env := newTestEnv(t)
 	// fixture 项目无 remote；单独建一个带 origin 的仓库，覆盖 ssh 地址 → webUrl 转换
-	repo := env.ws.MakeGitRepoWith("with-remote", testfixture.GitRepoSpec{RemoteUrl: "git@github.com:heyuuu/cube.git"})
+	repo := env.ws.MakeGitRepoWith("with-remote", testfixture.GitRepoSpec{RemoteURL: "git@github.com:heyuuu/cube.git"})
 
 	var got []struct {
 		Name   string `json:"name"`
-		Url    string `json:"url"`
-		WebUrl string `json:"webUrl"`
+		URL    string `json:"url"`
+		WebURL string `json:"webUrl"`
 	}
 	decodeData(t, getJSON(t, env.url("/api/workbench/remotes?path="+repo)), &got)
 	if len(got) != 1 || got[0].Name != "origin" {
 		t.Fatalf("应只有一个 origin remote, got %+v", got)
 	}
-	if got[0].Url != "git@github.com:heyuuu/cube.git" {
-		t.Errorf("url 应为抓取地址, got %q", got[0].Url)
+	if got[0].URL != "git@github.com:heyuuu/cube.git" {
+		t.Errorf("url 应为抓取地址, got %q", got[0].URL)
 	}
-	if got[0].WebUrl != "https://github.com/heyuuu/cube" {
-		t.Errorf("ssh 地址应转换为网页地址, got %q", got[0].WebUrl)
+	if got[0].WebURL != "https://github.com/heyuuu/cube" {
+		t.Errorf("ssh 地址应转换为网页地址, got %q", got[0].WebURL)
 	}
 
 	// 无 remote 的仓库：nil 切片序列化为 []
@@ -110,17 +110,17 @@ func TestWorkbenchSourceParse(t *testing.T) {
 		want    workbench.TreeSource
 		wantErr bool
 	}{
-		{"commit 40 位 sha", "commit://" + sha40, workbench.TreeSource{Type: workbench.SourceTypeCommit, Id: sha40}, false},
-		{"commit 64 位 sha（sha256 仓库）", "commit://" + sha64, workbench.TreeSource{Type: workbench.SourceTypeCommit, Id: sha64}, false},
-		{"ref 全名-分支", "ref://refs/heads/master", workbench.TreeSource{Type: workbench.SourceTypeRef, Id: "refs/heads/master"}, false},
-		{"ref 全名-tag", "ref://refs/tags/v1.0", workbench.TreeSource{Type: workbench.SourceTypeRef, Id: "refs/tags/v1.0"}, false},
-		{"ref 全名-远程跟踪", "ref://refs/remotes/origin/dev", workbench.TreeSource{Type: workbench.SourceTypeRef, Id: "refs/remotes/origin/dev"}, false},
-		{"ref 全名-开放子树", "ref://refs/pull/123/head", workbench.TreeSource{Type: workbench.SourceTypeRef, Id: "refs/pull/123/head"}, false},
-		{"ref 相对路径短名", "ref://heads/master", workbench.TreeSource{Type: workbench.SourceTypeRef, Id: "heads/master"}, false},
-		{"ref 短名-HEAD", "ref://HEAD", workbench.TreeSource{Type: workbench.SourceTypeRef, Id: "HEAD"}, false},
-		{"ref 短名-远程叶名", "ref://origin/dev", workbench.TreeSource{Type: workbench.SourceTypeRef, Id: "origin/dev"}, false},
-		{"worktree 绝对路径", "worktree:///tmp/x", workbench.TreeSource{Type: workbench.SourceTypeWorktree, Id: "/tmp/x"}, false},
-		{"worktree 路径含冒号不歧义", "worktree:///tmp/a://b", workbench.TreeSource{Type: workbench.SourceTypeWorktree, Id: "/tmp/a://b"}, false},
+		{"commit 40 位 sha", "commit://" + sha40, workbench.TreeSource{Type: workbench.SourceTypeCommit, ID: sha40}, false},
+		{"commit 64 位 sha（sha256 仓库）", "commit://" + sha64, workbench.TreeSource{Type: workbench.SourceTypeCommit, ID: sha64}, false},
+		{"ref 全名-分支", "ref://refs/heads/master", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "refs/heads/master"}, false},
+		{"ref 全名-tag", "ref://refs/tags/v1.0", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "refs/tags/v1.0"}, false},
+		{"ref 全名-远程跟踪", "ref://refs/remotes/origin/dev", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "refs/remotes/origin/dev"}, false},
+		{"ref 全名-开放子树", "ref://refs/pull/123/head", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "refs/pull/123/head"}, false},
+		{"ref 相对路径短名", "ref://heads/master", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "heads/master"}, false},
+		{"ref 短名-HEAD", "ref://HEAD", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "HEAD"}, false},
+		{"ref 短名-远程叶名", "ref://origin/dev", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "origin/dev"}, false},
+		{"worktree 绝对路径", "worktree:///tmp/x", workbench.TreeSource{Type: workbench.SourceTypeWorktree, ID: "/tmp/x"}, false},
+		{"worktree 路径含冒号不歧义", "worktree:///tmp/a://b", workbench.TreeSource{Type: workbench.SourceTypeWorktree, ID: "/tmp/a://b"}, false},
 		{"缺 scheme", "master", workbench.TreeSource{}, true},
 		{"未知 scheme", "branch://main", workbench.TreeSource{}, true},
 		{"空 id", "ref://", workbench.TreeSource{}, true},

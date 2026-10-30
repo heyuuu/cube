@@ -42,8 +42,8 @@ func TestGithubListAccountRepos(t *testing.T) {
 		}
 		if page := r.URL.Query().Get("page"); page == "1" {
 			writeJSON(t, w, []ghRepo{
-				{Name: "cube", FullName: "heyuuu/cube", CloneUrl: "https://github.com/heyuuu/cube.git", DefaultBranch: "develop", UpdatedAt: updated},
-				{Name: "b", FullName: "acme/b", CloneUrl: "https://github.com/acme/b.git", DefaultBranch: "main"},
+				{Name: "cube", FullName: "heyuuu/cube", CloneURL: "https://github.com/heyuuu/cube.git", DefaultBranch: "develop", UpdatedAt: updated},
+				{Name: "b", FullName: "acme/b", CloneURL: "https://github.com/acme/b.git", DefaultBranch: "main"},
 			})
 			return
 		}
@@ -73,7 +73,7 @@ func TestGiteeAuthed(t *testing.T) {
 			t.Errorf("应请求 /api/v5/user/repos, got %s", r.URL.Path)
 		}
 		writeJSON(t, w, []giteeRepo{
-			{Name: "go-lombok", FullName: "heyuuu/go-lombok", CloneUrl: "git@gitee.com:heyuuu/go-lombok.git", DefaultBranch: "master"},
+			{Name: "go-lombok", FullName: "heyuuu/go-lombok", CloneURL: "git@gitee.com:heyuuu/go-lombok.git", DefaultBranch: "master"},
 		})
 	}))
 	t.Cleanup(ts.Close)

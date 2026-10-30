@@ -20,7 +20,7 @@ func newPathCmd(a *app.App) *cobra.Command {
 配合 shell 包装函数实现跳转：cd "$(cube path)"。
 取消选择或非 TTY 多目标时以非零退出码结束，不输出路径。`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			query := getArg(args, 0)
 
 			// 匹配项目（与 open 一致）

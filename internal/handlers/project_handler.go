@@ -20,6 +20,8 @@ import (
 )
 
 // --- dto ---
+
+// ProjectDTO project/list 返回的单个项目快照（含 git 状态与最近使用时间）。
 type ProjectDTO struct {
 	Name       string           `json:"name"`
 	Group      string           `json:"group"`
@@ -38,12 +40,14 @@ type ProjectListResult struct {
 
 // --- handler ---
 
+// ProjectHandler project 域的 HTTP 出口。
 type ProjectHandler struct {
 	projectService *project.Service
 	openerService  *opener.Service
 	usageService   *usage.Service
 }
 
+// NewProjectHandler 构造 ProjectHandler。
 func NewProjectHandler(projectService *project.Service, openerService *opener.Service, usageService *usage.Service) *ProjectHandler {
 	return &ProjectHandler{
 		projectService: projectService,
@@ -52,6 +56,7 @@ func NewProjectHandler(projectService *project.Service, openerService *opener.Se
 	}
 }
 
+// Register 注册 project 域全部路由。
 func (h *ProjectHandler) Register(r *server.Routes) {
 	r.Get("/api/project/list", "获取项目列表", server.JSONHandler(h.projectList))
 	r.Post("/api/project/open", "用指定 opener 打开已收录项目（记 usage；目标目录选择为 1030/1032 预留）", server.JSONHandler(h.projectOpen))

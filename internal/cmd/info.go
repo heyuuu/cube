@@ -44,7 +44,7 @@ query 支持两种搜索模式：
   - 各本地分支与每个 remote 同名分支的 ahead/behind 宽表；
   - 按差距生成的 cube pull / cube push 建议命令。`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			query := getArg(args, 0)
 
 			// 匹配项目
@@ -74,11 +74,11 @@ query 支持两种搜索模式：
 
 			// git 缓存快照（branch/dirty 等基础字段）；remote 列表走本地实时读
 			info, hasCache := a.ProjectService().GitInfo(proj.Path())
-			cacheUrl := ""
+			cacheURL := ""
 			if hasCache {
-				cacheUrl = info.RepoUrl
+				cacheURL = info.RepoURL
 			}
-			printInfoRemotes(proj.Path(), cacheUrl)
+			printInfoRemotes(proj.Path(), cacheURL)
 
 			if !hasCache {
 				printInfoKV("git", infoWarnStyle.Render("无缓存(可启动 cube server 自动采集)"))
@@ -125,10 +125,10 @@ func printInfoSection(title string) {
 //
 // remote 列表实时读本地 .git/config（毫秒级、不联网）；读不到时回退缓存快照里的
 // origin 地址，保持仓库已不可读场景下的展示能力。
-func printInfoRemotes(repoPath string, cacheUrl string) {
+func printInfoRemotes(repoPath string, cacheURL string) {
 	remotes, _ := git.Remotes(repoPath)
-	if len(remotes) == 0 && cacheUrl != "" {
-		remotes = []git.Remote{{Name: "origin", Fetch: cacheUrl, Push: cacheUrl}}
+	if len(remotes) == 0 && cacheURL != "" {
+		remotes = []git.Remote{{Name: "origin", Fetch: cacheURL, Push: cacheURL}}
 	}
 
 	if len(remotes) <= 1 {
@@ -136,7 +136,7 @@ func printInfoRemotes(repoPath string, cacheUrl string) {
 		if len(remotes) == 1 {
 			url = remotes[0].Fetch
 		}
-		printInfoKV("git-url", formatInfoGitUrl(url))
+		printInfoKV("git-url", formatInfoGitURL(url))
 		return
 	}
 
@@ -159,17 +159,17 @@ func buildInfoRemoteLines(remotes []git.Remote) []string {
 	}
 	lines := make([]string, len(remotes))
 	for i, r := range remotes {
-		lines[i] = fmt.Sprintf("%-*s", nameWidth, r.Name) + "  " + formatInfoGitUrl(r.Fetch)
+		lines[i] = fmt.Sprintf("%-*s", nameWidth, r.Name) + "  " + formatInfoGitURL(r.Fetch)
 	}
 	return lines
 }
 
-// formatInfoGitUrl 渲染单个仓库地址：能识别 host 时在括号里附上网页地址。
+// formatInfoGitURL 渲染单个仓库地址：能识别 host 时在括号里附上网页地址。
 // 括号部分用灰色降为次要信息，视觉上不与仓库地址抢焦点。
-func formatInfoGitUrl(repoUrl string) string {
-	s := orInfoDash(repoUrl)
-	if u, err := git.ParseRepoUrl(repoUrl); err == nil {
-		if web := u.WebUrl(); web != "" {
+func formatInfoGitURL(repoURL string) string {
+	s := orInfoDash(repoURL)
+	if u, err := git.ParseRepoURL(repoURL); err == nil {
+		if web := u.WebURL(); web != "" {
 			s += " " + infoDimStyle.Render("("+web+")")
 		}
 	}

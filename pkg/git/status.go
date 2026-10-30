@@ -116,8 +116,8 @@ func parseStatusV2(out string) *RepoStatus {
 			}
 			xy, tail := parts[1], parts[9]
 			st.countXY(xy)
-			if new, old, ok := strings.Cut(tail, "\t"); ok && new != "" && old != "" {
-				st.Files = append(st.Files, FileStatus{Code: xyShort(xy), Path: old + " -> " + new})
+			if newPath, old, ok := strings.Cut(tail, "\t"); ok && newPath != "" && old != "" {
+				st.Files = append(st.Files, FileStatus{Code: xyShort(xy), Path: old + " -> " + newPath})
 			}
 		}
 	}

@@ -43,7 +43,7 @@ ref 默认勾选当前分支；执行前展示推送计划并二次确认。
 （均可多次指定），跳过对应交互；--force 走 --force-with-lease，
 --yes 跳过最终确认。单条 push 失败不中断，最后汇总结果。`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			// 定位项目：query 匹配（规则同 info），以项目根为仓库
 			query := getArg(args, 0)
 			proj, err := pickProject(a.ProjectService(), query, a.Local())

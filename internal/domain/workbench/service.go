@@ -35,10 +35,12 @@ type Service struct {
 	ptyCancels map[int]context.CancelFunc
 }
 
+// NewServiceInject di 装配入口：注入 project.Service 的 git 信息定向刷新能力。
 func NewServiceInject(projectService *project.Service) *Service {
 	return NewService(projectService.RefreshGitInfo)
 }
 
+// NewService 构造 Service（cacheRefresh 为 nil 表示无刷新能力，跳过）。
 func NewService(cacheRefresh func(path string) error) *Service {
 	return &Service{cacheRefresh: cacheRefresh, ptyCancels: map[int]context.CancelFunc{}}
 }
@@ -102,9 +104,9 @@ func (s *Service) Remotes(path string) ([]RemoteEntry, error) {
 	}
 	list := make([]RemoteEntry, 0, len(remotes))
 	for _, r := range remotes {
-		entry := RemoteEntry{Name: r.Name, Url: r.Fetch}
-		if repoUrl, err := git.ParseRepoUrl(r.Fetch); err == nil {
-			entry.WebUrl = repoUrl.WebUrl()
+		entry := RemoteEntry{Name: r.Name, URL: r.Fetch}
+		if repoURL, err := git.ParseRepoURL(r.Fetch); err == nil {
+			entry.WebURL = repoURL.WebURL()
 		}
 		list = append(list, entry)
 	}
@@ -149,9 +151,9 @@ func (s *Service) CommitInfo(path string, src TreeSource) (*git.CommitDetail, er
 	}
 	switch src.Type {
 	case SourceTypeCommit, SourceTypeRef:
-		detail, err := git.CommitDetailAt(root, src.Id)
+		detail, err := git.CommitDetailAt(root, src.ID)
 		if err != nil {
-			return nil, fmt.Errorf("读取提交信息失败: %s: %w", src.Id, err)
+			return nil, fmt.Errorf("读取提交信息失败: %s: %w", src.ID, err)
 		}
 		return detail, nil
 	default:
@@ -290,8 +292,6 @@ func (s *Service) WorktreeReset(path string, target string, hard bool) error {
 	return nil
 }
 
-// BranchDelete 删除本地分支。被任一工作副本（含主目录）检出的分支是硬约束，
-// 无论 force 均拒绝并说明检出位置；其余走 force 开关语义（见 git.BranchDelete）。
 // BranchAdd 新建本地分支（不检出、不切 HEAD——「建分支并切过去」由 WorktreeAdd 覆盖）。
 // branch 支持规范全名或短名；commitish 为基点（空 = HEAD）。成功后刷新主项目快照。
 func (s *Service) BranchAdd(path string, branch string, commitish string) error {
@@ -307,6 +307,8 @@ func (s *Service) BranchAdd(path string, branch string, commitish string) error 
 	return nil
 }
 
+// BranchDelete 删除本地分支。被任一工作副本（含主目录）检出的分支是硬约束，
+// 无论 force 均拒绝并说明检出位置；其余走 force 开关语义（见 git.BranchDelete）。
 func (s *Service) BranchDelete(path string, branch string, force bool) error {
 	root, err := repoRoot(path)
 	if err != nil {
@@ -340,15 +342,15 @@ func (s *Service) Tree(path string, src TreeSource) (*TreeListResult, error) {
 	}
 	switch src.Type {
 	case SourceTypeWorktree:
-		files, err := git.ListFiles(src.Id)
+		files, err := git.ListFiles(src.ID)
 		if err != nil {
-			return nil, fmt.Errorf("读取工作副本文件清单失败: dir=%s: %w", src.Id, err)
+			return nil, fmt.Errorf("读取工作副本文件清单失败: dir=%s: %w", src.ID, err)
 		}
 		return &TreeListResult{List: files}, nil
 	case SourceTypeCommit, SourceTypeRef:
-		m, err := git.FileShasAtRef(root, src.Id)
+		m, err := git.FileShasAtRef(root, src.ID)
 		if err != nil {
-			return nil, fmt.Errorf("读取 %s 下的树失败: %w", src.Id, err)
+			return nil, fmt.Errorf("读取 %s 下的树失败: %w", src.ID, err)
 		}
 		list := make([]string, 0, len(m))
 		for p := range m {
@@ -412,13 +414,13 @@ func (s *Service) DiffTrees(path string, base TreeSource, current TreeSource) (*
 func changeBase(root string, src TreeSource) (string, error) {
 	switch src.Type {
 	case SourceTypeWorktree:
-		head, err := git.HeadSha(src.Id)
+		head, err := git.HeadSha(src.ID)
 		if err != nil {
-			return "", fmt.Errorf("读取工作副本 HEAD 失败: dir=%s: %w", src.Id, err)
+			return "", fmt.Errorf("读取工作副本 HEAD 失败: dir=%s: %w", src.ID, err)
 		}
 		return head, nil
 	case SourceTypeCommit, SourceTypeRef:
-		parent, err := git.ParentSha(root, src.Id)
+		parent, err := git.ParentSha(root, src.ID)
 		if err != nil {
 			return emptyTreeSha, nil // 根提交没有父：与空树比
 		}
@@ -441,7 +443,7 @@ func (s *Service) ReadFileDiff(path string, base TreeSource, current TreeSource,
 		if err != nil {
 			return nil, err
 		}
-		base = TreeSource{Type: SourceTypeCommit, Id: baseSha}
+		base = TreeSource{Type: SourceTypeCommit, ID: baseSha}
 	}
 	return readFileDiff(root, base, current, file, baseFile)
 }
@@ -460,7 +462,7 @@ func (s *Service) Changes(path string, src TreeSource) (*DiffTreesResult, error)
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.DiffTrees(path, TreeSource{Type: SourceTypeCommit, Id: base}, src)
+	res, err := s.DiffTrees(path, TreeSource{Type: SourceTypeCommit, ID: base}, src)
 	if err != nil {
 		return nil, err
 	}
@@ -481,9 +483,9 @@ func annotateDiffStats(res *DiffTreesResult, root string, base TreeSource, curre
 	var stats map[string]git.NumstatEntry
 	var err error
 	if current.Type == SourceTypeWorktree {
-		stats, err = git.Numstat(current.Id, base.Id, "")
+		stats, err = git.Numstat(current.ID, base.ID, "")
 	} else {
-		stats, err = git.Numstat(root, base.Id, current.Id)
+		stats, err = git.Numstat(root, base.ID, current.ID)
 	}
 	if err != nil {
 		slog.Debug("变更行数统计失败，降级为零值", "err", err)
@@ -498,7 +500,7 @@ func annotateDiffStats(res *DiffTreesResult, root string, base TreeSource, curre
 		}
 		// 未命中 numstat 的新增 = untracked 文件：按文件行数计 adds
 		if current.Type == SourceTypeWorktree && e.Status == "added" {
-			adds, binary := countFileLines(filepath.Join(current.Id, e.Path))
+			adds, binary := countFileLines(filepath.Join(current.ID, e.Path))
 			e.Adds, e.Binary = adds, binary
 		}
 	}

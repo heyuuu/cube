@@ -34,8 +34,8 @@ func TestWorktreeAdd_PrefillAndRefresh(t *testing.T) {
 		t.Fatalf("WorktreeAdd 报错: %v", err)
 	}
 	want := filepath.Join(ws.Dir, "repo.worktrees", "feat-x")
-	if real, err := filepath.EvalSymlinks(want); err == nil {
-		want = real // git 输出经符号链接规范化（/var → /private/var），比较前同样求值
+	if resolved, err := filepath.EvalSymlinks(want); err == nil {
+		want = resolved // git 输出经符号链接规范化（/var → /private/var），比较前同样求值
 	}
 	if created.Path != want {
 		t.Errorf("预填路径不符: want %s, got %s", want, created.Path)

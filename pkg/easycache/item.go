@@ -1,3 +1,5 @@
+// Package easycache 单值惰性缓存：首次 Get 触发 loader 计算，此后复用；
+// 时间戳（UpdatedAt）由缓存自身维护，供 TTL / 新鲜度判断使用。
 package easycache
 
 import (
@@ -5,6 +7,7 @@ import (
 	"time"
 )
 
+// Item 单值缓存（泛型）：Get 复用已算好的数据，计算只发生一次（Clear 后重算）。
 type Item[T any] struct {
 	lock       sync.RWMutex
 	hasData    bool
@@ -22,6 +25,7 @@ func (c *Item[T]) UpdatedAt() time.Time {
 	return c.computedAt
 }
 
+// NewItem 构造 Item，loader 为计算函数（nil 是编程错误，panic）。
 func NewItem[T any](loader func() T) *Item[T] {
 	if loader == nil {
 		panic("loader 不能为 nil")

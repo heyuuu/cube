@@ -4,6 +4,7 @@ import (
 	"charm.land/huh/v2"
 )
 
+// InputOptions 交互输入的可选项（标题 / 默认值 / 占位符 / 校验函数 / 提示符）。
 type InputOptions struct {
 	Title        string
 	DefaultValue string

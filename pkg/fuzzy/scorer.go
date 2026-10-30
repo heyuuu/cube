@@ -1,10 +1,12 @@
+// Package fuzzy 模糊匹配工具：对目标列表按 query 打分排序，分数可按场景定制。
 package fuzzy
 
 import "strings"
 
+// Scorer 匹配计分函数：返回分值与是否可匹配。
 type Scorer func(query string, target string) (score int, ok bool)
 
-var defaultScorer Scorer = WordSegmentationScorer(DefaultBonusScorer)
+var defaultScorer = WordSegmentationScorer(DefaultBonusScorer)
 
 // DefaultBonusScorer 默认 fuzzy 算法及分数的匹配器
 func DefaultBonusScorer(query string, target string) (score int, ok bool) {

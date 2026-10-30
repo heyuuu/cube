@@ -1,7 +1,10 @@
+// Package project 项目领域：从扫描规则识别项目（git 仓库），提供搜索排序、
+// clone 规则匹配与打开目标（worktree / workspace）枚举。
 package project
 
 import "path/filepath"
 
+// Project 扫描识别出的一个项目（数据由 scan-rule 推导，只读快照）。
 type Project struct {
 	path  string   // 项目路径，唯一标识
 	group string   // 所属工作区名
@@ -29,7 +32,14 @@ func projectName(r ScanRule, path string) string {
 	return r.Group + ":" + subName
 }
 
-func (p *Project) Group() string  { return p.group }
-func (p *Project) Name() string   { return p.name }
-func (p *Project) Path() string   { return p.path }
+// Group 返回所属工作区名。
+func (p *Project) Group() string { return p.group }
+
+// Name 返回展示名（{组名}:{组内相对路径}）。
+func (p *Project) Name() string { return p.name }
+
+// Path 返回项目绝对路径（唯一标识）。
+func (p *Project) Path() string { return p.path }
+
+// Tags 返回特征 tag 列表。
 func (p *Project) Tags() []string { return p.tags }

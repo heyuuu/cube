@@ -106,9 +106,8 @@ func searchProjects(service *project.Service, query string, up bool) ([]*project
 		}
 
 		return service.SearchByPath(absPath, up), nil
-	} else {
-		return service.SearchByName(query), nil
 	}
+	return service.SearchByName(query), nil
 }
 
 // pickProject 根据关键词匹配项目：精确匹配直接返回，多项匹配则交互选择。

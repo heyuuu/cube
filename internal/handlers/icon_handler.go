@@ -11,10 +11,12 @@ import (
 // 跨域共享（opener / scanRules / forge 的 IconField 共用此端点），不挂任何单一 domain。
 type IconHandler struct{}
 
+// NewIconHandler 构造 IconHandler（无依赖）。
 func NewIconHandler() *IconHandler {
 	return &IconHandler{}
 }
 
+// Register 注册 icon 端点（实现 server.Handler）。
 func (h *IconHandler) Register(r *server.Routes) {
 	r.Post("/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", server.JSONHandler(h.iconExtract))
 }

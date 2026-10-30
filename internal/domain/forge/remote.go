@@ -14,7 +14,7 @@ import (
 type LocalRepo struct {
 	Name    string `json:"name"`    // 项目名
 	Path    string `json:"path"`    // 项目绝对路径
-	RepoUrl string `json:"repoUrl"` // origin remote URL
+	RepoURL string `json:"repoURL"` // origin remote URL
 	Dirty   bool   `json:"dirty"`   // 工作区有改动
 	Ahead   int    `json:"ahead"`   // 领先远端 commit 数
 	Behind  int    `json:"behind"`  // 落后远端 commit 数
@@ -33,11 +33,11 @@ type ReconcileResult struct {
 	Synced  []RepoPair          `json:"synced"`  // 已 clone
 }
 
-// RepoKey 把 repoUrl 归一化成对账匹配键：小写 host + 小写 path（去 .git 尾缀与斜杠）。
+// RepoKey 把 repoURL 归一化成对账匹配键：小写 host + 小写 path（去 .git 尾缀与斜杠）。
 // 对账两端（远端 clone URL / 本地 remote URL）同走此函数，归一到同一口径再比对；
 // 解析失败返回空串（调用方按「不参与匹配」处理）。
-func RepoKey(repoUrl string) string {
-	u, err := git.ParseRepoUrl(repoUrl)
+func RepoKey(repoURL string) string {
+	u, err := git.ParseRepoURL(repoURL)
 	if err != nil || u == nil || u.Host == "" || u.Path == "" {
 		return ""
 	}
@@ -48,9 +48,9 @@ func RepoKey(repoUrl string) string {
 	return NormalizeHost(u.Host) + "/" + path
 }
 
-// RepoNamespacePath 取 repoUrl 的 namespace 段（path 首段，小写），解析失败返回空串。
-func RepoNamespacePath(repoUrl string) string {
-	key := RepoKey(repoUrl)
+// RepoNamespacePath 取 repoURL 的 namespace 段（path 首段，小写），解析失败返回空串。
+func RepoNamespacePath(repoURL string) string {
+	key := RepoKey(repoURL)
 	if key == "" {
 		return ""
 	}
@@ -63,13 +63,13 @@ func RepoNamespacePath(repoUrl string) string {
 func Reconcile(local []LocalRepo, remote []gitapi.RemoteRepo) ReconcileResult {
 	remoteByKey := make(map[string]gitapi.RemoteRepo, len(remote))
 	for _, r := range remote {
-		if k := RepoKey(r.CloneUrl); k != "" {
+		if k := RepoKey(r.CloneURL); k != "" {
 			remoteByKey[k] = r
 		}
 	}
 	localByKey := make(map[string]LocalRepo, len(local))
 	for _, l := range local {
-		if k := RepoKey(l.RepoUrl); k != "" {
+		if k := RepoKey(l.RepoURL); k != "" {
 			localByKey[k] = l
 		}
 	}

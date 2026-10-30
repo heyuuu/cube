@@ -13,7 +13,7 @@ type giteeClient struct{ baseClient }
 type giteeRepo struct {
 	Name          string    `json:"path"` // gitee 的 path 即仓库名（name 可能是展示名）
 	FullName      string    `json:"full_name"`
-	CloneUrl      string    `json:"ssh_url"` // gitee 无统一 clone_url 字段，取 ssh（归一化后与 https 等价）
+	CloneURL      string    `json:"ssh_url"` // gitee 无统一 clone_url 字段，取 ssh（归一化后与 https 等价）
 	DefaultBranch string    `json:"default_branch"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

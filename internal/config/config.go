@@ -8,11 +8,13 @@ import (
 	"github.com/heyuuu/x/store"
 )
 
+// Config config.json 根结构（启动时加载，不热更；按 domain 分节）。
 type Config struct {
 	DataDir string       `json:"dataDir"` // 数据目录
 	Server  ServerConfig `json:"server"`
 }
 
+// ServerConfig server 节：port 是端口唯一事实源（无 -p flag、不支持多实例）。
 type ServerConfig struct {
 	Host string `json:"host"`
 	Port int    `json:"port"`

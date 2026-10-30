@@ -23,7 +23,7 @@ func newInitCmd(a *app.App) *cobra.Command {
 
 目录必须能被 scan 规则收录为新项目，否则初始化出来的目录 cube 无法识别。`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			rawPath := args[0]
 
 			// 解析为绝对路径

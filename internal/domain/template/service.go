@@ -15,10 +15,12 @@ type Service struct {
 	settingsFile string
 }
 
+// NewServiceInject 由 Paths 装配 Service（DI 注入用）。
 func NewServiceInject(paths config.Paths) *Service {
 	return NewService(paths.SettingsFile())
 }
 
+// NewService 以 settings 文件路径构造 Service。
 func NewService(settingsFile string) *Service {
 	return &Service{
 		settingsFile: settingsFile,
@@ -66,7 +68,7 @@ func (s *Service) TplSources() []TplSource {
 // 校验收敛在写侧，坏数据中文错误不落文件。
 func (s *Service) SaveTplSource(src TplSource) error {
 	src.Name = strings.TrimSpace(src.Name)
-	src.RepoUrl = strings.TrimSpace(src.RepoUrl)
+	src.RepoURL = strings.TrimSpace(src.RepoURL)
 	if err := ValidateTplSource(src); err != nil {
 		return err
 	}

@@ -133,7 +133,7 @@ func TestBuildArgs(t *testing.T) {
 			if err != nil {
 				t.Fatalf("InitActionOpener 失败: %v", err)
 			}
-			bin, args, err := o.BuildArgs(c.role, c.paths...)
+			bin, args, err := o.(*actionOpener).BuildArgs(c.role, c.paths...)
 			if err != nil {
 				t.Fatalf("BuildArgs 失败: %v", err)
 			}
@@ -166,7 +166,7 @@ func TestBuildArgsResolvesSelfCube(t *testing.T) {
 			if err != nil {
 				t.Fatalf("InitActionOpener 失败: %v", err)
 			}
-			bin, args, err := o.BuildArgs(RoleOpenDir, "/proj")
+			bin, args, err := o.(*actionOpener).BuildArgs(RoleOpenDir, "/proj")
 			if err != nil {
 				t.Fatalf("BuildArgs 失败: %v", err)
 			}
@@ -185,7 +185,7 @@ func TestBuildArgsResolvesSelfCube(t *testing.T) {
 			if err != nil {
 				t.Fatalf("InitActionOpener 失败: %v", err)
 			}
-			bin, _, err := o.BuildArgs(RoleOpenDir, "/proj")
+			bin, _, err := o.(*actionOpener).BuildArgs(RoleOpenDir, "/proj")
 			if err != nil {
 				t.Fatalf("BuildArgs 失败: %v", err)
 			}

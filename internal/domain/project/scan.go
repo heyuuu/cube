@@ -27,8 +27,9 @@ type ScanRule struct {
 // 注：worktree 目录（.git 为文件）不是项目（1032 归并为项目打开目标），
 // 历史的 worktree tag 已随归并移除。
 
+// 附加 tag：项目均为 git 项目（见上方约定），只标额外特征。
 const (
-	TagGodot = "godot"
+	TagGodot = "godot" // Godot 项目（含 project.godot）
 )
 
 func scan(rules []ScanRule) ([]*Project, error) {

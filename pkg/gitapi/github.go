@@ -13,7 +13,7 @@ type githubClient struct{ baseClient }
 type ghRepo struct {
 	Name          string    `json:"name"`
 	FullName      string    `json:"full_name"`
-	CloneUrl      string    `json:"clone_url"`
+	CloneURL      string    `json:"clone_url"`
 	DefaultBranch string    `json:"default_branch"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

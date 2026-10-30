@@ -50,7 +50,7 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 
 	// 写入
 	c1, _ := Load(dir)
-	c1.entries["/proj/a"] = &Entry{RepoUrl: "git@x:a", CurrentBranch: "main", Ahead: 3}
+	c1.entries["/proj/a"] = &Entry{RepoURL: "git@x:a", CurrentBranch: "main", Ahead: 3}
 	if err := c1.Save(); err != nil {
 		t.Fatalf("Save 失败: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	if !ok {
 		t.Fatalf("Save 后 Load 应命中")
 	}
-	if got.RepoUrl != "git@x:a" || got.CurrentBranch != "main" || got.Ahead != 3 {
+	if got.RepoURL != "git@x:a" || got.CurrentBranch != "main" || got.Ahead != 3 {
 		t.Fatalf("读回数据异常: %+v", got)
 	}
 }
@@ -142,7 +142,7 @@ func TestCollectEntry_RealRepo(t *testing.T) {
 // TestCollectEntry_Remotes 全部 remote 进快照（多 remote 项目的 forge 匹配依赖此数据）。
 func TestCollectEntry_Remotes(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
-	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "main", RemoteUrl: "git@github.com:heyuuu/repo.git"})
+	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "main", RemoteURL: "git@github.com:heyuuu/repo.git"})
 	// 补一个非 origin remote（指向另一 host）
 	if out, err := exec.Command("git", "-C", repo, "remote", "add", "gitee", "git@gitee.com:heyuuu/repo.git").CombinedOutput(); err != nil {
 		t.Fatalf("添加 gitee remote 失败: %v %s", err, out)
@@ -152,12 +152,12 @@ func TestCollectEntry_Remotes(t *testing.T) {
 	if err != nil || e == nil {
 		t.Fatalf("collectEntry 失败: %v", err)
 	}
-	if e.RepoUrl != "git@github.com:heyuuu/repo.git" {
-		t.Fatalf("RepoUrl = %q（origin 口径不变）", e.RepoUrl)
+	if e.RepoURL != "git@github.com:heyuuu/repo.git" {
+		t.Fatalf("RepoURL = %q（origin 口径不变）", e.RepoURL)
 	}
 	hosts := make([]string, 0, len(e.Remotes))
 	for _, r := range e.Remotes {
-		hosts = append(hosts, r.Name+"="+r.Url)
+		hosts = append(hosts, r.Name+"="+r.URL)
 	}
 	if len(e.Remotes) != 2 || e.Remotes[0].Name != "gitee" || e.Remotes[1].Name != "origin" {
 		t.Fatalf("应含 gitee 与 origin 两条 remote（按名排序）: %v", hosts)

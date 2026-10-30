@@ -88,16 +88,16 @@ func largestPngEntry(data []byte) ([]byte, error) {
 	return best, nil
 }
 
-// ScalePng 把 PNG 解码后等比缩放到最长边 ≤max（nearest 邻采样——图标缩放
-// 质量足够，避免引 x/image 依赖），再编码回 PNG 字节。原图不长于 max 时原样返回。
-func ScalePng(data []byte, max int) ([]byte, error) {
+// ScalePng 把 PNG 解码后等比缩放到最长边 ≤maxSize（nearest 邻采样——图标缩放
+// 质量足够，避免引 x/image 依赖），再编码回 PNG 字节。原图不长于 maxSize 时原样返回。
+func ScalePng(data []byte, maxSize int) ([]byte, error) {
 	img, err := png.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("解码 PNG 失败: %w", err)
 	}
 	b := img.Bounds()
-	if b.Dx() <= max && b.Dy() <= max {
+	if b.Dx() <= maxSize && b.Dy() <= maxSize {
 		return data, nil
 	}
-	return EncodeImageScaled(img, max)
+	return EncodeImageScaled(img, maxSize)
 }

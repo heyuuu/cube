@@ -29,11 +29,11 @@ type Refs struct {
 }
 
 // RemoteEntry 单个 remote 的展示信息：抓取地址 + 转换出的托管平台网页地址
-// （ParseRepoUrl().WebUrl()，自建私服等无法识别的 host 为空串）。
+// （ParseRepoURL().WebURL()，自建私服等无法识别的 host 为空串）。
 type RemoteEntry struct {
 	Name   string `json:"name"`
-	Url    string `json:"url"`
-	WebUrl string `json:"webUrl"`
+	URL    string `json:"url"`
+	WebURL string `json:"webUrl"`
 }
 
 // CommitsPageResult commit 日志一页数据（纯列表，泳道布局由前端对已持有数据计算）。
@@ -71,6 +71,7 @@ type WorktreeStatus struct {
 // 三类目标在工作台里统一被「选中」与「对比」（见总纲提案 1008 的核心抽象）。
 type SourceType string
 
+// 取值即对外的序列化字符串（URL 参数 / API / 前端 query 共用）。
 const (
 	SourceTypeCommit   SourceType = "commit"
 	SourceTypeRef      SourceType = "ref"
@@ -78,16 +79,16 @@ const (
 )
 
 // TreeSource 工作台统一的目标抽象，序列化（URL 参数 / API 参数）统一为 "type://id" 形态（见 String）：
-//   - commit:   Id = commit sha
-//   - ref:      Id = 规范全名（refs/heads/master，写方契约）或短名（master、HEAD，人类手输兜底）
-//   - worktree: Id = 工作副本目录绝对路径（含未提交改动的当前状态）
+//   - commit:   ID = commit sha
+//   - ref:      ID = 规范全名（refs/heads/master，写方契约）或短名（master、HEAD，人类手输兜底）
+//   - worktree: ID = 工作副本目录绝对路径（含未提交改动的当前状态）
 type TreeSource struct {
 	Type SourceType `json:"type"`
-	Id   string     `json:"id"`
+	ID   string     `json:"id"`
 }
 
 // String 序列化为 "type://id"，与 ParseTreeSource 成对；URL 参数、API 参数、前端 query key 共用此格式。
-func (t TreeSource) String() string { return string(t.Type) + "://" + t.Id }
+func (t TreeSource) String() string { return string(t.Type) + "://" + t.ID }
 
 // ParseTreeSource 解析 "scheme://id" 形态的 TreeSource。只做 envelope 层校验：
 // 已知 scheme 精确前缀匹配、余部原样取出——不做通用 URI 解析（不认 host、不 percent-decode，
@@ -117,7 +118,7 @@ func ParseTreeSource(s string) (TreeSource, error) {
 	default:
 		return TreeSource{}, fmt.Errorf("未知的 scheme: %q（合法值 commit/ref/worktree）", scheme)
 	}
-	return TreeSource{Type: typ, Id: id}, nil
+	return TreeSource{Type: typ, ID: id}, nil
 }
 
 // isCommitSha 校验完整 commit sha（sha1 40 位 / sha256 64 位，大小写均可）。

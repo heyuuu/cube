@@ -10,9 +10,9 @@ import (
 func TestRemoteUrl_NonRepo(t *testing.T) {
 	ws := newTestWorkspace(t)
 	dir := ws.Mkdir("not-a-repo")
-	url, err := RemoteUrl(dir)
+	url, err := RemoteURL(dir)
 	if err != nil || url != "" {
-		t.Fatalf("非仓库 RemoteUrl 应返回 (\"\",nil)，实际 (%q,%v)", url, err)
+		t.Fatalf("非仓库 RemoteURL 应返回 (\"\",nil)，实际 (%q,%v)", url, err)
 	}
 }
 
@@ -21,14 +21,14 @@ func TestRemoteUrl_WithRemote(t *testing.T) {
 	ws := newTestWorkspace(t)
 	// remote 指向另一个本地路径（合法的本地 remote）
 	dir := ws.MakeGitRepoWith("repo", GitRepoSpec{
-		RemoteUrl: "/tmp/some-remote.git",
+		RemoteURL: "/tmp/some-remote.git",
 	})
-	url, err := RemoteUrl(dir)
+	url, err := RemoteURL(dir)
 	if err != nil {
-		t.Fatalf("RemoteUrl 出错: %v", err)
+		t.Fatalf("RemoteURL 出错: %v", err)
 	}
 	if url != "/tmp/some-remote.git" {
-		t.Fatalf("RemoteUrl = %q，期望 /tmp/some-remote.git", url)
+		t.Fatalf("RemoteURL = %q，期望 /tmp/some-remote.git", url)
 	}
 }
 
@@ -36,7 +36,7 @@ func TestRemoteUrl_WithRemote(t *testing.T) {
 func TestRemoteUrl_NoOrigin(t *testing.T) {
 	ws := newTestWorkspace(t)
 	dir := ws.MakeGitRepo("repo")
-	url, err := RemoteUrl(dir)
+	url, err := RemoteURL(dir)
 	if err != nil || url != "" {
 		t.Fatalf("无 origin 时应返回空，实际 (%q,%v)", url, err)
 	}
@@ -49,7 +49,7 @@ func TestRemotes_WithMultipleRemotes(t *testing.T) {
 	ws := newTestWorkspace(t)
 	// 先建仓库，再加额外 remote
 	dir := ws.MakeGitRepoWith("repo", GitRepoSpec{
-		RemoteUrl: "https://example.com/a/b.git",
+		RemoteURL: "https://example.com/a/b.git",
 	})
 	// fixture 只支持 origin，upstream 用 git 命令直接加
 	directAddRemote(t, dir, "upstream", "https://example.com/upstream/b.git")
@@ -79,7 +79,7 @@ func TestRemotes_WithMultipleRemotes(t *testing.T) {
 func TestRemotes_SeparatePushUrl(t *testing.T) {
 	ws := newTestWorkspace(t)
 	dir := ws.MakeGitRepoWith("repo", GitRepoSpec{
-		RemoteUrl: "https://example.com/a/b.git",
+		RemoteURL: "https://example.com/a/b.git",
 	})
 	directGit(t, dir, "remote", "set-url", "--push", "origin", "git@example.com:a/b.git")
 

@@ -19,7 +19,7 @@ func newCommandsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "commands",
 		Short: "列出所有命令",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			root := findRoot(cmd)
 			all := slices.Collect(iterCommands(root, ""))
 			sort.Slice(all, func(i, j int) bool {

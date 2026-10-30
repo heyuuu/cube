@@ -19,7 +19,7 @@ func newProjectOpenCmd(a *app.App) *cobra.Command {
 		Use:   "project-open <target-path>",
 		Short: "打开项目, 只支持准确目标目录绝对路径（项目根或 worktree）",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			targetPath := args[0]
 
 			// 匹配项目：目标路径可能是项目根或 worktree（1032 归并到主项目）

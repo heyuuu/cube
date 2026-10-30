@@ -17,7 +17,7 @@ func TestMap(t *testing.T) {
 		t.Fatalf("Map 结果 %v，期望 %v", got, want)
 	}
 	// 类型转换
-	gotStr := Map([]int{1, 2}, func(x int) string { return "n" })
+	gotStr := Map([]int{1, 2}, func(_ int) string { return "n" })
 	if len(gotStr) != 2 || gotStr[0] != "n" {
 		t.Fatalf("类型转换 Map 异常: %v", gotStr)
 	}

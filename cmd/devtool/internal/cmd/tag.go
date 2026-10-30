@@ -14,7 +14,7 @@ func newTagCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tag",
 		Short: "为当前项目打下一个递增版本 tag",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runTag(minor)
 		},
 	}

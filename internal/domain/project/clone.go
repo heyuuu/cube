@@ -14,8 +14,9 @@ type CloneRule struct {
 	LocalPath  string `json:"localPath"`  // 对应本地目录
 }
 
-func MatchCloneRule(repoUrl string, rules []CloneRule) (rule CloneRule, localPath string, ok bool) {
-	u, err := git.ParseRepoUrl(repoUrl)
+// MatchCloneRule 解析 repoURL 后按 host + 路径前缀匹配规则，返回命中的规则与其映射的本地路径。
+func MatchCloneRule(repoURL string, rules []CloneRule) (rule CloneRule, localPath string, ok bool) {
+	u, err := git.ParseRepoURL(repoURL)
 	if err != nil {
 		return
 	}

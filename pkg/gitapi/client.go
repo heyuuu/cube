@@ -23,7 +23,7 @@ import (
 type RemoteRepo struct {
 	Name          string    `json:"name"`          // 仓库短名，如 cube
 	FullName      string    `json:"fullName"`      // 全名（含命名空间前缀），如 heyuuu/cube
-	CloneUrl      string    `json:"cloneUrl"`      // 克隆地址（ssh / https 任一形态，对账时统一归一化）
+	CloneURL      string    `json:"cloneUrl"`      // 克隆地址（ssh / https 任一形态，对账时统一归一化）
 	DefaultBranch string    `json:"defaultBranch"` // 默认分支名
 	UpdatedAt     time.Time `json:"updatedAt"`     // 最近更新时间
 }

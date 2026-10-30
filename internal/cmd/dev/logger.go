@@ -18,7 +18,7 @@ func newLoggerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logger",
 		Short: "测试 slog 的各种输出（handler / 级别 / 结构化字段）",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runLoggerDemo()
 		},
 	}

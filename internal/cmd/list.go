@@ -27,7 +27,7 @@ query 支持两种搜索模式：
 
 不传入 query 时，显示所有项目。`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			// 获取输入参数
 			query := getArg(args, 0)
 
@@ -65,14 +65,14 @@ func showProjects(service *project.Service, projects []*project.Project) {
 			"RepoUrl",
 		},
 		slicekit.Map(projects, func(p *project.Project) []string {
-			repoUrl := ""
+			repoURL := ""
 			if info, ok := service.GitInfo(p.Path()); ok {
-				repoUrl = info.RepoUrl
+				repoURL = info.RepoURL
 			}
 			return []string{
 				p.Name(),
 				pathkit.PrettyPath(p.Path()),
-				repoUrl,
+				repoURL,
 			}
 		}),
 	)

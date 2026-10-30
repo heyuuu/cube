@@ -1,3 +1,4 @@
+// Package logger 进程日志：文件日志始终启用，debug 时附终端彩色输出，统一走 slog。
 package logger
 
 import (

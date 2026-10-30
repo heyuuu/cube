@@ -39,7 +39,7 @@ func TestTplSourceWrite(t *testing.T) {
 		t.Fatalf("save work 应成功, message=%q", r.Message)
 	}
 	out := list()
-	if len(out.List) != 2 || out.List[0].Name != "core" || out.List[0].RepoUrl != "git@github.com:heyuuu/cube-templates.git" {
+	if len(out.List) != 2 || out.List[0].Name != "core" || out.List[0].RepoURL != "git@github.com:heyuuu/cube-templates.git" {
 		t.Fatalf("保存后列表不符: %+v", out.List)
 	}
 
@@ -48,7 +48,7 @@ func TestTplSourceWrite(t *testing.T) {
 		t.Fatalf("替换应成功, message=%q", r.Message)
 	}
 	out = list()
-	if len(out.List) != 2 || out.List[0].RepoUrl != "git@github.com:heyuuu/cube-templates-v2.git" {
+	if len(out.List) != 2 || out.List[0].RepoURL != "git@github.com:heyuuu/cube-templates-v2.git" {
 		t.Fatalf("同名应替换而非追加: %+v", out.List)
 	}
 
@@ -57,9 +57,9 @@ func TestTplSourceWrite(t *testing.T) {
 	if badName.Ok || !strings.Contains(badName.Message, "source 名非法") {
 		t.Fatalf("坏 name 应报中文错误, message=%q", badName.Message)
 	}
-	badUrl := postJSON(t, env.url("/api/template/source/save"), `{"name":"local","repoUrl":"github.com/a/b"}`)
-	if badUrl.Ok || !strings.Contains(badUrl.Message, "repoUrl 不是合法地址") {
-		t.Fatalf("坏 repoUrl 应报中文错误, message=%q", badUrl.Message)
+	badURL := postJSON(t, env.url("/api/template/source/save"), `{"name":"local","repoUrl":"github.com/a/b"}`)
+	if badURL.Ok || !strings.Contains(badURL.Message, "repoUrl 不是合法地址") {
+		t.Fatalf("坏 repoUrl 应报中文错误, message=%q", badURL.Message)
 	}
 	if out := list(); len(out.List) != 2 {
 		t.Fatalf("坏数据不应落文件, got %+v", out.List)

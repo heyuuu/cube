@@ -1,3 +1,4 @@
+// Package pathkit 路径展示与处理小工具（纯函数；~ 展开等环境交互只出现在本包）。
 package pathkit
 
 import (
@@ -6,6 +7,7 @@ import (
 	"strings"
 )
 
+// PrettyPath 把 home 下的绝对路径美化为 ~ 缩写形式，其余规范化后原样返回。
 func PrettyPath(path string) string {
 	if path == "" {
 		return ""

@@ -27,7 +27,7 @@ func newServerCmd(a *app.App) *cobra.Command {
 		Use:   "server",
 		Short: "管理本地 web server（start / stop / status）",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runServerStatus(a)
 		},
 	}
@@ -48,7 +48,7 @@ func newServerStartCmd(a *app.App) *cobra.Command {
 		Use:   "start",
 		Short: "前台启动 server（Ctrl+C 退出）",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			// 常驻 server 启动后台任务（项目视图定时刷新等）；server 退出（Start 返回）时停止。
 			a.StartBackgroundJobs()
 			defer a.StopBackgroundJobs()
@@ -69,7 +69,7 @@ func newServerStopCmd(a *app.App) *cobra.Command {
 		Use:   "stop",
 		Short: "停止后台 server",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			client := client.NewClient(a.Server().ServerURL())
 			stopped, replaced, err := client.Stop()
 			if err != nil {
@@ -95,7 +95,7 @@ func newServerStatusCmd(a *app.App) *cobra.Command {
 		Use:   "status",
 		Short: "查看 server 运行状态",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runServerStatus(a)
 		},
 	}

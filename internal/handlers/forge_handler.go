@@ -14,10 +14,12 @@ type ForgeHandler struct {
 	projectService *project.Service // 对账用：本地项目快照投影为 forge.LocalRepo
 }
 
+// NewForgeHandler 构造 ForgeHandler。
 func NewForgeHandler(forgeService *forge.Service, projectService *project.Service) *ForgeHandler {
 	return &ForgeHandler{forgeService: forgeService, projectService: projectService}
 }
 
+// Register 注册 forge 域全部路由。
 func (h *ForgeHandler) Register(r *server.Routes) {
 	r.Get("/api/forge/list", "获取 forge 列表", server.JSONHandler(h.forgeList))
 	r.Post("/api/forge/save", "新增或按 host 替换 forge", server.JSONHandler(h.forgeSave))
@@ -172,7 +174,7 @@ func (h *ForgeHandler) localRepos() []forge.LocalRepo {
 	for _, p := range h.projectService.Projects() {
 		info := forge.LocalRepo{Name: p.Name(), Path: p.Path()}
 		if gi, ok := h.projectService.GitInfo(p.Path()); ok {
-			info.RepoUrl = gi.RepoUrl
+			info.RepoURL = gi.RepoURL
 			info.Dirty = gi.Dirty
 			info.Ahead = gi.Ahead
 			info.Behind = gi.Behind

@@ -30,7 +30,7 @@ func TestRepoKey(t *testing.T) {
 // TestRepoNamespacePath namespace 段推导（owner 归组与孤儿判定的依据）。
 func TestRepoNamespacePath(t *testing.T) {
 	cases := []struct {
-		repoUrl string
+		repoURL string
 		want    string
 	}{
 		{"git@github.com:heyuuu/cube.git", "heyuuu"},
@@ -40,8 +40,8 @@ func TestRepoNamespacePath(t *testing.T) {
 		{"not a url", ""},
 	}
 	for _, c := range cases {
-		if got := RepoNamespacePath(c.repoUrl); got != c.want {
-			t.Errorf("RepoNamespacePath(%q) = %q, want %q", c.repoUrl, got, c.want)
+		if got := RepoNamespacePath(c.repoURL); got != c.want {
+			t.Errorf("RepoNamespacePath(%q) = %q, want %q", c.repoURL, got, c.want)
 		}
 	}
 }
@@ -49,11 +49,11 @@ func TestRepoNamespacePath(t *testing.T) {
 // TestReconcile 对账二分：未 clone / 已 clone；孤儿判定在 buildOverview（namespace 口径），不走此函数。
 func TestReconcile(t *testing.T) {
 	local := []LocalRepo{
-		{Name: "cube", Path: "~/src/cube", RepoUrl: "git@github.com:heyuuu/cube.git", Dirty: true, Ahead: 2, Behind: 1},
+		{Name: "cube", Path: "~/src/cube", RepoURL: "git@github.com:heyuuu/cube.git", Dirty: true, Ahead: 2, Behind: 1},
 	}
 	remote := []gitapi.RemoteRepo{
-		{Name: "cube", CloneUrl: "https://github.com/heyuuu/cube.git"},
-		{Name: "fresh", CloneUrl: "https://github.com/heyuuu/fresh.git"},
+		{Name: "cube", CloneURL: "https://github.com/heyuuu/cube.git"},
+		{Name: "fresh", CloneURL: "https://github.com/heyuuu/fresh.git"},
 	}
 	got := Reconcile(local, remote)
 

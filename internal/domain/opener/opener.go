@@ -1,3 +1,5 @@
+// Package opener 「打开方式」领域：把目标（项目/目录/文件）按 role 配置的动作串
+// （exec 命令 / url 链接）交给系统执行，配置存 settings.json openers 节。
 package opener
 
 // Opener 一种「打开方式」的抽象（1016 接口化）。

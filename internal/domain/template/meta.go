@@ -9,13 +9,14 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+// MetaFileName 模板协议声明文件名（固定放在模板根目录）。
 const MetaFileName = "template.yaml"
 
 // TemplateVersionCurrent 是当前引擎支持的 template.yaml 协议版本。
 const TemplateVersionCurrent = 1
 
-// TemplateMeta 是模板根目录 MetaFile 的解析结果，引擎与模板之间的唯一契约。
-type TemplateMeta struct {
+// Meta 是模板根目录 template.yaml 的解析结果，引擎与模板之间的唯一契约。
+type Meta struct {
 	Version   int            `yaml:"version"`
 	Variables []VariableDecl `yaml:"variables"`
 	Patterns  []PatternDecl  `yaml:"patterns"`
@@ -37,6 +38,7 @@ type PatternDecl struct {
 	Scope   string `yaml:"scope"`
 }
 
+// MatchScope 判断 relPath 是否命中规则的 scope 通配（scope 为空视为全部匹配）。
 func (p PatternDecl) MatchScope(relPath string) bool {
 	if p.Scope == "" {
 		return true
@@ -47,8 +49,8 @@ func (p PatternDecl) MatchScope(relPath string) bool {
 
 // InitTemplateMeta 解析 template.yaml 内容。未知字段忽略（协议留白字段多，宽容优先），
 // yaml 的报错自带行号，直接透传给模板作者。
-func InitTemplateMeta(data []byte) (*TemplateMeta, error) {
-	var tpl TemplateMeta
+func InitTemplateMeta(data []byte) (*Meta, error) {
+	var tpl Meta
 	if err := yaml.Unmarshal(data, &tpl); err != nil {
 		return nil, fmt.Errorf("解析失败: %w", err)
 	}
@@ -82,7 +84,7 @@ func interpolate(s string, vars map[string]string) (string, error) {
 	return out, nil
 }
 
-// interpolatePatterns 对 TemplateMeta.Patterns 做插值运算
+// interpolatePatterns 对 Meta.Patterns 做插值运算
 func interpolatePatterns(patterns []PatternDecl, vars map[string]string) ([]PatternDecl, error) {
 	result := slices.Clone(patterns) // 复制，不影响原数据
 	for i, rule := range result {
@@ -95,7 +97,7 @@ func interpolatePatterns(patterns []PatternDecl, vars map[string]string) ([]Patt
 	return result, nil
 }
 
-// interpolateInit 对 TemplateMeta.Init 做插值运算
+// interpolateInit 对 Meta.Init 做插值运算
 func interpolateInit(init []string, vars map[string]string) ([]string, error) {
 	result := slices.Clone(init) // 复制，不影响原数据
 	for i, cmd := range result {

@@ -21,7 +21,7 @@ func newRefreshGitCacheCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "refresh-projcache",
 		Short: "手动触发 projcache 全量采集（重扫项目 + 刷新 git.json，实测耗时）",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			fmt.Println("开始采集全部项目 git 信息 ...")
 			start := time.Now()
 			total, collected, err := a.ProjectService().Refresh()

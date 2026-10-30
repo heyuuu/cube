@@ -7,6 +7,7 @@ import (
 	"cube/pkg/slicekit"
 )
 
+// MatchBy 用 scorer 对 targets 模糊匹配并按分数降序返回命中项（scorer 为 nil 用默认计分器）。
 func MatchBy[T any](query string, targets []T, keywordGetter func(T) string, scorer Scorer) []T {
 	if scorer == nil {
 		scorer = defaultScorer

@@ -41,11 +41,11 @@ type GitRepoSpec struct {
 	// Tags 要打的 tag 列表（在初始 commit 上打）。
 	Tags []string
 
-	// RemoteUrl 配置的 origin remote 地址。空串表示不加 remote。
-	RemoteUrl string
+	// RemoteURL 配置的 origin remote 地址。空串表示不加 remote。
+	RemoteURL string
 
 	// AheadBy 在初始 commit 之后，本地再追加多少个 commit（造成 ahead）。
-	// 配合 RemoteUrl 模拟 origin remote（指向一个本地旧仓库）才有意义。
+	// 配合 RemoteURL 模拟 origin remote（指向一个本地旧仓库）才有意义。
 	AheadBy int
 
 	// MakeDirty 为 true 时，builder 结束后在工作区留一个未提交改动（dirty 状态）。
@@ -74,8 +74,8 @@ func BuildGitRepo(t testing.TB, dir string, spec GitRepoSpec) {
 	for _, tag := range spec.Tags {
 		runGit(t, dir, "tag", tag)
 	}
-	if spec.RemoteUrl != "" {
-		runGit(t, dir, "remote", "add", "origin", spec.RemoteUrl)
+	if spec.RemoteURL != "" {
+		runGit(t, dir, "remote", "add", "origin", spec.RemoteURL)
 	}
 	for i := 0; i < spec.AheadBy; i++ {
 		runGit(t, dir, "commit", "--allow-empty", "-m", fmt.Sprintf("ahead %d", i+1))

@@ -10,10 +10,12 @@ type TemplateHandler struct {
 	templateService *template.Service
 }
 
+// NewTemplateHandler 构造 TemplateHandler。
 func NewTemplateHandler(templateService *template.Service) *TemplateHandler {
 	return &TemplateHandler{templateService: templateService}
 }
 
+// Register 注册 template 域端点（实现 server.Handler）。
 func (h *TemplateHandler) Register(r *server.Routes) {
 	r.Get("/api/template/source/list", "获取模板源列表（含默认源名）", server.JSONHandler(h.sourceList))
 	r.Post("/api/template/source/save", "新增或按 name 替换模板源", server.JSONHandler(h.sourceSave))
@@ -39,12 +41,12 @@ func (h *TemplateHandler) sourceList(_ struct{}) (TplSourceListResult, error) {
 type TplSourceSaveInput struct {
 	Body struct {
 		Name    string `json:"name" doc:"source 名（cube create 的引用短名，如 core）"`
-		RepoUrl string `json:"repoUrl" doc:"git 仓库地址（git@host:path / https://host/path / 本地绝对路径）"`
+		RepoURL string `json:"repoUrl" doc:"git 仓库地址（git@host:path / https://host/path / 本地绝对路径）"`
 	}
 }
 
 func (h *TemplateHandler) sourceSave(input TplSourceSaveInput) (map[string]any, error) {
-	src := template.TplSource{Name: input.Body.Name, RepoUrl: input.Body.RepoUrl}
+	src := template.TplSource{Name: input.Body.Name, RepoURL: input.Body.RepoURL}
 	if err := h.templateService.SaveTplSource(src); err != nil {
 		return nil, err
 	}

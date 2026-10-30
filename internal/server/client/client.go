@@ -1,3 +1,4 @@
+// Package client cube server 的 localhost HTTP 客户端（CLI 对 server 进程探活 / 关停走此）。
 package client
 
 import (
@@ -21,15 +22,17 @@ const (
 	probeTimeout  = 10 * time.Second
 )
 
+// Client cube server 的 localhost 客户端。
 type Client struct {
-	baseUrl string
+	baseURL string
 }
 
-func NewClient(baseUrl string) *Client {
-	if !strings.HasSuffix(baseUrl, "/") {
-		baseUrl += "/"
+// NewClient 以 server 根 URL 构造 Client（自动补尾部 /）。
+func NewClient(baseURL string) *Client {
+	if !strings.HasSuffix(baseURL, "/") {
+		baseURL += "/"
 	}
-	return &Client{baseUrl: baseUrl}
+	return &Client{baseURL: baseURL}
 }
 
 // StatusInfo server 状态查询结果。
@@ -41,8 +44,8 @@ type StatusInfo struct {
 
 // Status 获取服务端状态
 func (c *Client) Status() StatusInfo {
-	url := c.baseUrl + "api/system/status"
-	resp, err := doJsonRequest[handlers.StatusResponse](http.MethodGet, url, nil)
+	url := c.baseURL + "api/system/status"
+	resp, err := doJSONRequest[handlers.StatusResponse](http.MethodGet, url, nil)
 	if err != nil {
 		return StatusInfo{}
 	}
@@ -66,7 +69,7 @@ func (c *Client) Stop() (stopped bool, replaced bool, err error) {
 	instanceID := st.Instance
 
 	// 触发 shutdown 请求
-	_, err = doJsonRequest[string](http.MethodPost, c.baseUrl+"api/system/shutdown", map[string]any{
+	_, err = doJSONRequest[string](http.MethodPost, c.baseURL+"api/system/shutdown", map[string]any{
 		"token": handlers.GenShutdownToken(instanceID, time.Now()),
 	})
 	if err != nil {
@@ -98,7 +101,7 @@ func (c *Client) waitOldStop(oldInstance string) (replace bool, err error) {
 
 // helpers
 
-func doJsonRequest[T any](method string, url string, body any) (*T, error) {
+func doJSONRequest[T any](method string, url string, body any) (*T, error) {
 	// 构造 body reader
 	var bodyReader io.Reader
 	if body != nil {

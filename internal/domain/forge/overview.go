@@ -69,7 +69,7 @@ func buildOverview(forges []Forge, accounts []Account, lookup func(Account) (Acc
 		for _, r := range repos {
 			if ns, _, ok := strings.Cut(r.FullName, "/"); ok && ns != "" {
 				nsSet[strings.ToLower(ns)] = true
-			} else if ns := RepoNamespacePath(r.CloneUrl); ns != "" {
+			} else if ns := RepoNamespacePath(r.CloneURL); ns != "" {
 				nsSet[ns] = true
 			}
 		}
@@ -77,25 +77,25 @@ func buildOverview(forges []Forge, accounts []Account, lookup func(Account) (Acc
 		result := Reconcile(local, repos)
 		for _, r := range result.Missing {
 			ov.Rows = append(ov.Rows, RepoRow{
-				ForgeHost: host, Owner: repoOwner(r.FullName, r.CloneUrl),
+				ForgeHost: host, Owner: repoOwner(r.FullName, r.CloneURL),
 				Status: StatusMissing, Repo: r,
 			})
 		}
 		for _, pair := range result.Synced {
 			local := pair.Local
-			claimed[RepoKey(local.RepoUrl)] = true
+			claimed[RepoKey(local.RepoURL)] = true
 			ov.Rows = append(ov.Rows, RepoRow{
-				ForgeHost: host, Owner: repoOwner(pair.Remote.FullName, pair.Remote.CloneUrl),
+				ForgeHost: host, Owner: repoOwner(pair.Remote.FullName, pair.Remote.CloneURL),
 				Status: StatusSynced, Repo: pair.Remote, Local: &local,
 			})
 		}
 		// 孤儿：host 命中该 forge、namespace 在拉取结果的全集里、但仓库本身不在其中
 		for _, l := range local {
-			key := RepoKey(l.RepoUrl)
-			if key == "" || claimed[key] || !strings.EqualFold(RepoHost(l.RepoUrl), host) {
+			key := RepoKey(l.RepoURL)
+			if key == "" || claimed[key] || !strings.EqualFold(RepoHost(l.RepoURL), host) {
 				continue
 			}
-			ns := RepoNamespacePath(l.RepoUrl)
+			ns := RepoNamespacePath(l.RepoURL)
 			if ns == "" || !nsSet[ns] {
 				continue
 			}
@@ -106,10 +106,10 @@ func buildOverview(forges []Forge, accounts []Account, lookup func(Account) (Acc
 	return ov
 }
 
-// repoOwner 从 full_name 或 cloneUrl 推导 owner（namespace）段。
-func repoOwner(fullName, cloneUrl string) string {
+// repoOwner 从 full_name 或 cloneURL 推导 owner（namespace）段。
+func repoOwner(fullName, cloneURL string) string {
 	if ns, _, ok := strings.Cut(fullName, "/"); ok && ns != "" {
 		return ns
 	}
-	return RepoNamespacePath(cloneUrl)
+	return RepoNamespacePath(cloneURL)
 }

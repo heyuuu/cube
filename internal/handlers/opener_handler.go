@@ -13,6 +13,7 @@ import (
 
 // --- dto ---
 
+// OpenerDTO opener 列表 / 编辑回显的 API 形态。
 type OpenerDTO struct {
 	Name    string            `json:"name"`
 	Title   string            `json:"title"`   // 展示文案（如「打开所在目录」），缺省由 name 生成
@@ -48,16 +49,19 @@ func toOpenerDTO(entity opener.Opener) *OpenerDTO {
 
 // --- handler ---
 
+// OpenerHandler opener 域 HTTP 出口。
 type OpenerHandler struct {
 	service *opener.Service
 }
 
+// NewOpenerHandler 构造 OpenerHandler。
 func NewOpenerHandler(service *opener.Service) *OpenerHandler {
 	return &OpenerHandler{
 		service: service,
 	}
 }
 
+// Register 注册 opener 域端点（实现 server.Handler）。
 func (h *OpenerHandler) Register(r *server.Routes) {
 	r.Get("/api/opener/list", "获取 opener 列表", server.JSONHandler(h.openerList))
 	r.Get("/api/opener/intents", "获取打开意图清单（intent → 默认 opener + 候选）", server.JSONHandler(h.openerIntents))

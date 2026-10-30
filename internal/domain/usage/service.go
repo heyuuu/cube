@@ -27,14 +27,17 @@ const (
 // 每个 (project, opener) 组合的最新一条不受保留期约束（否则排序信号会整体消失）。
 const retentionDays = 30
 
+// Service 使用记录服务：追加 JSONL 记录，读侧做最近使用聚合。
 type Service struct {
 	usageFilePath string // usage.jsonl 文件路径
 }
 
+// NewServiceInject 由 Paths 装配 Service（DI 注入用）。
 func NewServiceInject(paths config.Paths) *Service {
 	return NewService(paths.StateDir())
 }
 
+// NewService 以 state 目录路径构造 Service（记录文件为其下 usage.jsonl）。
 func NewService(statePath string) *Service {
 	return &Service{
 		usageFilePath: filepath.Join(statePath, usageFileName),

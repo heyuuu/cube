@@ -33,7 +33,7 @@ func newCheckCmd(a *app.App) *cobra.Command {
     包括不在默认分支、有 ahead/behind 差异、工作区 dirty。
 
 不传 options 时，依次执行全部检查项。`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			options := args
 			if len(options) == 0 {
 				options = allCheckItems
@@ -64,15 +64,15 @@ func checkCloneRules(service *project.Service) {
 	var rows [][]string
 	for _, p := range projects {
 		info, ok := service.GitInfo(p.Path())
-		repoUrl := ""
+		repoURL := ""
 		if ok {
-			repoUrl = info.RepoUrl
+			repoURL = info.RepoURL
 		}
-		if repoUrl == "" {
+		if repoURL == "" {
 			continue
 		}
 
-		_, localPath, ok := service.MatchCloneRule(repoUrl)
+		_, localPath, ok := service.MatchCloneRule(repoURL)
 
 		// 有预期本地路径，但和目前实际路径不符合的情况下
 		if ok && p.Path() != localPath {
@@ -80,7 +80,7 @@ func checkCloneRules(service *project.Service) {
 				p.Name(),
 				pathkit.PrettyPath(p.Path()),
 				pathkit.PrettyPath(localPath),
-				repoUrl,
+				repoURL,
 			})
 		}
 	}
@@ -101,7 +101,7 @@ func checkGitDirty(service *project.Service) {
 
 	targets := slicekit.Filter(projects, func(p *project.Project) bool {
 		info, ok := service.GitInfo(p.Path())
-		if !ok || len(info.RepoUrl) == 0 {
+		if !ok || len(info.RepoURL) == 0 {
 			return false
 		}
 

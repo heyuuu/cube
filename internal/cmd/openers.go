@@ -18,7 +18,7 @@ func newOpenersCmd(a *app.App) *cobra.Command {
 		Long: `显示可用 opener 列表：名称、执行命令及声明的 roles。
 
 query 按 opener 名称模糊搜索，不传时显示全部。`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			var query string
 			if len(args) > 0 {
 				query = args[0]

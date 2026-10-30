@@ -18,7 +18,7 @@ const (
 	PenaltyMaxLeadingLetter            // 距离首个字符距离的总惩罚分上限
 )
 
-var defaultBonus map[int]int = map[int]int{
+var defaultBonus = map[int]int{
 	BonusBase:               10000,
 	BonusSequential:         15,
 	BonusSeparator:          30,
@@ -39,6 +39,7 @@ func init() {
 
 const bonusMaxMatch = 255
 
+// BonusScorer 按 bonus 权重表计算 query 对 target 的模糊匹配分；不可匹配时 ok=false。
 func BonusScorer(query string, target string, bonus map[int]int) (int, bool) {
 	if len(query) == 0 {
 		return bonus[BonusBase], true

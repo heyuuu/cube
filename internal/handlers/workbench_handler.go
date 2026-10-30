@@ -21,14 +21,17 @@ import (
 // 工作台基座（提案 docs/proposals/1010-1013 系列）：repo 信息 / refs / tree /
 // file / diff / commits / worktree / branch / pty 等端点的 HTTP 出口。
 
+// WorkbenchHandler workbench 域 HTTP 出口。
 type WorkbenchHandler struct {
 	workbenchService *workbench.Service
 }
 
+// NewWorkbenchHandler 构造 WorkbenchHandler。
 func NewWorkbenchHandler(workbenchService *workbench.Service) *WorkbenchHandler {
 	return &WorkbenchHandler{workbenchService: workbenchService}
 }
 
+// Register 注册 workbench 域端点（实现 server.Handler）。
 func (h *WorkbenchHandler) Register(r *server.Routes) {
 	r.Get("/api/workbench/info", "获取工作台仓库信息", server.JSONHandler(h.info))
 	r.Get("/api/workbench/refs", "获取工作台分支与tag列表", server.JSONHandler(h.refs))

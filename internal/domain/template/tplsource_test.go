@@ -22,14 +22,14 @@ func TestValidateTplSource(t *testing.T) {
 		src     TplSource
 		wantErr string // 空 = 应通过
 	}{
-		{"合法 ssh 地址", TplSource{Name: "core", RepoUrl: "git@github.com:heyuuu/cube-templates.git"}, ""},
-		{"合法 https 地址", TplSource{Name: "work-2_x", RepoUrl: "https://github.com/a/b.git"}, ""},
-		{"合法本地绝对路径", TplSource{Name: "local", RepoUrl: "/local/path/tpl.git"}, ""},
-		{"name 含路径分隔符", TplSource{Name: "a/b", RepoUrl: "git@github.com:a/b.git"}, "source 名非法"},
-		{"name 相对逃逸", TplSource{Name: "..", RepoUrl: "git@github.com:a/b.git"}, "source 名非法"},
-		{"name 空白", TplSource{Name: " ", RepoUrl: "git@github.com:a/b.git"}, "source 名非法"},
-		{"repoUrl 裸 host 路径", TplSource{Name: "core", RepoUrl: "github.com/a/b"}, "repoUrl 不是合法地址"},
-		{"repoUrl 空", TplSource{Name: "core", RepoUrl: ""}, "repoUrl 不是合法地址"},
+		{"合法 ssh 地址", TplSource{Name: "core", RepoURL: "git@github.com:heyuuu/cube-templates.git"}, ""},
+		{"合法 https 地址", TplSource{Name: "work-2_x", RepoURL: "https://github.com/a/b.git"}, ""},
+		{"合法本地绝对路径", TplSource{Name: "local", RepoURL: "/local/path/tpl.git"}, ""},
+		{"name 含路径分隔符", TplSource{Name: "a/b", RepoURL: "git@github.com:a/b.git"}, "source 名非法"},
+		{"name 相对逃逸", TplSource{Name: "..", RepoURL: "git@github.com:a/b.git"}, "source 名非法"},
+		{"name 空白", TplSource{Name: " ", RepoURL: "git@github.com:a/b.git"}, "source 名非法"},
+		{"repoUrl 裸 host 路径", TplSource{Name: "core", RepoURL: "github.com/a/b"}, "repoUrl 不是合法地址"},
+		{"repoUrl 空", TplSource{Name: "core", RepoURL: ""}, "repoUrl 不是合法地址"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -57,27 +57,27 @@ func TestTplSourceCRUD(t *testing.T) {
 	}
 
 	// save 两条
-	if err := s.SaveTplSource(TplSource{Name: "core", RepoUrl: "git@github.com:a/core.git"}); err != nil {
+	if err := s.SaveTplSource(TplSource{Name: "core", RepoURL: "git@github.com:a/core.git"}); err != nil {
 		t.Fatalf("save core 失败: %v", err)
 	}
-	if err := s.SaveTplSource(TplSource{Name: "work", RepoUrl: "https://github.com/a/work.git"}); err != nil {
+	if err := s.SaveTplSource(TplSource{Name: "work", RepoURL: "https://github.com/a/work.git"}); err != nil {
 		t.Fatalf("save work 失败: %v", err)
 	}
 
 	// 同名替换而非追加（name 是唯一键）
-	if err := s.SaveTplSource(TplSource{Name: "core", RepoUrl: "git@github.com:a/core-v2.git"}); err != nil {
+	if err := s.SaveTplSource(TplSource{Name: "core", RepoURL: "git@github.com:a/core-v2.git"}); err != nil {
 		t.Fatalf("替换 core 失败: %v", err)
 	}
 	got := s.TplSources()
-	if len(got) != 2 || got[0].RepoUrl != "git@github.com:a/core-v2.git" {
+	if len(got) != 2 || got[0].RepoURL != "git@github.com:a/core-v2.git" {
 		t.Fatalf("同名应原位替换: %+v", got)
 	}
 
 	// 坏数据不落文件
-	if err := s.SaveTplSource(TplSource{Name: "a/b", RepoUrl: "git@github.com:a/b.git"}); err == nil || !strings.Contains(err.Error(), "source 名非法") {
+	if err := s.SaveTplSource(TplSource{Name: "a/b", RepoURL: "git@github.com:a/b.git"}); err == nil || !strings.Contains(err.Error(), "source 名非法") {
 		t.Fatalf("坏 name 应报中文错误, got %v", err)
 	}
-	if err := s.SaveTplSource(TplSource{Name: "bad-url", RepoUrl: "github.com/a/b"}); err == nil || !strings.Contains(err.Error(), "repoUrl 不是合法地址") {
+	if err := s.SaveTplSource(TplSource{Name: "bad-url", RepoURL: "github.com/a/b"}); err == nil || !strings.Contains(err.Error(), "repoUrl 不是合法地址") {
 		t.Fatalf("坏 repoUrl 应报中文错误, got %v", err)
 	}
 	if len(s.TplSources()) != 2 {

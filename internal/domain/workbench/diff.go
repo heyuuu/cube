@@ -38,9 +38,9 @@ type DiffTreesResult struct {
 func sourceFileMap(root string, src TreeSource) (map[string]string, error) {
 	switch src.Type {
 	case SourceTypeWorktree:
-		return lsFilesFileMap(src.Id)
+		return lsFilesFileMap(src.ID)
 	case SourceTypeCommit, SourceTypeRef:
-		return git.FileShasAtRef(root, src.Id)
+		return git.FileShasAtRef(root, src.ID)
 	default:
 		return nil, fmt.Errorf("未知的 sourceType: %q", src.Type)
 	}
@@ -116,7 +116,7 @@ type FileDiffResult struct {
 // 新增/删除文件的对比天然是「一侧全文、一侧空白」，由行级 diff 自然呈现整体增删。
 func readSide(root string, src TreeSource, file string) ([]byte, error) {
 	if src.Type == SourceTypeWorktree {
-		full, err := secureJoin(src.Id, file)
+		full, err := secureJoin(src.ID, file)
 		if err != nil {
 			return nil, err
 		}
@@ -126,10 +126,10 @@ func readSide(root string, src TreeSource, file string) ([]byte, error) {
 		}
 		return data, err
 	}
-	if !git.ExistsAtRef(root, src.Id, file) {
+	if !git.ExistsAtRef(root, src.ID, file) {
 		return nil, nil
 	}
-	return git.ReadFileAtRef(root, src.Id, file)
+	return git.ReadFileAtRef(root, src.ID, file)
 }
 
 // parseUnifiedDiff 解析 unified diff 输出（跳过 +++/--- 头，只取 @@ 与正文行）。
@@ -138,8 +138,8 @@ func parseUnifiedDiff(out string) []Hunk {
 	var cur *Hunk
 	for _, line := range strings.Split(out, "\n") {
 		if strings.HasPrefix(line, "@@") {
-			os_, ns, oc, nc := parseHunkHeader(line)
-			hunks = append(hunks, Hunk{OldStart: os_, NewStart: ns, OldCount: oc, NewCount: nc})
+			os, ns, oc, nc := parseHunkHeader(line)
+			hunks = append(hunks, Hunk{OldStart: os, NewStart: ns, OldCount: oc, NewCount: nc})
 			cur = &hunks[len(hunks)-1]
 			continue
 		}
@@ -194,7 +194,7 @@ const emptyTreeSha = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 // diffTreesGit 两侧都是 tree-ish：走 git.DiffFiles（name-status + rename 检测），
 // 状态字母映射为前端语义词。
 func diffTreesGit(root string, base TreeSource, current TreeSource) (*DiffTreesResult, error) {
-	files, err := git.DiffFiles(root, base.Id, current.Id)
+	files, err := git.DiffFiles(root, base.ID, current.ID)
 	if err != nil {
 		return nil, err
 	}

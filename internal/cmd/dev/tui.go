@@ -19,7 +19,7 @@ func newTuiCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tui [component]",
 		Short: "演示 tui 包各组件（交互 / 渲染 / 错误语义）",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return runTuiDemo(args)
 		},
 	}

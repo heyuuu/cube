@@ -19,7 +19,7 @@ func newOpenapiCmd(a *app.App) *cobra.Command {
 		Aliases: []string{"api"},
 		Short:   "生成 OpenAPI 3.1 spec 到文件",
 		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return writeOpenAPIFile(a, outPath)
 		},
 	}

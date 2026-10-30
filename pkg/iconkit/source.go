@@ -1,5 +1,6 @@
 // 从任意源（本地路径 / URL）提取图标：IconField「提取」入口的领域分发 + 图片字节解码。
 // 与 iconkit.go 的 .app/icns 提取同处一个包，输出口径一致（≤64px PNG）。
+
 package iconkit
 
 import (
@@ -100,12 +101,12 @@ func DecodeImage(data []byte) (image.Image, error) {
 	return nil, fmt.Errorf("无法识别的图片格式（支持 PNG / JPEG / GIF / ICO）")
 }
 
-// EncodeImageScaled 把已解码图像等比缩放到最长边 ≤max 并编码为 PNG 字节
-// （不长于 max 时直接编码，不放大；与 ScalePng 共享同一缩放实现）。
-func EncodeImageScaled(img image.Image, max int) ([]byte, error) {
+// EncodeImageScaled 把已解码图像等比缩放到最长边 ≤maxSize 并编码为 PNG 字节
+// （不长于 maxSize 时直接编码，不放大；与 ScalePng 共享同一缩放实现）。
+func EncodeImageScaled(img image.Image, maxSize int) ([]byte, error) {
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
-	if w <= max && h <= max {
+	if w <= maxSize && h <= maxSize {
 		var out bytes.Buffer
 		if err := png.Encode(&out, img); err != nil {
 			return nil, fmt.Errorf("编码 PNG 失败: %w", err)
@@ -115,9 +116,9 @@ func EncodeImageScaled(img image.Image, max int) ([]byte, error) {
 
 	var nw, nh int
 	if w >= h {
-		nw, nh = max, max*h/w
+		nw, nh = maxSize, maxSize*h/w
 	} else {
-		nw, nh = max*w/h, max
+		nw, nh = maxSize*w/h, maxSize
 	}
 	dst := image.NewRGBA(image.Rect(0, 0, nw, nh))
 	for y := 0; y < nh; y++ {

@@ -16,7 +16,7 @@ const tplSourcesSection = "tplSources"
 // name 是 cube create 的引用短名（@name/模板名），节内顺序即 create 交互的选择顺序。
 type TplSource struct {
 	Name    string `json:"name"`
-	RepoUrl string `json:"repoUrl"`
+	RepoURL string `json:"repoUrl"`
 }
 
 // tplSourceNamePattern source 名约束：字母或数字开头，仅含字母/数字/-/_，最长 32。
@@ -28,31 +28,31 @@ func ValidateTplSource(src TplSource) error {
 	if !tplSourceNamePattern.MatchString(strings.TrimSpace(src.Name)) {
 		return fmt.Errorf("source 名非法: %q（需字母或数字开头，仅含字母/数字/-/_，最长 32）", src.Name)
 	}
-	if err := validateTplSourceUrl(src.RepoUrl); err != nil {
+	if err := validateTplSourceURL(src.RepoURL); err != nil {
 		return err
 	}
 	return nil
 }
 
-// validateTplSourceUrl 校验 repoUrl 是可 clone 的 git 地址：git@host:path / https://host:path /
+// validateTplSourceURL 校验 repoURL 是可 clone 的 git 地址：git@host:path / https://host:path /
 // 本地绝对路径（模板仓库放本地盘也是正当用法，git 原生支持 clone 本地路径）。
-// ParseRepoUrl 对裸路径/裸 host 也解析成功（scheme/host 为空），这里按形态收紧。
-func validateTplSourceUrl(rawUrl string) error {
-	trimmed := strings.TrimSpace(rawUrl)
+// ParseRepoURL 对裸路径/裸 host 也解析成功（scheme/host 为空），这里按形态收紧。
+func validateTplSourceURL(rawURL string) error {
+	trimmed := strings.TrimSpace(rawURL)
 	if filepath.IsAbs(trimmed) {
 		return nil
 	}
-	u, err := git.ParseRepoUrl(trimmed)
+	u, err := git.ParseRepoURL(trimmed)
 	if err != nil {
-		return fmt.Errorf("repoUrl 不是合法地址: url=%s", rawUrl)
+		return fmt.Errorf("repoUrl 不是合法地址: url=%s", rawURL)
 	}
 	switch u.Scheme {
 	case "git", "https", "http":
 	default:
-		return fmt.Errorf("repoUrl 不是合法地址: url=%s（支持 git@host:path、https://host/path 或本地绝对路径）", rawUrl)
+		return fmt.Errorf("repoUrl 不是合法地址: url=%s（支持 git@host:path、https://host/path 或本地绝对路径）", rawURL)
 	}
 	if u.Host == "" || u.Path == "" {
-		return fmt.Errorf("repoUrl 不是合法地址: url=%s（缺少 host 或仓库路径）", rawUrl)
+		return fmt.Errorf("repoUrl 不是合法地址: url=%s（缺少 host 或仓库路径）", rawURL)
 	}
 	return nil
 }

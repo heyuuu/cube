@@ -55,8 +55,8 @@ func WorktreeMain(dir string) string {
 	// 与调用方持有的扫描路径可能不一致，返回前同样求值保持口径统一
 	const marker = "/.git/worktrees/"
 	if idx := strings.Index(gitdir, marker); idx >= 0 {
-		if real, err := filepath.EvalSymlinks(gitdir[:idx]); err == nil {
-			return real
+		if resolved, err := filepath.EvalSymlinks(gitdir[:idx]); err == nil {
+			return resolved
 		}
 		return gitdir[:idx]
 	}

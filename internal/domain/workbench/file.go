@@ -48,7 +48,7 @@ func readFile(root string, src TreeSource, file string) (*FileResult, error) {
 func readFileData(root string, src TreeSource, file string, maxBytes int64) (data []byte, deleted bool, err error) {
 	switch src.Type {
 	case SourceTypeWorktree:
-		full, err := secureJoin(src.Id, file)
+		full, err := secureJoin(src.ID, file)
 		if err != nil {
 			return nil, false, err
 		}
@@ -73,10 +73,10 @@ func readFileData(root string, src TreeSource, file string, maxBytes int64) (dat
 		return data, false, nil
 	case SourceTypeCommit, SourceTypeRef:
 		// 该提交里被删除的文件（差异树的删除行）：返回标记而非错误
-		if !git.ExistsAtRef(root, src.Id, file) {
+		if !git.ExistsAtRef(root, src.ID, file) {
 			return nil, true, nil
 		}
-		data, err := git.ReadFileAtRef(root, src.Id, file)
+		data, err := git.ReadFileAtRef(root, src.ID, file)
 		if err != nil {
 			return nil, false, err
 		}
@@ -110,7 +110,7 @@ func saveFile(path string, src TreeSource, file string, content string) (*FileRe
 	if _, err := repoRoot(path); err != nil {
 		return nil, err
 	}
-	full, err := secureJoin(src.Id, file)
+	full, err := secureJoin(src.ID, file)
 	if err != nil {
 		return nil, err
 	}

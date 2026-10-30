@@ -20,7 +20,7 @@ import (
 func startMockCubeServer(t *testing.T, version string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(server.Envelope[handlers.StatusResponse]{
 			Ok:   true,
 			Data: &handlers.StatusResponse{App: "cube", Version: version, Instance: "mock-inst"},
@@ -55,7 +55,7 @@ func TestClientStatus_NotRunning(t *testing.T) {
 func TestClientStatus_NotCube(t *testing.T) {
 	// 模拟别的服务（app != "cube"）
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"ok":true,"data":{"app":"not-cube","version":"x"}}`))
 	})
 	srv := httptest.NewServer(mux)
@@ -128,7 +128,7 @@ func TestClientStop_ShutdownAndConfirm(t *testing.T) {
 func TestClientStop_ReplacedByNewInstance(t *testing.T) {
 	instance := "old-inst"
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintf(w, `{"ok":true,"data":{"app":"cube","version":"v1","instance":%q}}`, instance)
 	})
 	mux.HandleFunc("/api/system/shutdown", func(w http.ResponseWriter, r *http.Request) {

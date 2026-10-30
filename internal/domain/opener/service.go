@@ -18,12 +18,14 @@ const settingsSection = "openers"
 // 值 = {defaultOpener?, openers?}。openers 节保持纯清单，意图与默认独立成节。
 const intentsSection = "openerIntents"
 
+// Service opener 领域服务：openers 节现读（直读不缓存，改完即生效）+ 模糊检索。
 type Service struct {
 	settingsFile string   // settings.json 路径，每次查询现读（直读不缓存，Web 改完立刻生效）
 	executor     Executor // 逐条构造 actionOpener 时注入；nil 时由 InitActionOpener 装默认执行器
 	baseURL      string   // 站内路由基地址（如 http://127.0.0.1:6001），装配注入
 }
 
+// NewServiceInject di 装配入口：从 config/paths 组装 settings 路径与 baseURL。
 func NewServiceInject(cfg config.Config, paths config.Paths) *Service {
 	return NewService(paths.SettingsFile(), nil, server.BaseURL(cfg.Server))
 }
@@ -52,22 +54,27 @@ func (s *Service) openers() []Opener {
 	return list
 }
 
+// AllOpeners 返回全部 opener（坏条目已跳过，不阻断）。
 func (s *Service) AllOpeners() []Opener { return s.openers() }
 
+// RoleOpeners 返回声明了指定 role 的 opener。
 func (s *Service) RoleOpeners(role Role) []Opener {
 	return slicekit.Filter(s.openers(), func(o Opener) bool {
 		return slices.Contains(o.Roles(), role)
 	})
 }
 
+// SearchAll 按名称模糊检索全部 opener。
 func (s *Service) SearchAll(query string) []Opener {
 	return fuzzy.MatchBy(query, s.openers(), Opener.Name, nil)
 }
 
+// SearchFor 在指定 role 的 opener 中按名称模糊检索。
 func (s *Service) SearchFor(role Role, query string) []Opener {
 	return fuzzy.MatchBy(query, s.RoleOpeners(role), Opener.Name, nil)
 }
 
+// FindByName 按名称精确查找 opener，未命中返回 nil。
 func (s *Service) FindByName(name string) Opener {
 	for _, o := range s.openers() {
 		if o.Name() == name {

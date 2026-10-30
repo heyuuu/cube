@@ -11,8 +11,11 @@ import (
 	"cube/pkg/pathkit"
 )
 
+// DefaultSource 缺省模板源名（免配置即可 create 的体验兜底）。
 const DefaultSource = "core"
-const DefaultSourceRepoUrl = "git@github.com:heyuuu/cube-templates.git"
+
+// DefaultSourceRepoURL 缺省源的官方仓库地址（源缺配置时报错附建议用）。
+const DefaultSourceRepoURL = "git@github.com:heyuuu/cube-templates.git"
 
 // loadSourceDir 解析 sourceRef 为可用的模板源目录，返回目录与 cleanup（非 nil 时用后须调用）。
 // sourceRef 两种形态：本地绝对路径直读（开发态，不 clone）；名字查注册表后临时 clone（发布态）。
@@ -25,12 +28,12 @@ func loadSourceDir(sourceRef string, sources []TplSource) (dir string, cleanup f
 		return sourceRef, nil, nil
 	}
 
-	// 名字：查 tplSources 注册表拿 repoUrl
+	// 名字：查 tplSources 注册表拿 repoURL
 	src := findTplSource(sources, sourceRef)
 	if src == nil {
 		return "", nil, missingSourceErr(sourceRef)
 	}
-	return cloneSource(src.RepoUrl)
+	return cloneSource(src.RepoURL)
 }
 
 // findTplSource 在注册表中按 name 查找（name 已在写侧保证唯一）。
@@ -46,22 +49,22 @@ func findTplSource(sources []TplSource, name string) *TplSource {
 // missingSourceErr 未注册的源引用错误；缺省源缺配置时附建议地址（来自常量，core 是体验兜底）。
 func missingSourceErr(name string) error {
 	if name == DefaultSource {
-		return fmt.Errorf("未找到指定模板源: %s（可在设置页「模板源」配置，默认源建议: %s）", name, DefaultSourceRepoUrl)
+		return fmt.Errorf("未找到指定模板源: %s（可在设置页「模板源」配置，默认源建议: %s）", name, DefaultSourceRepoURL)
 	}
 	return fmt.Errorf("未找到指定模板源: %s（可在设置页「模板源」配置）", name)
 }
 
 // cloneSource 浅克隆模板仓库到系统临时目录，cleanup 删除整个临时目录（clone 失败时自清理）。
-func cloneSource(repoUrl string) (dir string, cleanup func(), err error) {
+func cloneSource(repoURL string) (dir string, cleanup func(), err error) {
 	dir, err = os.MkdirTemp("", "cube-tpl-")
 	if err != nil {
 		return "", nil, fmt.Errorf("创建临时目录失败: %w", err)
 	}
 	cleanup = func() { _ = os.RemoveAll(dir) }
 
-	if err := git.Clone(dir, repoUrl, 1, ""); err != nil {
+	if err := git.Clone(dir, repoURL, 1, ""); err != nil {
 		cleanup()
-		return "", nil, fmt.Errorf("拉取模板源失败: url=%s err=%w", repoUrl, err)
+		return "", nil, fmt.Errorf("拉取模板源失败: url=%s err=%w", repoURL, err)
 	}
 	return dir, cleanup, nil
 }

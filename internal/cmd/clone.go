@@ -23,27 +23,27 @@ repoUrl 必须是合法的 git 仓库地址，且能匹配到一条 clone 规则
 
 指定 --branch 时若未显式给 --depth，默认克隆深度为 1。`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			rawRepoUrl := args[0]
+		RunE: func(_ *cobra.Command, args []string) error {
+			rawRepoURL := args[0]
 			if branch != "" && depth == 0 {
 				depth = 1 // 仅显式 --depth=0 且指定分支时触发；flag 默认 -1（不限制）
 			}
 
-			// 预检查 rawRepoUrl 是否为合法 git repoUrl
-			_, err := git.ParseRepoUrl(rawRepoUrl)
+			// 预检查 rawRepoURL 是否为合法 git repoUrl
+			_, err := git.ParseRepoURL(rawRepoURL)
 			if err != nil {
-				return fmt.Errorf("repoUrl 不是合法地址: url=%s", rawRepoUrl)
+				return fmt.Errorf("repoUrl 不是合法地址: url=%s", rawRepoURL)
 			}
 
 			// 匹配 CloneRule，获取对应本地路径
 			service := a.ProjectService()
-			_, localPath, ok := service.MatchCloneRule(rawRepoUrl)
+			_, localPath, ok := service.MatchCloneRule(rawRepoURL)
 			if !ok {
-				return fmt.Errorf("repoUrl 没有对应 clone 规则: url=%s", rawRepoUrl)
+				return fmt.Errorf("repoUrl 没有对应 clone 规则: url=%s", rawRepoURL)
 			}
 
 			// 执行命令
-			err = git.Clone(localPath, rawRepoUrl, depth, branch)
+			err = git.Clone(localPath, rawRepoURL, depth, branch)
 			if err != nil {
 				return fmt.Errorf("执行 clone 命令失败: %s", err)
 			}

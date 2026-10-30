@@ -33,7 +33,7 @@ func newWorkspaceInitCmd(a *app.App) *cobra.Command {
 
 query 支持项目名模糊搜索，规则同 open 命令。`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			proj, err := pickProject(a.ProjectService(), getArg(args, 0), a.Local())
 			if err != nil {
 				return err

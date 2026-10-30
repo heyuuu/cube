@@ -25,7 +25,7 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 不传 -o 时直接使用 dir 意图的默认 opener（openerIntents 节配置）；
 -o 不带值时交互选择；-o <name> 按名模糊匹配。`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			query := getArg(args, 0)
 
 			// 匹配项目

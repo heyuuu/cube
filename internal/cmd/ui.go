@@ -13,12 +13,12 @@ import (
 	"cube/internal/server/client"
 )
 
-func newUiCmd(a *app.App) *cobra.Command {
+func newUICmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ui",
 		Short: "打开 cube Web UI（首页 / md 页）",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runWeb(a)
 		},
 	}
@@ -37,7 +37,7 @@ func newMdCmd(a *app.App) *cobra.Command {
 		Use:   "md <path>",
 		Short: "以 Web 方式打开 markdown 文件",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return openPage(a, "md", args[0])
 		},
 	}
@@ -53,7 +53,7 @@ func newWorkbenchCmd(a *app.App) *cobra.Command {
 		Use:   "workbench <path>",
 		Short: "打开工作台（workbench）页面",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return openPage(a, "workbench", args[0])
 		},
 	}

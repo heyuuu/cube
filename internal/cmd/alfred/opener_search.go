@@ -17,7 +17,7 @@ func newOpenerSearchCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "opener-search [query]",
 		Short: "搜索可用命令列表",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			query := args
 
 			// 获取匹配的命令列表

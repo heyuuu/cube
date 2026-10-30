@@ -25,8 +25,10 @@ const rootLabel = "主目录"
 type TargetFlags uint8
 
 const (
-	FlagWorktree  TargetFlags = 1 << iota // linked worktree（根或其下目录）
-	FlagWorkspace                         // workspace 成员子目录
+	// FlagWorktree linked worktree（根或其下目录）。
+	FlagWorktree TargetFlags = 1 << iota
+	// FlagWorkspace workspace 成员子目录。
+	FlagWorkspace
 )
 
 // OpenTarget 项目的一个打开目标。

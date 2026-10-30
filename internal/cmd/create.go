@@ -43,7 +43,7 @@ func newCreateCmd(a *app.App) *cobra.Command {
   cube create @work ~/code/new-app
   cube create ~/code/tpl-dev ~/code/new-app`,
 		Args: cobra.RangeArgs(1, 2),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			// 目标路径恒为最后一个参数；模板源是可选的前一个（缺省走默认源交互）
 			cliTpl := ""
 			target := args[len(args)-1]

@@ -30,12 +30,15 @@ type MdListResult struct {
 	Files []string `json:"files"` // 全量文件绝对路径
 }
 
+// MdHandler markdown 阅读 HTTP 出口。
 type MdHandler struct{}
 
+// NewMdHandler 构造 MdHandler（无依赖）。
 func NewMdHandler() *MdHandler {
 	return &MdHandler{}
 }
 
+// Register 注册 md 端点（实现 server.Handler）。
 func (h *MdHandler) Register(r *server.Routes) {
 	r.Get("/api/md/content", "读取 markdown 文件原文", server.JSONHandler(h.mdContent))
 	r.Get("/api/md/list", "列出目录下的 markdown 文件", server.JSONHandler(h.mdList))

@@ -30,7 +30,7 @@ func applyDefaultStyle(t *table.Table) {
 	t.Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("99"))).
 		BorderHeader(true).
-		StyleFunc(func(row, col int) lipgloss.Style {
+		StyleFunc(func(row, _ int) lipgloss.Style {
 			if row == table.HeaderRow {
 				return headerStyle
 			}

@@ -13,7 +13,7 @@ func newVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "显示当前版本号",
 		Long:  `显示当前版本号`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			fmt.Println(version.AppName + ": " + version.Info())
 			return nil
 		},

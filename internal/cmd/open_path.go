@@ -19,7 +19,7 @@ func newOpenPathCmd(a *app.App) *cobra.Command {
 按路径类型自动选择 intent（目录 → dir，文件 → file）。
 不传 -o 时使用该 intent 的默认 opener；-o 不带值时交互选择；-o <name> 按名模糊匹配。`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			// 检查路径
 			path, isDir, err := checkOpenPath(args[0])
 			if err != nil {

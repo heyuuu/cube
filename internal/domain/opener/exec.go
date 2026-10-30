@@ -195,7 +195,7 @@ var _ Opener = (*actionOpener)(nil)
 //   - 每条模板的占位符索引不得越该 role 的槽个数（逐条局部校验，role 间无一致性约束）；
 //   - baseURL 供站内路由拼接（空串时站内动作构造报错，装配层负责注入）；
 //   - executor 可选，缺省装 NewDefaultExecutor()（走 os/exec）；测试传 fake 断言命令。
-func InitActionOpener(spec Spec, executor Executor, baseURL string) (*actionOpener, error) {
+func InitActionOpener(spec Spec, executor Executor, baseURL string) (Opener, error) {
 	if len(spec.Actions) == 0 {
 		return nil, fmt.Errorf("opener %q 缺少必填字段 actions", spec.Name)
 	}

@@ -79,7 +79,7 @@ func TestLoadSourceTemplates(t *testing.T) {
 func TestLoadSourceDir(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := makeTplRepo(t, ws)
-	sources := []TplSource{{Name: "core", RepoUrl: repo}}
+	sources := []TplSource{{Name: "core", RepoURL: repo}}
 
 	// 本地绝对路径：直读，无 cleanup
 	dir, cleanup, err := loadSourceDir(repo, sources)
@@ -107,11 +107,11 @@ func TestLoadSourceDir(t *testing.T) {
 
 	// 未注册名：中文错误；缺省源缺配置时附建议地址
 	_, _, err = loadSourceDir("work", sources)
-	if err == nil || !strings.Contains(err.Error(), "未找到指定模板源: work") || strings.Contains(err.Error(), DefaultSourceRepoUrl) {
+	if err == nil || !strings.Contains(err.Error(), "未找到指定模板源: work") || strings.Contains(err.Error(), DefaultSourceRepoURL) {
 		t.Fatalf("普通源未注册应报错且不含建议地址, got %v", err)
 	}
 	_, _, err = loadSourceDir("core", nil)
-	if err == nil || !strings.Contains(err.Error(), DefaultSourceRepoUrl) {
+	if err == nil || !strings.Contains(err.Error(), DefaultSourceRepoURL) {
 		t.Fatalf("缺省源未注册应附建议地址, got %v", err)
 	}
 }
@@ -121,7 +121,7 @@ func TestServiceCreateFromGitSource(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := makeTplRepo(t, ws)
 	s := NewService(ws.Join("settings.json"))
-	if err := s.SaveTplSource(TplSource{Name: "core", RepoUrl: repo}); err != nil {
+	if err := s.SaveTplSource(TplSource{Name: "core", RepoURL: repo}); err != nil {
 		t.Fatalf("注册模板源失败: %v", err)
 	}
 
@@ -151,7 +151,7 @@ func TestServiceCreateTargetPrecheck(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	s := NewService(ws.Join("settings.json"))
 	// 注册一个不可 clone 的源：若预检没先行，会先撞 clone 失败而不是路径错误
-	if err := s.SaveTplSource(TplSource{Name: "core", RepoUrl: ws.Join("no-such-repo")}); err != nil {
+	if err := s.SaveTplSource(TplSource{Name: "core", RepoURL: ws.Join("no-such-repo")}); err != nil {
 		t.Fatalf("注册模板源失败: %v", err)
 	}
 

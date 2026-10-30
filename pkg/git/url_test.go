@@ -9,48 +9,48 @@ func TestParseRepoUrl(t *testing.T) {
 	tests := []struct {
 		name    string
 		rawURL  string
-		want    *RepoUrl
+		want    *RepoURL
 		wantErr bool
 	}{
 		// --- https ---
 		{
 			name:   "https 标准地址",
 			rawURL: "https://github.com/heyuuu/cube.git",
-			want:   &RepoUrl{Scheme: "https", Host: "github.com", Path: "/heyuuu/cube.git"},
+			want:   &RepoURL{Scheme: "https", Host: "github.com", Path: "/heyuuu/cube.git"},
 		},
 		{
 			name:   "https 带端口",
 			rawURL: "https://git.internal.local:8080/team/repo.git",
-			want:   &RepoUrl{Scheme: "https", Host: "git.internal.local:8080", Path: "/team/repo.git"},
+			want:   &RepoURL{Scheme: "https", Host: "git.internal.local:8080", Path: "/team/repo.git"},
 		},
 		{
 			name:   "https 无 .git 后缀",
 			rawURL: "https://github.com/heyuuu/plain",
-			want:   &RepoUrl{Scheme: "https", Host: "github.com", Path: "/heyuuu/plain"},
+			want:   &RepoURL{Scheme: "https", Host: "github.com", Path: "/heyuuu/plain"},
 		},
 
 		// --- ssh (git@host:path) ---
 		{
 			name:   "ssh 标准地址（路径无前导斜杠，需规范化）",
 			rawURL: "git@github.com:heyuuu/cube.git",
-			want:   &RepoUrl{Scheme: "git", Host: "github.com", Path: "/heyuuu/cube.git"},
+			want:   &RepoURL{Scheme: "git", Host: "github.com", Path: "/heyuuu/cube.git"},
 		},
 		{
 			name:   "ssh 路径已带前导斜杠（不应出现双斜杠）",
 			rawURL: "git@github.com:/heyuuu/cube.git",
-			want:   &RepoUrl{Scheme: "git", Host: "github.com", Path: "/heyuuu/cube.git"},
+			want:   &RepoURL{Scheme: "git", Host: "github.com", Path: "/heyuuu/cube.git"},
 		},
 		{
 			name:   "ssh 多级路径",
 			rawURL: "git@gitee.com:org/sub/repo.git",
-			want:   &RepoUrl{Scheme: "git", Host: "gitee.com", Path: "/org/sub/repo.git"},
+			want:   &RepoURL{Scheme: "git", Host: "gitee.com", Path: "/org/sub/repo.git"},
 		},
 
 		// --- 其它 ---
 		{
 			name:   "首尾空白会被 TrimSpace",
 			rawURL: "  https://github.com/heyuuu/cube.git  ",
-			want:   &RepoUrl{Scheme: "https", Host: "github.com", Path: "/heyuuu/cube.git"},
+			want:   &RepoURL{Scheme: "https", Host: "github.com", Path: "/heyuuu/cube.git"},
 		},
 		{
 			name:    "非法 url 应报错",
@@ -61,15 +61,15 @@ func TestParseRepoUrl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseRepoUrl(tt.rawURL)
+			got, err := ParseRepoURL(tt.rawURL)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("ParseRepoUrl(%q) error = %v, wantErr %v", tt.rawURL, err, tt.wantErr)
+				t.Fatalf("ParseRepoURL(%q) error = %v, wantErr %v", tt.rawURL, err, tt.wantErr)
 			}
 			if tt.wantErr {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseRepoUrl(%q) = %+v, want %+v", tt.rawURL, got, tt.want)
+				t.Errorf("ParseRepoURL(%q) = %+v, want %+v", tt.rawURL, got, tt.want)
 			}
 		})
 	}
@@ -78,21 +78,21 @@ func TestParseRepoUrl(t *testing.T) {
 func TestRepoUrl_WebUrl(t *testing.T) {
 	tests := []struct {
 		name string
-		u    *RepoUrl
+		u    *RepoURL
 		want string
 	}{
-		{"ssh 地址转 github 网页", &RepoUrl{Scheme: "git", Host: "github.com", Path: "/heyuuu/cube.git"}, "https://github.com/heyuuu/cube"},
-		{"https 地址保留 host+path", &RepoUrl{Scheme: "https", Host: "github.com", Path: "/heyuuu/cube.git"}, "https://github.com/heyuuu/cube"},
-		{"https 无 .git 后缀", &RepoUrl{Scheme: "https", Host: "gitee.com", Path: "/org/repo"}, "https://gitee.com/org/repo"},
-		{"多级路径", &RepoUrl{Scheme: "git", Host: "gitee.com", Path: "/org/sub/repo.git"}, "https://gitee.com/org/sub/repo"},
-		{"缺 host 返回空串", &RepoUrl{Scheme: "git", Path: "/heyuuu/cube.git"}, ""},
-		{"缺 path 返回空串", &RepoUrl{Scheme: "git", Host: "github.com"}, ""},
+		{"ssh 地址转 github 网页", &RepoURL{Scheme: "git", Host: "github.com", Path: "/heyuuu/cube.git"}, "https://github.com/heyuuu/cube"},
+		{"https 地址保留 host+path", &RepoURL{Scheme: "https", Host: "github.com", Path: "/heyuuu/cube.git"}, "https://github.com/heyuuu/cube"},
+		{"https 无 .git 后缀", &RepoURL{Scheme: "https", Host: "gitee.com", Path: "/org/repo"}, "https://gitee.com/org/repo"},
+		{"多级路径", &RepoURL{Scheme: "git", Host: "gitee.com", Path: "/org/sub/repo.git"}, "https://gitee.com/org/sub/repo"},
+		{"缺 host 返回空串", &RepoURL{Scheme: "git", Path: "/heyuuu/cube.git"}, ""},
+		{"缺 path 返回空串", &RepoURL{Scheme: "git", Host: "github.com"}, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.u.WebUrl(); got != tt.want {
-				t.Errorf("WebUrl() = %q, want %q", got, tt.want)
+			if got := tt.u.WebURL(); got != tt.want {
+				t.Errorf("WebURL() = %q, want %q", got, tt.want)
 			}
 		})
 	}

@@ -1,3 +1,4 @@
+// Package cmd devtool 的 cobra 命令层：tag / version / generate 子命令的组装与执行。
 package cmd
 
 import (
@@ -25,6 +26,7 @@ func newRootCmd() *cobra.Command {
 	return cmd
 }
 
+// Execute 执行 devtool 根命令，失败时以非零码退出。
 func Execute() {
 	if err := newRootCmd().Execute(); err != nil {
 		os.Exit(1)

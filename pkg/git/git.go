@@ -20,7 +20,7 @@ package git
 // 只允许收敛在本包单点处理，见 AGENTS.md 规则 14。
 //
 // 此外，与具体 git 实现无关的辅助能力也归在本包：FindGitRoot（按 .git 探测仓库根）、
-// ParseRepoUrl（解析 SSH/HTTPS 仓库地址）等，只与 git 的概念/约定相关。
+// ParseRepoURL（解析 SSH/HTTPS 仓库地址）等，只与 git 的概念/约定相关。
 
 import (
 	"log/slog"
@@ -49,11 +49,11 @@ func Run(dir string, args ...string) error {
 // Clone 使用系统 git 克隆仓库到 localPath，stdout/stderr 透传给当前终端。
 // 参数：
 //   - localPath: 克隆目标目录（绝对路径）
-//   - repoUrl:   仓库地址（SSH 或 HTTPS）
+//   - repoURL:   仓库地址（SSH 或 HTTPS）
 //   - depth:     克隆深度，<=0 表示不限制（完整克隆）
 //   - branch:    指定分支名，空串表示克隆默认分支
-func Clone(localPath string, repoUrl string, depth int, branch string) error {
-	args := []string{"clone", repoUrl, localPath}
+func Clone(localPath string, repoURL string, depth int, branch string) error {
+	args := []string{"clone", repoURL, localPath}
 	if depth > 0 {
 		args = append(args, "--depth="+strconv.Itoa(depth))
 	}

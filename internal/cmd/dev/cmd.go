@@ -11,8 +11,7 @@ import (
 	"cube/internal/app"
 )
 
-// `cube dev`
-
+// NewCmd 构造 `cube dev` 内部调试命令组（Hidden，开发期测试用）。
 func NewCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "dev",

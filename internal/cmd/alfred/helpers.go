@@ -7,8 +7,10 @@ import (
 	"cube/pkg/slicekit"
 )
 
+// H Alfred Script Filter JSON 顶层对象（字段名→值）。
 type H map[string]any
 
+// Item Alfred Script Filter 输出的单条结果。
 // see: https://www.alfredapp.com/help/workflows/inputs/script-filter/json/
 type Item struct {
 	Title    string `json:"title"`
@@ -16,6 +18,7 @@ type Item struct {
 	Arg      string `json:"arg"`
 }
 
+// PrintResult 把源列表逐项映射为 Item 后输出。
 func PrintResult[T any](items []T, fn func(item T) Item) error {
 	return PrintItems(slicekit.Map(items, fn))
 }

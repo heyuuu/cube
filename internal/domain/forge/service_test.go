@@ -132,7 +132,7 @@ func TestFetchAccountPersist(t *testing.T) {
 	if err := s.SaveAccount(Account{ForgeHost: "github.com", Username: "heyuuu", Token: "t"}); err != nil {
 		t.Fatalf("保存 account 失败: %v", err)
 	}
-	fake := &fakeClient{repos: []gitapi.RemoteRepo{{Name: "cube", CloneUrl: "https://github.com/heyuuu/cube.git"}}}
+	fake := &fakeClient{repos: []gitapi.RemoteRepo{{Name: "cube", CloneURL: "https://github.com/heyuuu/cube.git"}}}
 	s.newClient = func(string, string, string) (gitapi.Client, error) { return fake, nil }
 
 	repos, err := s.FetchAccount("github.com", "heyuuu", false)

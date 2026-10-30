@@ -1,3 +1,4 @@
+// Package cmd cube 主 CLI 命令层：组装根命令与全部子命令，装配经 app 惰性触发。
 package cmd
 
 import (
@@ -13,6 +14,7 @@ import (
 	version2 "cube/internal/version"
 )
 
+// Execute 构建并执行根命令，失败时打日志并以非零码退出。
 func Execute() {
 	// 构建 cmd
 	cmd := newRootCmd(app.New())
@@ -53,7 +55,7 @@ func newRootCmd(a *app.App) *cobra.Command {
 等同在命令末尾补 query 为 "."。`,
 		// 惰性装配：命令真正执行前才 Init（config→logger→app），
 		// --help / 未知命令等不触发 RunE 的路径全程零装配。
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			// PersistentPreRunE 之前发生的输入类错误仍附 usage；运行期错误不再附 usage
 			cmd.SilenceUsage = true
 			// 展开 cfgFile 路径
@@ -81,7 +83,7 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 
 	// web server 相关
 	cmd.AddCommand(newServerCmd(a))
-	cmd.AddCommand(newUiCmd(a))
+	cmd.AddCommand(newUICmd(a))
 	cmd.AddCommand(newOpenapiCmd(a))
 
 	// project 相关
@@ -91,7 +93,7 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(newPathCmd(a))      // 输出项目路径（供 shell 包装函数 cd）
 	cmd.AddCommand(newInitCmd(a))      // 初始化空项目
 	cmd.AddCommand(newCreateCmd(a))    // 使用模板初始化项目
-	cmd.AddCommand(newCloneCmd(a))     // 使用 RepoUrl 初始化项目
+	cmd.AddCommand(newCloneCmd(a))     // 使用 RepoURL 初始化项目
 	cmd.AddCommand(newWorkspaceCmd(a)) // monorepo workspace 声明管理
 
 	// open 相关

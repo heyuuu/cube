@@ -17,21 +17,24 @@ import (
 	"cube/pkg/slicekit"
 )
 
+// Service project 领域服务：scan/clone 规则管理 + 项目列表查询（列表走 easycache 惰性缓存）。
 type Service struct {
 	// settings
 	settingsFile string // settings.json 路径，scan/clone 规则每次现读（直读不缓存，改完即生效）
 	// scan
 	scanCache *easycache.Item[[]*Project] // 项目扫描的缓存（新鲜度时间戳由缓存自身维护，见 UpdatedAt）
 	// git info cache
-	gitCache *projcache.Cache // git 信息缓存（项目 branch/dirty/repoUrl 等）
+	gitCache *projcache.Cache // git 信息缓存（项目 branch/dirty/repoURL 等）
 	// 定时刷新（仅常驻 server 启用，CLI 不启用）
 	stopCh chan struct{} // nil = 未启用；非 nil = 定时器在跑
 }
 
+// NewServiceInject di 装配入口：从 config.Paths 组装 settings 路径与缓存目录。
 func NewServiceInject(paths config.Paths) *Service {
 	return NewService(paths.SettingsFile(), paths.CacheDir())
 }
 
+// NewService 构造 Service：加载 git 缓存（失败降级空缓存）并挂载项目扫描缓存。
 func NewService(settingsFile string, cacheDir string) *Service {
 	// 加载 git 信息缓存（降级优先：失败返回空缓存，不报错）
 	gitCache, err := projcache.Load(cacheDir)
@@ -58,9 +61,12 @@ func NewService(settingsFile string, cacheDir string) *Service {
 
 // -- 规则（直读 settings.json，加载即转换校验） --
 
+// ScanRules 现读 settings.json 的 scan 规则（外部改动 Reload 后即反映）。
 func (s *Service) ScanRules() []ScanRule {
 	return loadScanRules(s.settingsFile)
 }
+
+// CloneRules 现读 settings.json 的 clone 规则。
 func (s *Service) CloneRules() []CloneRule {
 	return loadCloneRules(s.settingsFile)
 }
@@ -75,6 +81,7 @@ func (s *Service) SaveScanRule(rule ScanRule) error {
 	return nil
 }
 
+// DeleteScanRule 按 path 删除 scan 规则，成功后立即重扫。
 func (s *Service) DeleteScanRule(path string) error {
 	if err := deleteScanRule(s.settingsFile, path); err != nil {
 		return err
@@ -92,24 +99,29 @@ func (s *Service) ReorderScanRules(paths []string) error {
 	return nil
 }
 
+// SaveCloneRule 新增或按 key 替换一条 clone 规则（校验在写侧）。
 func (s *Service) SaveCloneRule(rule CloneRule) error {
 	return saveCloneRule(s.settingsFile, rule)
 }
 
+// DeleteCloneRule 按 key 删除 clone 规则。
 func (s *Service) DeleteCloneRule(key CloneRuleKey) error {
 	return deleteCloneRule(s.settingsFile, key)
 }
 
+// ReorderCloneRules 按给定 key 序重排 clone 规则。
 func (s *Service) ReorderCloneRules(keys []CloneRuleKey) error {
 	return reorderCloneRules(s.settingsFile, keys)
 }
 
 // --- project 读操作 ---
 
+// Projects 返回扫描项目列表（easycache 惰性加载，首次触发扫描）。
 func (s *Service) Projects() []*Project {
 	return s.scanCache.Get()
 }
 
+// FindByPath 按绝对路径查项目，未命中返回 nil（相对路径视为未找到）。
 func (s *Service) FindByPath(path string) *Project {
 	// 仅接受绝对路径，相对路径视为未找到而非报错，与「查无此项目」语义一致
 	if !filepath.IsAbs(path) {
@@ -274,8 +286,9 @@ func (s *Service) MatchScanRule(absPath string) (rule ScanRule, name string, ok 
 
 // --- clone 相关 ---
 
-func (s *Service) MatchCloneRule(repoUrl string) (rule CloneRule, localPath string, ok bool) {
-	return MatchCloneRule(repoUrl, s.CloneRules())
+// MatchCloneRule 以现读的 clone 规则做匹配（语义同包级 MatchCloneRule）。
+func (s *Service) MatchCloneRule(repoURL string) (rule CloneRule, localPath string, ok bool) {
+	return MatchCloneRule(repoURL, s.CloneRules())
 }
 
 // --- git 缓存相关 ---

@@ -24,7 +24,7 @@ func newDiffCmd(a *app.App) *cobra.Command {
 再从声明了该 role 的 opener 中挑选：-o 精确指定名称；
 未指定时模糊匹配，命中多个则进入交互选择。`,
 		Args: cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			// 检查两个路径
 			path1, isDir1, err := checkOpenPath(args[0])
 			if err != nil {

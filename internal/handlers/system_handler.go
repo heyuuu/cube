@@ -33,12 +33,14 @@ type SystemHandler struct {
 	instance string
 }
 
+// NewSystemHandler 构造 SystemHandler（instance 每进程随机，识别新旧实例）。
 func NewSystemHandler() *SystemHandler {
 	return &SystemHandler{
 		instance: uuid.NewString(),
 	}
 }
 
+// Register 注册 system 端点（实现 server.Handler）。
 func (h *SystemHandler) Register(r *server.Routes) {
 	r.Get("/api/system/status", "服务身份探活", server.JSONHandler(h.status))
 	r.Post("/api/system/shutdown", "触发服务平滑关闭", server.JSONHandler(h.shutdown), server.WithoutOpenAPI())

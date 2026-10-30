@@ -18,6 +18,7 @@ const (
 	RefTagsPrefix    = "refs/tags/"
 )
 
+// Ref 一条 git ref（本地分支 / 远端分支 / tag）的解析结果。
 type Ref struct {
 	Name      string `json:"name"`      // Ref Name，refs/{heads,remotes,tags}/xxx
 	ShortName string `json:"shortName"` // Short Name，省略 refs/xxx/ 前缀；注意 remote 的 ShortName 含 remote 名
@@ -25,14 +26,17 @@ type Ref struct {
 	Branch    string `json:"branch"`    // 分支名，在 refs/heads/* 及 refs/remotes/* 时有效，分支名 (例如 master)
 }
 
+// IsLocal 是本地分支（refs/heads/*）。
 func (r Ref) IsLocal() bool {
 	return r.Remote == "" && r.Branch != ""
 }
 
+// IsRemote 是远端分支（refs/remotes/*）。
 func (r Ref) IsRemote() bool {
 	return r.Remote != "" && r.Branch != ""
 }
 
+// IsTag 是 tag（无 branch 段）。
 func (r Ref) IsTag() bool {
 	return r.Branch == ""
 }

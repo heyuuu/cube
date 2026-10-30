@@ -45,12 +45,12 @@ type WorktreeInfo struct {
 // RemoteInfo 快照中的单个 remote（多 remote 项目的 forge 匹配需要全部 host，1042 修）。
 type RemoteInfo struct {
 	Name string `json:"name"`
-	Url  string `json:"url"`
+	URL  string `json:"url"`
 }
 
 // Entry 单个项目的 git 信息快照。
 type Entry struct {
-	RepoUrl       string                `json:"repoUrl"`       // origin remote URL
+	RepoURL       string                `json:"repoUrl"`       // origin remote URL
 	Remotes       []RemoteInfo          `json:"remotes"`       // 全部 remote（无则空数组；origin 不在其中时 repoUrl 为空）
 	CurrentBranch string                `json:"currentBranch"` // HEAD 指向分支短名，detached 为空
 	DefaultBranch string                `json:"defaultBranch"` // 默认主分支名（master/main/...）
@@ -286,20 +286,20 @@ func collectEntries(paths []string) map[string]*Entry {
 // 依赖 util/git 包的错误约定：业务空值场景返回零值+nil；但 git 子进程执行失败
 // （如指向已删主仓库的 worktree 残骸）会返回 nil+err，必须上抛跳过，否则解引用 nil panic。
 func collectEntry(path string) (*Entry, error) {
-	// 一次 Remotes() 同时派生 repoUrl（origin 的 fetch 地址，与 git.RemoteUrl 同口径）与
+	// 一次 Remotes() 同时派生 repoURL（origin 的 fetch 地址，与 git.RemoteURL 同口径）与
 	// 全部 remote 快照，避免每个项目多打一次 git 子进程
 	gitRemotes, _ := git.Remotes(path)
-	repoUrl := ""
+	repoURL := ""
 	remotes := make([]RemoteInfo, 0, len(gitRemotes))
 	for _, r := range gitRemotes {
 		url := r.Fetch
 		if url == "" {
 			url = r.Push
 		}
-		if r.Name == "origin" && repoUrl == "" {
-			repoUrl = url
+		if r.Name == "origin" && repoURL == "" {
+			repoURL = url
 		}
-		remotes = append(remotes, RemoteInfo{Name: r.Name, Url: url})
+		remotes = append(remotes, RemoteInfo{Name: r.Name, URL: url})
 	}
 	refs, err := git.Refs(path)
 	if err != nil {
@@ -323,7 +323,7 @@ func collectEntry(path string) (*Entry, error) {
 		return nil, err
 	}
 	return &Entry{
-		RepoUrl:       repoUrl,
+		RepoURL:       repoURL,
 		Remotes:       remotes,
 		CurrentBranch: currentBranch,
 		DefaultBranch: defaultBranch,

@@ -18,16 +18,16 @@ func TestBuildOverview(t *testing.T) {
 		{ForgeHost: "github.com", Username: "ghost", Token: "t"}, // 未拉取
 	}
 	repos := []gitapi.RemoteRepo{
-		{Name: "cube", FullName: "heyuuu/cube", CloneUrl: "https://github.com/heyuuu/cube.git"},
-		{Name: "fresh", FullName: "heyuuu/fresh", CloneUrl: "https://github.com/heyuuu/fresh.git"},
-		{Name: "org-repo", FullName: "acme/org-repo", CloneUrl: "https://github.com/acme/org-repo.git"},
+		{Name: "cube", FullName: "heyuuu/cube", CloneURL: "https://github.com/heyuuu/cube.git"},
+		{Name: "fresh", FullName: "heyuuu/fresh", CloneURL: "https://github.com/heyuuu/fresh.git"},
+		{Name: "org-repo", FullName: "acme/org-repo", CloneURL: "https://github.com/acme/org-repo.git"},
 	}
 	local := []LocalRepo{
-		{Name: "cube", RepoUrl: "git@github.com:heyuuu/cube.git", Dirty: true},
-		{Name: "gone", RepoUrl: "https://github.com/heyuuu/gone.git"}, // 同 namespace 不在结果里 → 孤儿
-		{Name: "stray", RepoUrl: "git@github.com:other-ns/stray.git"}, // namespace 不在拉取结果 → 不算孤儿
-		{Name: "unrelated", RepoUrl: "git@gitlab.com:x/y.git"},        // host 不命中 → 不算
-		{Name: "no-remote", RepoUrl: ""},                              // 无远端 → 不参与
+		{Name: "cube", RepoURL: "git@github.com:heyuuu/cube.git", Dirty: true},
+		{Name: "gone", RepoURL: "https://github.com/heyuuu/gone.git"}, // 同 namespace 不在结果里 → 孤儿
+		{Name: "stray", RepoURL: "git@github.com:other-ns/stray.git"}, // namespace 不在拉取结果 → 不算孤儿
+		{Name: "unrelated", RepoURL: "git@gitlab.com:x/y.git"},        // host 不命中 → 不算
+		{Name: "no-remote", RepoURL: ""},                              // 无远端 → 不参与
 	}
 	entries := map[string]AcctCacheEntry{
 		acctCacheKey("github.com", "heyuuu"): {FetchedAt: testNow(), Repos: repos},

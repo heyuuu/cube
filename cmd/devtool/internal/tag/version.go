@@ -1,3 +1,4 @@
+// Package tag 三段式版本 tag 的解析与递增计算（devtool tag 子命令使用）。
 package tag
 
 import (
