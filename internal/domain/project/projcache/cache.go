@@ -18,9 +18,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/heyuuu/x/store"
+
 	"cube/internal/domain/project/workspace"
 	"cube/pkg/git"
-	"cube/pkg/store"
 )
 
 // 当前缓存文件格式版本；结构变更时递增，用于后续做兼容迁移。

@@ -3,8 +3,9 @@ package forge
 import (
 	"time"
 
+	"github.com/heyuuu/x/store"
+
 	"cube/pkg/gitapi"
-	"cube/pkg/store"
 )
 
 // account 拉取结果的持久化形态（cache/forge-repos.json，提案 1042，1044 改按 account 键）。
@@ -25,7 +26,7 @@ type acctDiskCache struct {
 
 // loadDiskCache 读落盘缓存；文件不存在/坏 JSON 统一降级为空缓存（读路径不阻断）。
 func loadDiskCache(file string) acctDiskCache {
-	d, err := store.LoadJson[acctDiskCache](file)
+	d, err := store.LoadJSON[acctDiskCache](file)
 	if err != nil {
 		return acctDiskCache{Accounts: map[string]AcctCacheEntry{}}
 	}
@@ -37,5 +38,5 @@ func loadDiskCache(file string) acctDiskCache {
 
 // saveDiskCache 原子写落盘缓存。
 func saveDiskCache(file string, d acctDiskCache) error {
-	return store.SaveJson(file, d)
+	return store.SaveJSON(file, d)
 }

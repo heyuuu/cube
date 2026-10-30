@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"cube/pkg/store"
+	"github.com/heyuuu/x/store"
 )
 
 type Config struct {
@@ -24,7 +24,7 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("配置路径必须为绝对路径: %s", path)
 	}
 
-	cfg, err := store.LoadJson[Config](path)
+	cfg, err := store.LoadJSON[Config](path)
 	if errors.Is(err, store.ErrFileMissing) {
 		cfg = Config{} // 文件不存在 → 降级为默认值，不报错
 	} else if err != nil {

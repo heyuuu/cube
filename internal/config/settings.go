@@ -14,7 +14,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"cube/pkg/store"
+	"github.com/heyuuu/x/store"
 )
 
 // doc 文档内存形态：节名 → 原始 JSON。非目标节语义级透传——值原样保留不解析，
@@ -65,7 +65,7 @@ func SaveSection(file, section string, src any) error {
 // readDoc 读入并解析文档（store.LoadJson）。文件不存在是正常态（首次运行）→ 空 doc；
 // 坏 JSON 是异常态 → 返回错误（读侧由调用方降级，写侧用于拒写）。
 func readDoc(file string) (doc, error) {
-	d, err := store.LoadJson[doc](file)
+	d, err := store.LoadJSON[doc](file)
 	if errors.Is(err, store.ErrFileMissing) {
 		return doc{}, nil
 	}
@@ -78,7 +78,7 @@ func readDoc(file string) (doc, error) {
 // saveDoc 原子写入（store.SaveJson：缩进 + tmp/rename）。
 // 顶层键序由 json.Marshal 的 map 字典序决定——稳定且 diff 友好，不引入 OrderedMap。
 func saveDoc(file string, d doc) error {
-	if err := store.SaveJson(file, d); err != nil {
+	if err := store.SaveJSON(file, d); err != nil {
 		return fmt.Errorf("写入 settings.json 失败: file=%s err=%w", file, err)
 	}
 	return nil

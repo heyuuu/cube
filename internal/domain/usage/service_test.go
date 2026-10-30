@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/heyuuu/x/store"
+
 	"cube/internal/testfixture"
-	"cube/pkg/store"
 )
 
 func newTestService(t *testing.T) *Service {
