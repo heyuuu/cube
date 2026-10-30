@@ -1,6 +1,6 @@
 // domain 子命令：生成业务 domain 脚手架——domain 包三件套 + handler + boot.go 注入。
 
-package main
+package generate
 
 import (
 	"fmt"

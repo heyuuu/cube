@@ -3,6 +3,8 @@ package cmd
 import (
 	"os"
 
+	"cube/cmd/devtool/internal/generate"
+
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +21,7 @@ func newRootCmd() *cobra.Command {
 		// 不创建 completion 命令
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
-	cmd.AddCommand(newTagCmd(), newVersionCmd())
+	cmd.AddCommand(newTagCmd(), newVersionCmd(), generate.NewGenerateCmd())
 	return cmd
 }
 

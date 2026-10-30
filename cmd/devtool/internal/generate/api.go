@@ -1,6 +1,6 @@
 // api 子命令：在已有 domain 的 handler 文件里追加一个 api 端点。
 
-package main
+package generate
 
 import (
 	"fmt"

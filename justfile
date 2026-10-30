@@ -96,11 +96,11 @@ install: build-ui
     @cat ./scripts/zsh-append.sh >> {{zsh_completion_file}}
 
 
-# 代码生成（生成逻辑在 cmd/gen/，模板在 cmd/gen/tpl/）
+# 代码生成（生成逻辑在 cmd/devtool/internal/generate/，模板在其 tpl/ 下）
 #   just gen domain <name>                        生成业务 domain 脚手架
 #   just gen api <GET|POST> <domain> <base-name>  在已有 domain 的 handler 追加 api 端点
 gen *args:
-    go run ./cmd/gen {{args}}
+    go run ./cmd/devtool generate {{args}}
     just fix
 
 # 生成 api
