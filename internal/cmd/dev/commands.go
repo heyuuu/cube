@@ -9,14 +9,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"cube/internal/cmd/env"
 	"cube/pkg/tui"
 )
 
 // cmd `cube dev commands`
 //
 // 收集所有可用命令，按字典序排列后以表格形式输出。
-func newCommandsCmd(env *env.Env) *cobra.Command {
+func newCommandsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "commands",
 		Short: "列出所有命令",

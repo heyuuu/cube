@@ -3,6 +3,7 @@ package forge
 import (
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -31,6 +32,10 @@ type Service struct {
 	loaded  bool                      // mem 是否已从落盘文件加载过（懒加载一次）
 
 	newClient clientFactory // 可注入（测试）；nil 用 gitapi.NewClient
+}
+
+func NewServiceInject(paths config.Paths) *Service {
+	return NewService(paths.SettingsFile(), filepath.Join(paths.CacheDir(), "forge-repos.json"))
 }
 
 func NewService(settingsFile, cacheFile string) *Service {

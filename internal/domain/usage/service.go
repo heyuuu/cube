@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/heyuuu/x/store"
+
+	"cube/internal/config"
 )
 
 const (
@@ -27,6 +29,10 @@ const retentionDays = 30
 
 type Service struct {
 	usageFilePath string // usage.jsonl 文件路径
+}
+
+func NewServiceInject(paths config.Paths) *Service {
+	return NewService(paths.StateDir())
 }
 
 func NewService(statePath string) *Service {

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"cube/internal/config"
 	"cube/internal/domain/project/projcache"
 	"cube/pkg/easycache"
 	"cube/pkg/fuzzy"
@@ -25,6 +26,10 @@ type Service struct {
 	gitCache *projcache.Cache // git 信息缓存（项目 branch/dirty/repoUrl 等）
 	// 定时刷新（仅常驻 server 启用，CLI 不启用）
 	stopCh chan struct{} // nil = 未启用；非 nil = 定时器在跑
+}
+
+func NewServiceInject(paths config.Paths) *Service {
+	return NewService(paths.SettingsFile(), paths.CacheDir())
 }
 
 func NewService(settingsFile string, cacheDir string) *Service {

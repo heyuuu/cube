@@ -6,8 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/spf13/cobra"
-
-	"cube/internal/cmd/env"
 )
 
 // cmd `cube dev logger`
@@ -16,7 +14,7 @@ import (
 //   - 不同级别（Debug / Info / Warn / Error）的输出与过滤；
 //   - 结构化字段（字符串、数值、布尔、错误、分组、LogValuer）；
 //   - With / WithGroup 带来的属性继承。
-func newLoggerCmd(env *env.Env) *cobra.Command {
+func newLoggerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logger",
 		Short: "测试 slog 的各种输出（handler / 级别 / 结构化字段）",

@@ -10,22 +10,21 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
-	"cube/internal/cmd/env"
 	"cube/internal/server"
 )
 
-func newUiCmd(env *env.Env) *cobra.Command {
+func newUiCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ui",
 		Short: "打开 cube Web UI（首页 / md 页）",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWeb(env.App())
+			return runWeb(a)
 		},
 	}
 
-	cmd.AddCommand(newMdCmd(env))
-	cmd.AddCommand(newWorkbenchCmd(env))
+	cmd.AddCommand(newMdCmd(a))
+	cmd.AddCommand(newWorkbenchCmd(a))
 
 	return cmd
 }
@@ -33,13 +32,13 @@ func newUiCmd(env *env.Env) *cobra.Command {
 // newMdCmd `cube ui md <path>` —— 以 Web 方式打开 markdown 文件（原一级命令 `cube md` 迁入）。
 //
 // 页面与渲染归前端工程（/md?path=<abs>），本命令只负责拼 URL 并开浏览器。
-func newMdCmd(env *env.Env) *cobra.Command {
+func newMdCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "md <path>",
 		Short: "以 Web 方式打开 markdown 文件",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return openPage(env.App(), "md", args[0])
+			return openPage(a, "md", args[0])
 		},
 	}
 	return cmd
@@ -49,13 +48,13 @@ func newMdCmd(env *env.Env) *cobra.Command {
 //
 // 这是「打开工作台」这类 opener 的落地形态：opener 配置成 exec 命令
 // `["cube", "ui", "workbench", "$0"]` 即可，URL 拼接（端口/路由/转义）收敛在本命令。
-func newWorkbenchCmd(env *env.Env) *cobra.Command {
+func newWorkbenchCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "workbench <path>",
 		Short: "打开工作台（workbench）页面",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return openPage(env.App(), "workbench", args[0])
+			return openPage(a, "workbench", args[0])
 		},
 	}
 	return cmd

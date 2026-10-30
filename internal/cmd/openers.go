@@ -5,13 +5,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/env"
+	"cube/internal/app"
 	"cube/internal/domain/opener"
 	"cube/pkg/slicekit"
 	"cube/pkg/tui"
 )
 
-func newOpenersCmd(env *env.Env) *cobra.Command {
+func newOpenersCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "openers [query]",
 		Short: "列出可用 Opener 列表(支持模糊搜索)",
@@ -24,7 +24,7 @@ query 按 opener 名称模糊搜索，不传时显示全部。`,
 				query = args[0]
 			}
 
-			service := env.App().OpenerService()
+			service := a.OpenerService()
 			openers := service.SearchAll(query)
 			showOpeners(openers)
 			return nil

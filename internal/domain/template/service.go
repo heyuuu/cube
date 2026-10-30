@@ -15,6 +15,10 @@ type Service struct {
 	settingsFile string
 }
 
+func NewServiceInject(paths config.Paths) *Service {
+	return NewService(paths.SettingsFile())
+}
+
 func NewService(settingsFile string) *Service {
 	return &Service{
 		settingsFile: settingsFile,

@@ -10,10 +10,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
-	"cube/internal/cmd/env"
 )
 
-func newOpenapiCmd(env *env.Env) *cobra.Command {
+func newOpenapiCmd(a *app.App) *cobra.Command {
 	var outPath string
 	cmd := &cobra.Command{
 		Use:     "openapi",
@@ -21,7 +20,7 @@ func newOpenapiCmd(env *env.Env) *cobra.Command {
 		Short:   "生成 OpenAPI 3.1 spec 到文件",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return writeOpenAPIFile(env.App(), outPath)
+			return writeOpenAPIFile(a, outPath)
 		},
 	}
 

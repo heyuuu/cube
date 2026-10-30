@@ -1,4 +1,4 @@
-package app
+package config
 
 import (
 	"fmt"
@@ -20,6 +20,8 @@ type Paths struct {
 	dataDir string // 展开后的绝对路径（已 MkdirAll）
 }
 
+// NewPaths 构造数据目录路径集；dataDir 必须是绝对路径，目录不存在则创建。
+// 目录校验或创建失败直接 panic——没有数据目录 app 无法工作，属启动期致命错。
 func NewPaths(dataDir string) *Paths {
 	// guard 数据路径必须是绝对路径
 	if !filepath.IsAbs(dataDir) {
@@ -32,6 +34,7 @@ func NewPaths(dataDir string) *Paths {
 	return &Paths{dataDir: dataDir}
 }
 
+// SettingsFile 用户可管理数据文件 settings.json 的完整路径。
 func (p *Paths) SettingsFile() string { return filepath.Join(p.dataDir, settingsFileName) }
 
 // LogDir 日志目录

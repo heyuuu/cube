@@ -5,11 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/env"
+	"cube/internal/app"
 )
 
 // cmd `cube path`
-func newPathCmd(env *env.Env) *cobra.Command {
+func newPathCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "path [query]",
 		Short: "输出项目路径。选择流程同 open（项目匹配 + 打开目标），只输出不打开",
@@ -24,13 +24,13 @@ func newPathCmd(env *env.Env) *cobra.Command {
 			query := getArg(args, 0)
 
 			// 匹配项目（与 open 一致）
-			proj, err := pickProject(env.App().ProjectService(), query, env.Local())
+			proj, err := pickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}
 
 			// 选打开目标（与 open 一致：worktree / workspace 归并为项目打开目标）
-			target, err := pickOpenTarget(env.App().ProjectService(), proj)
+			target, err := pickOpenTarget(a.ProjectService(), proj)
 			if err != nil {
 				return err
 			}

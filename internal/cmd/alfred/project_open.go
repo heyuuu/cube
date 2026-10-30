@@ -7,12 +7,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/env"
+	"cube/internal/app"
 	"cube/internal/domain/opener"
 )
 
 // cmd `alfred project-open`
-func newProjectOpenCmd(env *env.Env) *cobra.Command {
+func newProjectOpenCmd(a *app.App) *cobra.Command {
 	var openerName string
 
 	cmd := &cobra.Command{
@@ -23,13 +23,13 @@ func newProjectOpenCmd(env *env.Env) *cobra.Command {
 			targetPath := args[0]
 
 			// 匹配项目：目标路径可能是项目根或 worktree（1032 归并到主项目）
-			proj := env.App().ProjectService().ResolveProject(targetPath)
+			proj := a.ProjectService().ResolveProject(targetPath)
 			if proj == nil {
 				return errors.New("未找到指定项目: " + targetPath)
 			}
 
 			// 按 opener 名精确查找（区别于主命令的模糊 pickOpener）
-			o := env.App().OpenerService().FindByName(openerName)
+			o := a.OpenerService().FindByName(openerName)
 			if o == nil {
 				return errors.New("未找到指定 opener: " + openerName)
 			}
@@ -42,7 +42,7 @@ func newProjectOpenCmd(env *env.Env) *cobra.Command {
 
 			// 记录使用信号（best-effort：失败不影响打开结果）；dir 直接传目标目录
 			// （等于项目根时由 RecordOpen 归一为空）
-			if err := env.App().UsageService().RecordOpen(proj.Path(), o.Name(), targetPath); err != nil {
+			if err := a.UsageService().RecordOpen(proj.Path(), o.Name(), targetPath); err != nil {
 				slog.Warn("记录 usage 失败", "err", err)
 			}
 

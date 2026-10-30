@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/env"
+	"cube/internal/app"
 	"cube/pkg/git"
 	"cube/pkg/slicekit"
 	"cube/pkg/tui"
@@ -21,7 +21,7 @@ import (
 //
 // 仅快进：本地与远端分叉的分支失败跳过，绝不产生 merge commit。
 // 单条失败不中断（同 push），最后汇总结果。
-func newPullCmd(env *env.Env) *cobra.Command {
+func newPullCmd(a *app.App) *cobra.Command {
 	var (
 		remote string
 		refs   []string
@@ -53,7 +53,7 @@ remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// 定位项目：query 匹配（规则同 push），以项目根为仓库
 			query := getArg(args, 0)
-			proj, err := pickProject(env.App().ProjectService(), query, env.Local())
+			proj, err := pickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 
+	"cube/internal/domain/project"
 	"cube/internal/domain/project/workspace"
 	"cube/pkg/git"
 	"cube/pkg/slicekit"
@@ -32,6 +33,10 @@ type Service struct {
 	ptyMu      sync.Mutex
 	ptySeq     int
 	ptyCancels map[int]context.CancelFunc
+}
+
+func NewServiceInject(projectService *project.Service) *Service {
+	return NewService(projectService.RefreshGitInfo)
 }
 
 func NewService(cacheRefresh func(path string) error) *Service {

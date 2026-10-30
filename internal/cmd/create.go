@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/env"
+	"cube/internal/app"
 	"cube/internal/domain/template"
 )
 
@@ -21,7 +21,7 @@ import (
 //  2. `<本地路径>`      . ~/ / 开头，直读模板目录（开发态：正在编辑的模板仓库）
 //  3. `<tpl>`           裸名，默认源 core 的指定模板
 //  4. 省略              默认源 core，交互选模板
-func newCreateCmd(env *env.Env) *cobra.Command {
+func newCreateCmd(a *app.App) *cobra.Command {
 	var cliVars []string
 	cmd := &cobra.Command{
 		Use:   "create [模板源] <目标路径> [--var key=value ...]",
@@ -68,7 +68,7 @@ func newCreateCmd(env *env.Env) *cobra.Command {
 			}
 
 			// 创建模板
-			svc := env.App().TemplateService()
+			svc := a.TemplateService()
 			return svc.Create(sourceRef, tplName, target, vars)
 		},
 	}

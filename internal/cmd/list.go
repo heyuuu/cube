@@ -6,14 +6,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/env"
+	"cube/internal/app"
 	"cube/internal/domain/project"
 	"cube/pkg/pathkit"
 	"cube/pkg/slicekit"
 	"cube/pkg/tui"
 )
 
-func newListCmd(env *env.Env) *cobra.Command {
+func newListCmd(a *app.App) *cobra.Command {
 	var group string
 	cmd := &cobra.Command{
 		Use:   "list [query] [-g|--group=组名]",
@@ -32,7 +32,7 @@ query 支持两种搜索模式：
 			query := getArg(args, 0)
 
 			// 项目列表
-			projects, err := searchProjects(env.App().ProjectService(), query, false)
+			projects, err := searchProjects(a.ProjectService(), query, false)
 			if err != nil {
 				return err
 			}
@@ -45,9 +45,9 @@ query 支持两种搜索模式：
 			}
 
 			// 展示项目列表（最近使用的项目置顶）
-			latest := env.App().UsageService().LatestByProject()
+			latest := a.UsageService().LatestByProject()
 			projects = project.SortByRecentUsage(projects, latest, 10)
-			showProjects(env.App().ProjectService(), projects)
+			showProjects(a.ProjectService(), projects)
 
 			return nil
 		},

@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"cube/internal/config"
+	"cube/internal/server"
 	"cube/pkg/fuzzy"
 	"cube/pkg/slicekit"
 )
@@ -21,6 +22,10 @@ type Service struct {
 	settingsFile string   // settings.json 路径，每次查询现读（直读不缓存，Web 改完立刻生效）
 	executor     Executor // 逐条构造 actionOpener 时注入；nil 时由 InitActionOpener 装默认执行器
 	baseURL      string   // 站内路由基地址（如 http://127.0.0.1:6001），装配注入
+}
+
+func NewServiceInject(cfg config.Config, paths config.Paths) *Service {
+	return NewService(paths.SettingsFile(), nil, server.BaseURL(cfg.Server))
 }
 
 // NewService 构造 Service。executor 可选（测试传 fake）；baseURL 供 url 动作的

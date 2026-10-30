@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
-	"cube/internal/cmd/env"
 	"cube/internal/server"
 	"cube/internal/version"
 	"cube/pkg/tui"
@@ -23,19 +22,19 @@ import (
 //	cube server status       # 探活（GET /api/system/status）
 
 // newServerCmd 构建 `cube server` 父命令及其子命令。
-func newServerCmd(env *env.Env) *cobra.Command {
+func newServerCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "server",
 		Short: "管理本地 web server（start / stop / status）",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runServerStatus(env.App())
+			return runServerStatus(a)
 		},
 	}
 
-	cmd.AddCommand(newServerStartCmd(env))
-	cmd.AddCommand(newServerStopCmd(env))
-	cmd.AddCommand(newServerStatusCmd(env))
+	cmd.AddCommand(newServerStartCmd(a))
+	cmd.AddCommand(newServerStopCmd(a))
+	cmd.AddCommand(newServerStatusCmd(a))
 
 	return cmd
 }
@@ -44,34 +43,34 @@ func newServerCmd(env *env.Env) *cobra.Command {
 //
 // 不提供后台 detach 形态：常驻由系统级保活承担（prod launchd / dev air），
 // 自 fork 曾有 argv 不透传与启动失败无声的结构性问题，已移除（1036）。
-func newServerStartCmd(env *env.Env) *cobra.Command {
+func newServerStartCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "前台启动 server（Ctrl+C 退出）",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// 常驻 server 启动后台任务（项目视图定时刷新等）；server 退出（Start 返回）时停止。
-			env.App().StartBackgroundJobs()
-			defer env.App().StopBackgroundJobs()
+			a.StartBackgroundJobs()
+			defer a.StopBackgroundJobs()
 
 			fmt.Printf("cube version: %s\n", version.VersionInfo())
 			fmt.Printf("server 启动中\n")
-			fmt.Printf("  访问地址：%s\n", env.App().Server().ServerURL())
-			slog.Info("server 启动中", "url", env.App().Server().ServerURL())
-			return env.App().Server().Start()
+			fmt.Printf("  访问地址：%s\n", a.Server().ServerURL())
+			slog.Info("server 启动中", "url", a.Server().ServerURL())
+			return a.Server().Start()
 		},
 	}
 	return cmd
 }
 
 // newServerStopCmd `cube server stop` —— 触发后台 server 平滑关闭（POST /api/system/shutdown）。
-func newServerStopCmd(env *env.Env) *cobra.Command {
+func newServerStopCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
 		Short: "停止后台 server",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := server.NewClient(env.App().Server().ServerURL())
+			client := server.NewClient(a.Server().ServerURL())
 			stopped, replaced, err := client.Stop()
 			if err != nil {
 				return err
@@ -91,13 +90,13 @@ func newServerStopCmd(env *env.Env) *cobra.Command {
 }
 
 // newServerStatusCmd `cube server status` —— 探活（GET /api/system/status）。
-func newServerStatusCmd(env *env.Env) *cobra.Command {
+func newServerStatusCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "查看 server 运行状态",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runServerStatus(env.App())
+			return runServerStatus(a)
 		},
 	}
 	return cmd

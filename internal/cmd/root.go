@@ -7,15 +7,15 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"cube/internal/app"
 	"cube/internal/cmd/alfred"
 	"cube/internal/cmd/dev"
-	"cube/internal/cmd/env"
 	version2 "cube/internal/version"
 )
 
 func Execute() {
 	// 构建 cmd
-	cmd := newRootCmd(env.New())
+	cmd := newRootCmd(app.New())
 
 	// 执行命令
 	if err := cmd.Execute(); err != nil {
@@ -32,7 +32,7 @@ func defaultConfigPath() string {
 	return "~/.config/" + version2.AppName + "/config.json"
 }
 
-func newRootCmd(env *env.Env) *cobra.Command {
+func newRootCmd(a *app.App) *cobra.Command {
 	var cfgFile string
 	var debug bool
 	var local bool
@@ -61,7 +61,7 @@ func newRootCmd(env *env.Env) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("解析 config 路径失败: %w", err)
 			}
-			return env.Init(absCfgFile, debug, local)
+			return a.Init(absCfgFile, debug, local)
 		},
 	}
 
@@ -71,47 +71,47 @@ func newRootCmd(env *env.Env) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&local, "local", false, "query 缺省时以当前目录定位项目（shell 函数 p 即此模式）")
 
 	// 绑定子命令
-	registerSubCommands(cmd, env)
+	registerSubCommands(cmd, a)
 
 	return cmd
 }
 
-func registerSubCommands(cmd *cobra.Command, env *env.Env) {
-	cmd.AddCommand(newVersionCmd(env))
+func registerSubCommands(cmd *cobra.Command, a *app.App) {
+	cmd.AddCommand(newVersionCmd())
 
 	// web server 相关
-	cmd.AddCommand(newServerCmd(env))
-	cmd.AddCommand(newUiCmd(env))
-	cmd.AddCommand(newOpenapiCmd(env))
+	cmd.AddCommand(newServerCmd(a))
+	cmd.AddCommand(newUiCmd(a))
+	cmd.AddCommand(newOpenapiCmd(a))
 
 	// project 相关
-	cmd.AddCommand(newListCmd(env))      // 项目列表
-	cmd.AddCommand(newInfoCmd(env))      // 项目信息
-	cmd.AddCommand(newOpenCmd(env))      // 打开项目
-	cmd.AddCommand(newPathCmd(env))      // 输出项目路径（供 shell 包装函数 cd）
-	cmd.AddCommand(newInitCmd(env))      // 初始化空项目
-	cmd.AddCommand(newCreateCmd(env))    // 使用模板初始化项目
-	cmd.AddCommand(newCloneCmd(env))     // 使用 RepoUrl 初始化项目
-	cmd.AddCommand(newWorkspaceCmd(env)) // monorepo workspace 声明管理
+	cmd.AddCommand(newListCmd(a))      // 项目列表
+	cmd.AddCommand(newInfoCmd(a))      // 项目信息
+	cmd.AddCommand(newOpenCmd(a))      // 打开项目
+	cmd.AddCommand(newPathCmd(a))      // 输出项目路径（供 shell 包装函数 cd）
+	cmd.AddCommand(newInitCmd(a))      // 初始化空项目
+	cmd.AddCommand(newCreateCmd(a))    // 使用模板初始化项目
+	cmd.AddCommand(newCloneCmd(a))     // 使用 RepoUrl 初始化项目
+	cmd.AddCommand(newWorkspaceCmd(a)) // monorepo workspace 声明管理
 
 	// open 相关
-	cmd.AddCommand(newOpenersCmd(env))
-	cmd.AddCommand(newOpenPathCmd(env))
-	cmd.AddCommand(newDiffCmd(env))
+	cmd.AddCommand(newOpenersCmd(a))
+	cmd.AddCommand(newOpenPathCmd(a))
+	cmd.AddCommand(newDiffCmd(a))
 
 	// forge（git 托管平台配置，1040）
-	cmd.AddCommand(newForgeCmd(env))
+	cmd.AddCommand(newForgeCmd(a))
 
 	// git 相关
-	cmd.AddCommand(newPushCmd(env))
-	cmd.AddCommand(newPullCmd(env))
+	cmd.AddCommand(newPushCmd(a))
+	cmd.AddCommand(newPullCmd(a))
 
 	// 内部命令
-	cmd.AddCommand(alfred.NewCmd(env))
-	cmd.AddCommand(dev.NewCmd(env))
+	cmd.AddCommand(alfred.NewCmd(a))
+	cmd.AddCommand(dev.NewCmd(a))
 
-	cmd.AddCommand(newDoctorCmd(env)) // 环境体检
+	cmd.AddCommand(newDoctorCmd(a)) // 环境体检
 
 	// 待整理命令
-	cmd.AddCommand(newCheckCmd(env))
+	cmd.AddCommand(newCheckCmd(a))
 }

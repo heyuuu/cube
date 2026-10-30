@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/env"
+	"cube/internal/app"
 	"cube/internal/domain/project/cubefile"
 	"cube/internal/domain/project/workspace"
 	"cube/pkg/tui"
@@ -14,16 +14,16 @@ import (
 
 // cmd `cube workspace init`（提案 1030）：探测标准 monorepo 声明 → 挑选成员 →
 // 固化为 .cube/cube.json 的显式 workspaces（init 的语义就是固化，不提供只写 scanRule 的选项）。
-func newWorkspaceCmd(env *env.Env) *cobra.Command {
+func newWorkspaceCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "workspace",
 		Short: "monorepo workspace 声明管理",
 	}
-	cmd.AddCommand(newWorkspaceInitCmd(env))
+	cmd.AddCommand(newWorkspaceInitCmd(a))
 	return cmd
 }
 
-func newWorkspaceInitCmd(env *env.Env) *cobra.Command {
+func newWorkspaceInitCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init [query]",
 		Short: "探测 monorepo 声明并挑选成员，写入 .cube/cube.json",
@@ -34,7 +34,7 @@ func newWorkspaceInitCmd(env *env.Env) *cobra.Command {
 query 支持项目名模糊搜索，规则同 open 命令。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			proj, err := pickProject(env.App().ProjectService(), getArg(args, 0), env.Local())
+			proj, err := pickProject(a.ProjectService(), getArg(args, 0), a.Local())
 			if err != nil {
 				return err
 			}
@@ -74,7 +74,7 @@ query 支持项目名模糊搜索，规则同 open 命令。`,
 				return err
 			}
 			// 定向重采集：写盘即刻反映到打开目标，不等 TTL
-			if err := env.App().ProjectService().RefreshGitInfo(root); err != nil {
+			if err := a.ProjectService().RefreshGitInfo(root); err != nil {
 				fmt.Printf("cube.json 已写入，但刷新快照失败（等下次采集自愈）: %v\n", err)
 			}
 			fmt.Printf("已写入 %s/.cube/cube.json（%d 个 workspace），记得提交进 git\n", root, len(picked))

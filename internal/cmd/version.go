@@ -5,11 +5,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/env"
 	"cube/internal/version"
 )
 
-func newVersionCmd(env *env.Env) *cobra.Command {
+func newVersionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "显示当前版本号",
