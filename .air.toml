@@ -19,7 +19,7 @@ tmp_dir = "tmp"
   args_bin = ["--debug", "server", "start"]
   # 防抖(毫秒)
   delay = 1000
-  exclude_dir = ["assets", "tmp", "vendor", "testdata", "runtime"]
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "runtime", "docs", "web"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false

@@ -48,15 +48,14 @@ dev-link-config:
 	ln -s ~/.config/cube ./tmp/.config/cube
 
 fmt:
-    go fmt ./...
+    golangci-lint fmt
     go mod tidy
 
 lint:
-    go vet ./...
-    golangci-lint run ./...
+    golangci-lint run
 
 fix: fmt
-    golangci-lint run --fix ./...
+    golangci-lint run --fix
 
 test:
     go test -race ./...
