@@ -43,14 +43,16 @@ func TestRemoteUrl_NoOrigin(t *testing.T) {
 }
 
 // TestRemotes_WithMultipleRemotes 多 remote 仓库返回全部，按名字排序。
+// URL 用 example.com：本机全局 git 配置可能有 insteadOf 重写（如 https://github.com → git@github.com:），
+// github.com 地址会被改写导致断言失败，example.com 不在任何重写规则内。
 func TestRemotes_WithMultipleRemotes(t *testing.T) {
 	ws := newTestWorkspace(t)
 	// 先建仓库，再加额外 remote
 	dir := ws.MakeGitRepoWith("repo", GitRepoSpec{
-		RemoteUrl: "https://github.com/a/b.git",
+		RemoteUrl: "https://example.com/a/b.git",
 	})
 	// fixture 只支持 origin，upstream 用 git 命令直接加
-	directAddRemote(t, dir, "upstream", "https://github.com/upstream/b.git")
+	directAddRemote(t, dir, "upstream", "https://example.com/upstream/b.git")
 
 	remotes, err := Remotes(dir)
 	if err != nil {
@@ -64,28 +66,29 @@ func TestRemotes_WithMultipleRemotes(t *testing.T) {
 	for _, r := range remotes {
 		byName[r.Name] = r
 	}
-	if r, ok := byName["origin"]; !ok || r.Fetch != "https://github.com/a/b.git" {
+	if r, ok := byName["origin"]; !ok || r.Fetch != "https://example.com/a/b.git" {
 		t.Fatalf("origin remote 异常：%v", byName["origin"])
 	}
-	if r, ok := byName["upstream"]; !ok || r.Fetch != "https://github.com/upstream/b.git" {
+	if r, ok := byName["upstream"]; !ok || r.Fetch != "https://example.com/upstream/b.git" {
 		t.Fatalf("upstream remote 异常：%v", byName["upstream"])
 	}
 }
 
 // TestRemotes_SeparatePushUrl 配置独立 pushurl 时 Fetch 与 Push 不同。
+// fetch URL 用 example.com，理由同 TestRemotes_WithMultipleRemotes（避开本机 insteadOf 重写）。
 func TestRemotes_SeparatePushUrl(t *testing.T) {
 	ws := newTestWorkspace(t)
 	dir := ws.MakeGitRepoWith("repo", GitRepoSpec{
-		RemoteUrl: "https://github.com/a/b.git",
+		RemoteUrl: "https://example.com/a/b.git",
 	})
-	directGit(t, dir, "remote", "set-url", "--push", "origin", "git@github.com:a/b.git")
+	directGit(t, dir, "remote", "set-url", "--push", "origin", "git@example.com:a/b.git")
 
 	remotes, err := Remotes(dir)
 	if err != nil || len(remotes) != 1 {
 		t.Fatalf("Remotes = (%v, %v)，期望单个 remote", remotes, err)
 	}
 	r := remotes[0]
-	if r.Fetch != "https://github.com/a/b.git" || r.Push != "git@github.com:a/b.git" {
+	if r.Fetch != "https://example.com/a/b.git" || r.Push != "git@example.com:a/b.git" {
 		t.Fatalf("pushurl remote 异常：%+v", r)
 	}
 }
