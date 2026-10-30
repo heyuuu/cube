@@ -1,4 +1,4 @@
-package server
+package client
 
 // Client 集成测试：用 httptest 起 mock cube server 覆盖 Status 三态与 Stop 流程
 // （shutdown 后确认下线 / 被新实例接管）。token 鉴权走真实 Gen/Verify 配对。
@@ -10,6 +10,9 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"cube/internal/handlers"
+	"cube/internal/server"
 )
 
 // startMockCubeServer 起一个 httptest server 模拟 cube 的 status 端点。
@@ -18,9 +21,9 @@ func startMockCubeServer(t *testing.T, version string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(Envelope[StatusResponse]{
+		_ = json.NewEncoder(w).Encode(server.Envelope[handlers.StatusResponse]{
 			Ok:   true,
-			Data: &StatusResponse{App: "cube", Version: version, Instance: "mock-inst"},
+			Data: &handlers.StatusResponse{App: "cube", Version: version, Instance: "mock-inst"},
 		})
 	})
 	srv := httptest.NewServer(mux)
@@ -95,7 +98,7 @@ func TestClientStop_ShutdownAndConfirm(t *testing.T) {
 			Token string `json:"token"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		if err := VerifyShutdownToken(req.Token, "old-inst", time.Now()); err != nil {
+		if err := handlers.VerifyShutdownToken(req.Token, "old-inst", time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -126,7 +129,7 @@ func TestClientStop_ReplacedByNewInstance(t *testing.T) {
 	instance := "old-inst"
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(fmt.Sprintf(`{"ok":true,"data":{"app":"cube","version":"v1","instance":%q}}`, instance)))
+		_, _ = fmt.Fprintf(w, `{"ok":true,"data":{"app":"cube","version":"v1","instance":%q}}`, instance)
 	})
 	mux.HandleFunc("/api/system/shutdown", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -137,7 +140,7 @@ func TestClientStop_ReplacedByNewInstance(t *testing.T) {
 			Token string `json:"token"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		if err := VerifyShutdownToken(req.Token, instance, time.Now()); err != nil {
+		if err := handlers.VerifyShutdownToken(req.Token, instance, time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

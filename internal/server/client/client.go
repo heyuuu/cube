@@ -1,4 +1,4 @@
-package server
+package client
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"cube/internal/handlers"
+	"cube/internal/server"
 	"cube/internal/version"
 )
 
@@ -40,7 +42,7 @@ type StatusInfo struct {
 // Status 获取服务端状态
 func (c *Client) Status() StatusInfo {
 	url := c.baseUrl + "api/system/status"
-	resp, err := doJsonRequest[StatusResponse](http.MethodGet, url, nil)
+	resp, err := doJsonRequest[handlers.StatusResponse](http.MethodGet, url, nil)
 	if err != nil {
 		return StatusInfo{}
 	}
@@ -65,7 +67,7 @@ func (c *Client) Stop() (stopped bool, replaced bool, err error) {
 
 	// 触发 shutdown 请求
 	_, err = doJsonRequest[string](http.MethodPost, c.baseUrl+"api/system/shutdown", map[string]any{
-		"token": GenShutdownToken(instanceID, time.Now()),
+		"token": handlers.GenShutdownToken(instanceID, time.Now()),
 	})
 	if err != nil {
 		return false, false, fmt.Errorf("shutdown 请求失败: %w", err)
@@ -126,7 +128,7 @@ func doJsonRequest[T any](method string, url string, body any) (*T, error) {
 	}
 
 	// 解析 json 结构
-	var out Envelope[T]
+	var out server.Envelope[T]
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, fmt.Errorf("解析 response 结构失败: %w", err)
 	}

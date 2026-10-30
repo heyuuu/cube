@@ -1,4 +1,4 @@
-package server
+package handlers
 
 import (
 	"crypto/hmac"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"cube/internal/server"
 	"cube/internal/version"
 )
 
@@ -38,9 +39,9 @@ func NewSystemHandler() *SystemHandler {
 	}
 }
 
-func (h *SystemHandler) Register(r *Routes) {
-	r.Get("/api/system/status", "服务身份探活", JsonHandler(h.status))
-	r.Post("/api/system/shutdown", "触发服务平滑关闭", JsonHandler(h.shutdown), WithoutOpenAPI())
+func (h *SystemHandler) Register(r *server.Routes) {
+	r.Get("/api/system/status", "服务身份探活", server.JSONHandler(h.status))
+	r.Post("/api/system/shutdown", "触发服务平滑关闭", server.JSONHandler(h.shutdown), server.WithoutOpenAPI())
 }
 
 // StatusResponse Status 返回体
@@ -60,7 +61,7 @@ func (h *SystemHandler) status(_ struct{}) (StatusResponse, error) {
 
 // shutdown 校验 token 后给本进程发 SIGTERM 触发 graceful shutdown。
 // 信号由 Start 的 signal.Notify 接收，走与用户 Ctrl+C 完全相同的关闭路径。
-// 鉴权失败以 envelope ok:false 表达（JsonHandler 惯例），调用方解析 envelope 判定。
+// 鉴权失败以 envelope ok:false 表达（JSONHandler 惯例），调用方解析 envelope 判定。
 func (h *SystemHandler) shutdown(input struct {
 	Body struct {
 		Token string `json:"token" required:"true"`

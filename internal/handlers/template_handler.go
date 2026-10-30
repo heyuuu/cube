@@ -15,10 +15,10 @@ func NewTemplateHandler(templateService *template.Service) *TemplateHandler {
 }
 
 func (h *TemplateHandler) Register(r *server.Routes) {
-	r.Get("/api/template/source/list", "获取模板源列表（含默认源名）", server.JsonHandler(h.sourceList))
-	r.Post("/api/template/source/save", "新增或按 name 替换模板源", server.JsonHandler(h.sourceSave))
-	r.Post("/api/template/source/delete", "按 name 删除模板源", server.JsonHandler(h.sourceDelete))
-	r.Post("/api/template/source/reorder", "按 name 重排模板源顺序", server.JsonHandler(h.sourceReorder))
+	r.Get("/api/template/source/list", "获取模板源列表（含默认源名）", server.JSONHandler(h.sourceList))
+	r.Post("/api/template/source/save", "新增或按 name 替换模板源", server.JSONHandler(h.sourceSave))
+	r.Post("/api/template/source/delete", "按 name 删除模板源", server.JSONHandler(h.sourceDelete))
+	r.Post("/api/template/source/reorder", "按 name 重排模板源顺序", server.JSONHandler(h.sourceReorder))
 }
 
 // TplSourceListResult template/source/list 出参：列表 + 默认源名（前端标注「默认」用，

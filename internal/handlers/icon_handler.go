@@ -16,7 +16,7 @@ func NewIconHandler() *IconHandler {
 }
 
 func (h *IconHandler) Register(r *server.Routes) {
-	r.Post("/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", server.JsonHandler(h.iconExtract))
+	r.Post("/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", server.JSONHandler(h.iconExtract))
 }
 
 // IconExtractInput icon/extract 接口入参。source 由后端按形态分发：

@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
-	"cube/internal/server"
+	"cube/internal/server/client"
 	"cube/internal/version"
 	"cube/pkg/tui"
 )
@@ -53,7 +53,7 @@ func newServerStartCmd(a *app.App) *cobra.Command {
 			a.StartBackgroundJobs()
 			defer a.StopBackgroundJobs()
 
-			fmt.Printf("cube version: %s\n", version.VersionInfo())
+			fmt.Printf("cube version: %s\n", version.Info())
 			fmt.Printf("server 启动中\n")
 			fmt.Printf("  访问地址：%s\n", a.Server().ServerURL())
 			slog.Info("server 启动中", "url", a.Server().ServerURL())
@@ -70,7 +70,7 @@ func newServerStopCmd(a *app.App) *cobra.Command {
 		Short: "停止后台 server",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := server.NewClient(a.Server().ServerURL())
+			client := client.NewClient(a.Server().ServerURL())
 			stopped, replaced, err := client.Stop()
 			if err != nil {
 				return err
@@ -103,7 +103,7 @@ func newServerStatusCmd(a *app.App) *cobra.Command {
 }
 
 func runServerStatus(a *app.App) error {
-	client := server.NewClient(a.Server().ServerURL())
+	client := client.NewClient(a.Server().ServerURL())
 	st := client.Status()
 
 	// print server status

@@ -10,7 +10,6 @@ import (
 	"cube/internal/domain/usage"
 	"cube/internal/domain/workbench"
 	"cube/internal/handlers"
-	"cube/internal/server"
 	"cube/web"
 )
 
@@ -33,9 +32,9 @@ func serviceFactories() []any {
 func handlerFactories() []any {
 	return []any{
 		/* 系统端点 */
-		server.NewSystemHandler,
+		handlers.NewSystemHandler,
 		/* 静态资源端点 */
-		di.Value(server.NewStaticHandler(web.FS())),
+		di.Value(handlers.NewStaticHandler(web.FS())),
 
 		/* 业务 handler */
 		handlers.NewConfigHandler,

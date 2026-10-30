@@ -26,6 +26,7 @@ type Server struct {
 	routes *Routes
 }
 
+// NewServer 构造 Server：各 handler 完成路由注册，host 缺省为 localhost。
 func NewServer(c config.ServerConfig, handlers []Handler) *Server {
 	routes := newRoutes()
 
@@ -45,6 +46,7 @@ func NewServer(c config.ServerConfig, handlers []Handler) *Server {
 	}
 }
 
+// Port 返回配置的监听端口。
 func (s *Server) Port() int { return s.port }
 
 // Handler 返回底层 http.Handler，供 httptest 拉起真实路由做集成测试。

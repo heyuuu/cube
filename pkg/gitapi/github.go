@@ -29,13 +29,7 @@ func (c *githubClient) ListAccountRepos(ctx context.Context) ([]RemoteRepo, erro
 			return 0, err
 		}
 		for _, r := range items {
-			repos = append(repos, RemoteRepo{
-				Name:          r.Name,
-				FullName:      r.FullName,
-				CloneUrl:      r.CloneUrl,
-				DefaultBranch: r.DefaultBranch,
-				UpdatedAt:     r.UpdatedAt,
-			})
+			repos = append(repos, RemoteRepo(r))
 		}
 		return len(items), nil
 	})

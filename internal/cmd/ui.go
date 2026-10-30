@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
-	"cube/internal/server"
+	"cube/internal/server/client"
 )
 
 func newUiCmd(a *app.App) *cobra.Command {
@@ -62,7 +62,7 @@ func newWorkbenchCmd(a *app.App) *cobra.Command {
 
 // runWeb 打开 Web UI 首页。
 func runWeb(a *app.App) error {
-	client := server.NewClient(a.Server().ServerURL())
+	client := client.NewClient(a.Server().ServerURL())
 	if st := client.Status(); !st.Running {
 		return errors.New("server 未运行，请先执行: cube server start")
 	}
@@ -86,7 +86,7 @@ func openPage(a *app.App, route string, rawPath string) error {
 		return fmt.Errorf("路径不存在: %s", absPath)
 	}
 
-	client := server.NewClient(a.Server().ServerURL())
+	client := client.NewClient(a.Server().ServerURL())
 	if st := client.Status(); !st.Running {
 		return errors.New("server 未运行，请先执行: cube server start")
 	}

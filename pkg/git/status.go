@@ -80,9 +80,10 @@ func parseStatusV2(out string) *RepoStatus {
 		case strings.HasPrefix(line, "# branch.ab "):
 			for _, f := range strings.Fields(strings.TrimPrefix(line, "# branch.ab")) {
 				if n, err := strconv.Atoi(f[1:]); err == nil {
-					if f[0] == '+' {
+					switch f[0] {
+					case '+':
 						st.Ahead = n
-					} else if f[0] == '-' {
+					case '-':
 						st.Behind = n
 					}
 				}

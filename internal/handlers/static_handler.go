@@ -1,4 +1,4 @@
-package server
+package handlers
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"cube/internal/server"
 )
 
 type StaticHandler struct {
@@ -23,7 +25,7 @@ func NewStaticHandler(fs fs.FS) *StaticHandler {
 //   - index.html 未嵌入（纯后端模式）→ 404
 //   - /api/*、/docs、/openapi.json 的未命中**不走 fallback**，按 404 处理——
 //     否则 API 打错路径会拿到 HTML 200，错误被吞成莫名的解析失败
-func (h *StaticHandler) Register(r *Routes) {
+func (h *StaticHandler) Register(r *server.Routes) {
 	if h.fs == nil {
 		return
 	}

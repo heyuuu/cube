@@ -70,7 +70,7 @@ func lsFilesFileMap(wtDir string) (map[string]string, error) {
 
 func blobSha(data []byte) string {
 	h := sha1.New()
-	fmt.Fprintf(h, "blob %d\x00", len(data))
+	_, _ = fmt.Fprintf(h, "blob %d\x00", len(data))
 	h.Write(data)
 	return fmt.Sprintf("%x", h.Sum(nil))
 }

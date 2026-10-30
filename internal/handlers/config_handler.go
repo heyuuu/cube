@@ -15,7 +15,7 @@ func NewConfigHandler(cfg *config.Config) *ConfigHandler {
 }
 
 func (h *ConfigHandler) Register(r *server.Routes) {
-	r.Get("/api/config", "获取配置信息", server.JsonHandler(h.getConfig))
+	r.Get("/api/config", "获取配置信息", server.JSONHandler(h.getConfig))
 }
 
 func (h *ConfigHandler) getConfig(_ struct{}) (config.Config, error) {

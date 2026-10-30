@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	jsonv2 "encoding/json/v2"
+	"io"
 	"net/http"
 	"slices"
 	"strings"
@@ -16,7 +18,7 @@ import (
 // Routes 路由注册器：持有 huma API 与底层 http mux，二者不对 handler 层暴露。
 //
 // handler 通过 Register(r *Routes) 注册路由：标准查询/动作走 Get / Post
-// （输入/输出类型经 JsonHandler / RawHandler 包装携带，见 TypedHandler），
+// （输入/输出类型经 JSONHandler / RawHandler 包装携带，见 TypedHandler），
 // 进 OpenAPI 文档，个别端点可用 WithoutOpenAPI 显式排除；需要原始控制
 // ResponseWriter 的端点（连接升级 / 二进制流）走 Raw，一律不进文档。
 // 换路由实现（如 chi）时只改本文件，handlers 包不感知。
@@ -32,12 +34,32 @@ func newRoutes() *Routes {
 	cfg := huma.DefaultConfig(version.AppName+" api", version.Version())
 	cfg.DocsRenderer = huma.DocsRendererScalar // 切换 /docs 页面风格为 Scalar 渲染器
 	cfg.Formats = map[string]huma.Format{
-		"application/json": nilCollectionsJSONFormat, // nil 切片/map → []/{}，避免前端拿到 null 崩溃
-		"json":             nilCollectionsJSONFormat, // "json" 别名必须存在：错误响应的 application/problem+json 靠取 "+" 后的 "json" 兜底查表
+		"application/json": humaJSONFormat(), // v2 默认语义：nil 切片/map → []/{}，避免前端拿到 null 崩溃
+		"json":             humaJSONFormat(), // "json" 别名必须存在：错误响应的 application/problem+json 靠取 "+" 后的 "json" 兜底查表
 	}
 	api := humago.New(mux, cfg)
 
 	return &Routes{api: api, mux: mux}
+}
+
+// jsonV2Format 以 encoding/json/v2 承载 huma 的 JSON 格式。
+//
+// 为什么不用 huma 默认（v1）：前端 TS 类型声明为 string[] / Record 等，v1 对
+// nil 切片/map 输出 null 会触发前端运行时崩溃；v2 默认集合语义（nil 切片 → []、
+// nil map → {}、nil 指针 → null）正是需要的稳定形态。v2 默认不转义 HTML，
+// 与 huma 默认格式的 SetEscapeHTML(false) 行为一致。
+//
+// v2 的 Unmarshal 默认严格匹配字段名大小写、拒绝非法 UTF-8；前端是唯一调用方，
+// wire 形态与前端 types.ts 镜像锁死，不受影响。
+func humaJSONFormat() huma.Format {
+	return huma.Format{
+		Marshal: func(w io.Writer, v any) error {
+			return jsonv2.MarshalWrite(w, v)
+		},
+		Unmarshal: func(b []byte, v any) error {
+			return jsonv2.Unmarshal(b, v)
+		},
+	}
 }
 
 // --- 查询接口 ---
@@ -83,7 +105,7 @@ func (r *Routes) Raw(pattern string, h http.Handler) {
 // TypedHandler 及其使用
 
 // TypedHandler 携带输入/输出类型信息的 huma handler——Go 泛型不能定义在方法上，
-// 由包装函数（JsonHandler / RawHandler）把类型参数捕获进闭包，供 Get/Post 的
+// 由包装函数（JSONHandler / RawHandler）把类型参数捕获进闭包，供 Get/Post 的
 // 非泛型方法触发注册；包装函数同时决定响应形态（envelope 与否）。
 type TypedHandler interface {
 	registerOn(r *Routes, op huma.Operation)
@@ -102,24 +124,25 @@ func RawHandler[I, O any](h func(context.Context, *I) (*O, error)) TypedHandler 
 	return typedRoute[I, O]{h: h}
 }
 
-// JsonOutput api 标准输出结构
-type JsonOutput[T any] struct {
+// JSONOutput api 标准输出结构
+type JSONOutput[T any] struct {
 	Body Envelope[T]
 }
 
+// Envelope api 标准输出的信封：ok 标记成败、message 携带失败原因、data 携带负载数据。
 type Envelope[T any] struct {
 	Ok      bool   `json:"ok"`
 	Message string `json:"message"`
 	Data    *T     `json:"data"`
 }
 
-// JsonHandler 包装 handler 并包 JsonOutput envelope——标准 JSON 端点的默认形态：
-// r.Get("/api/foo/list", "查询列表", web.Json(h.list))
-func JsonHandler[I, O any](h func(I) (O, error)) TypedHandler {
-	return RawHandler(func(_ context.Context, input *I) (*JsonOutput[O], error) {
+// JSONHandler 包装 handler 并包 JSONOutput envelope——标准 JSON 端点的默认形态：
+// r.Get("/api/foo/list", "查询列表", web.JSONHandler(h.list))
+func JSONHandler[I, O any](h func(I) (O, error)) TypedHandler {
+	return RawHandler(func(_ context.Context, input *I) (*JSONOutput[O], error) {
 		data, err := h(*input)
 
-		var output JsonOutput[O]
+		var output JSONOutput[O]
 		if err != nil {
 			output.Body.Ok = false
 			output.Body.Message = err.Error()
@@ -163,7 +186,7 @@ func prepareOperation(op huma.Operation, opts ...RouteOption) huma.Operation {
 		panic("api path 必须以 /api/ 开头: " + op.Path)
 	}
 
-	group, operationId := parseInfoFromPath(op.Path)
+	group, operationID := parseInfoFromPath(op.Path)
 
 	// 默认将分组作为 tag
 	if !slices.Contains(op.Tags, group) {
@@ -172,7 +195,7 @@ func prepareOperation(op huma.Operation, opts ...RouteOption) huma.Operation {
 
 	// 默认 operation-id，影响使用方的代码生成
 	if op.OperationID == "" {
-		op.OperationID = operationId
+		op.OperationID = operationID
 	}
 
 	return op
@@ -184,20 +207,20 @@ func applyRouteOptions(op *huma.Operation, opts ...RouteOption) {
 	}
 }
 
-func parseInfoFromPath(p string) (group string, operationId string) {
+func parseInfoFromPath(p string) (group string, operationID string) {
 	p = strings.Trim(strings.TrimPrefix(p, "/api"), " /")
 	if p == "" {
 		return "index", "index.index"
 	}
 
-	if idx := strings.IndexByte(p, '/'); idx < 0 {
+	idx := strings.IndexByte(p, '/')
+	if idx < 0 {
 		return p, p + ".index"
-	} else {
-		group = p[:idx]
-		rest := toCamelPath(p[idx+1:])
-		operationId = group + "." + rest
-		return
 	}
+	group = p[:idx]
+	rest := toCamelPath(p[idx+1:])
+	operationID = group + "." + rest
+	return
 }
 
 // toCamelPath 把路径段转驼峰："/clone-rules" → "cloneRules"（"-"后字母大写，其余原样）

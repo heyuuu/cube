@@ -173,7 +173,7 @@ func TestBonusScorer_GapPenaltyOrdering(t *testing.T) {
 	full, _ := BonusScorer("abc", "abc", defaultBonus)      // 全连续
 	small, _ := BonusScorer("abc", "axbxc", defaultBonus)   // 小 gap（字母 x）
 	large, _ := BonusScorer("abc", "axxbxxc", defaultBonus) // 大 gap（字母 x）
-	if !(full > small && small > large) {
+	if full <= small || small <= large {
 		t.Fatalf("分数应单调递减: full=%d small=%d large=%d", full, small, large)
 	}
 }

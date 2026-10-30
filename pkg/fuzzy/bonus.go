@@ -99,7 +99,7 @@ func BonusScorer(query string, target string, bonus map[int]int) (int, bool) {
 		//   非连续转移 cost(k→j) = dp[k] + (j-k-1)*penUn + posBonus[j]
 		//                        = (j-1)*penUn + posBonus[j] + max_{k<=j-2}(dp[k] - k*penUn)
 		//   因 penUn<0，-k*penUn 单调，维护 prefMax = max_{k<t}(dp[k] - k*penUn) 即可。
-		var prefMax int = negInf
+		var prefMax = negInf
 		for j := i; j <= n-(m-i); j++ { // 剪枝：为剩余 query 字符留足位置
 			// 先推进 prefMax：把 j-1 作为潜在前驱加入（无论本位是否匹配）
 			if j-1 >= 0 && j-1 >= i-1 && dp[j-1] != negInf {

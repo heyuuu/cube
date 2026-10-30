@@ -124,7 +124,7 @@ func (f *fakeExecutor) lastCall() []string {
 
 // --- HTTP 断言辅助 ---
 
-// envelope 与 JsonOutput 的 JSON 形态对应；data 延迟到调用方按需解码。
+// envelope 与 JSONOutput 的 JSON 形态对应；data 延迟到调用方按需解码。
 type envelope struct {
 	Ok      bool            `json:"ok"`
 	Message string          `json:"message"`

@@ -37,8 +37,8 @@ func NewMdHandler() *MdHandler {
 }
 
 func (h *MdHandler) Register(r *server.Routes) {
-	r.Get("/api/md/content", "读取 markdown 文件原文", server.JsonHandler(h.mdContent))
-	r.Get("/api/md/list", "列出目录下的 markdown 文件", server.JsonHandler(h.mdList))
+	r.Get("/api/md/content", "读取 markdown 文件原文", server.JSONHandler(h.mdContent))
+	r.Get("/api/md/list", "列出目录下的 markdown 文件", server.JSONHandler(h.mdList))
 }
 
 func (h *MdHandler) mdContent(input struct {
