@@ -115,3 +115,7 @@ gen *args:
 # 生成 api
 gen-api:
     pnpm --dir {{ ui_src }} gen:api
+
+# 打新标签
+tag:
+     go run {{ devtool_cmd }} tag
