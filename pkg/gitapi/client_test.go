@@ -2,7 +2,7 @@ package gitapi
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -26,7 +26,7 @@ func newFakeServer(t *testing.T, kind, token string, handler http.HandlerFunc) C
 func writeJSON(t *testing.T, w http.ResponseWriter, v any) {
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(v); err != nil {
+	if err := json.MarshalWrite(w, v); err != nil {
 		t.Fatalf("编码响应失败: %v", err)
 	}
 }

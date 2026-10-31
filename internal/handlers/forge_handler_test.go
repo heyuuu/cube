@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"strings"
 	"testing"
@@ -144,7 +144,7 @@ func TestForgeOverviewApi(t *testing.T) {
 		t.Fatalf("overview 请求失败: %v", err)
 	}
 	defer resp.Body.Close()
-	if err := json.NewDecoder(resp.Body).Decode(&env2); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &env2); err != nil {
 		t.Fatalf("overview 响应解码失败: %v", err)
 	}
 	if !env2.Ok {

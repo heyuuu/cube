@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
-	"encoding/json"
+	"encoding/json/v2"
 	"image"
 	"image/color"
 	"image/png"
@@ -26,7 +26,7 @@ func postRaw(t *testing.T, url string, body string) envelope {
 		t.Fatalf("POST %s 应为 200, got %d", url, resp.StatusCode)
 	}
 	var out envelope
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &out); err != nil {
 		t.Fatalf("响应解码失败: %v", err)
 	}
 	return out

@@ -10,7 +10,8 @@ package handlers
 // 本包（env_test.go / system_handler_test.go），与业务契约共用同一套 newTestEnv 基建。
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -129,9 +130,9 @@ func (f *fakeExecutor) lastCall() []string {
 
 // envelope 与 JSONOutput 的 JSON 形态对应；data 延迟到调用方按需解码。
 type envelope struct {
-	Ok      bool            `json:"ok"`
-	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data"`
+	Ok      bool           `json:"ok"`
+	Message string         `json:"message"`
+	Data    jsontext.Value `json:"data"`
 }
 
 // getJSON 打 GET 请求并断言 200 + envelope 解码成功，返回 envelope。
@@ -146,7 +147,7 @@ func getJSON(t *testing.T, url string) envelope {
 		t.Fatalf("GET %s 应为 200, got %d", url, resp.StatusCode)
 	}
 	var env envelope
-	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &env); err != nil {
 		t.Fatalf("GET %s 响应不是合法 envelope: %v", url, err)
 	}
 	return env

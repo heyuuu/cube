@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -221,7 +221,7 @@ func TestProjectOpen(t *testing.T) {
 			t.Fatalf("POST project/open 应为 200, got %d", resp.StatusCode)
 		}
 		var env2 envelope
-		if err := json.NewDecoder(resp.Body).Decode(&env2); err != nil {
+		if err := json.UnmarshalRead(resp.Body, &env2); err != nil {
 			t.Fatalf("project/open 响应解析失败: %v", err)
 		}
 		return env2
@@ -297,11 +297,8 @@ func TestWorkspaceGetSave(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var state struct {
-		Effective   []struct{ Name, Path string } `json:"effective"`
-		DeclaredSet bool                          `json:"declaredSet"`
-		Detected    []struct{ Name, Path string } `json:"detected"`
-	}
+	// v2 解码字段名大小写敏感，这里直接用真实 DTO（匿名结构无 tag 时 Name 匹配不上 "name"）
+	var state WorkspaceStateResult
 	decodeData(t, getJSON(t, env.url("/api/project/workspace/get?path="+url.QueryEscape(repo))), &state)
 	if state.DeclaredSet {
 		t.Fatal("未写 cube.json 时 declaredSet 应为 false")
@@ -321,7 +318,7 @@ func TestWorkspaceGetSave(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	var saved envelope
-	if err := json.NewDecoder(resp.Body).Decode(&saved); err != nil || !saved.Ok {
+	if err := json.UnmarshalRead(resp.Body, &saved); err != nil || !saved.Ok {
 		t.Fatalf("save 应成功: err=%v env=%+v", err, saved)
 	}
 
@@ -341,7 +338,7 @@ func TestWorkspaceGetSave(t *testing.T) {
 	}
 	defer resp2.Body.Close()
 	var rejected envelope
-	if err := json.NewDecoder(resp2.Body).Decode(&rejected); err != nil {
+	if err := json.UnmarshalRead(resp2.Body, &rejected); err != nil {
 		t.Fatal(err)
 	}
 	if rejected.Ok {

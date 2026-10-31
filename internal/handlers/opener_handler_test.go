@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"strings"
 	"testing"
@@ -50,7 +50,7 @@ func TestOpenerOpen(t *testing.T) {
 			t.Fatalf("POST opener/open 应为 200, got %d", resp.StatusCode)
 		}
 		var env2 envelope
-		if err := json.NewDecoder(resp.Body).Decode(&env2); err != nil {
+		if err := json.UnmarshalRead(resp.Body, &env2); err != nil {
 			t.Fatalf("md/open 响应解析失败: %v", err)
 		}
 		return env2
@@ -90,7 +90,7 @@ func TestOpenerSaveAndDelete(t *testing.T) {
 			t.Fatalf("POST opener/save 应为 200, got %d", resp.StatusCode)
 		}
 		var out envelope
-		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		if err := json.UnmarshalRead(resp.Body, &out); err != nil {
 			t.Fatalf("响应解码失败: %v", err)
 		}
 		return out
@@ -147,7 +147,7 @@ func TestOpenerSaveAndDelete(t *testing.T) {
 		t.Fatalf("delete 应为 200, got %d", delResp.StatusCode)
 	}
 	var envDel envelope
-	if err := json.NewDecoder(delResp.Body).Decode(&envDel); err != nil {
+	if err := json.UnmarshalRead(delResp.Body, &envDel); err != nil {
 		t.Fatalf("删除响应解码失败: %v", err)
 	}
 	if !envDel.Ok {
@@ -174,7 +174,7 @@ func TestOpenerReorder(t *testing.T) {
 			t.Fatalf("POST %s 应为 200, got %d", path, resp.StatusCode)
 		}
 		var out envelope
-		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		if err := json.UnmarshalRead(resp.Body, &out); err != nil {
 			t.Fatalf("响应解码失败: %v", err)
 		}
 		return out

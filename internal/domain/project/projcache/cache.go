@@ -10,7 +10,7 @@
 package projcache
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log/slog"
 	"os"
@@ -152,7 +152,7 @@ func (c *Cache) Size() int {
 	return len(c.entries)
 }
 
-// Save 原子写入 git.json（store.WriteFileAtomic 的 tmp + rename）。
+// Save 落盘 git.json（store.SaveJSON：Deterministic 字节稳定 + 缩进 + 尾换行 + 原子写）。
 func (c *Cache) Save() error {
 	c.mu.Lock()
 	now := time.Now()
@@ -164,12 +164,7 @@ func (c *Cache) Save() error {
 	}
 	c.mu.Unlock()
 
-	data, err := json.MarshalIndent(file, "", "  ")
-	if err != nil {
-		return fmt.Errorf("序列化 cache 失败: %w", err)
-	}
-
-	if err := store.WriteFileAtomic(c.path(), data, 0644); err != nil {
+	if err := store.SaveJSON(c.path(), file); err != nil {
 		return fmt.Errorf("写入 cache 文件失败: %w", err)
 	}
 	return nil

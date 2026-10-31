@@ -1,7 +1,7 @@
 package alfred
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 
 	"cube/pkg/x"

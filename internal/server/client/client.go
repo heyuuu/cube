@@ -3,7 +3,7 @@ package client
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -132,7 +132,7 @@ func doJSONRequest[T any](method string, url string, body any) (*T, error) {
 
 	// 解析 json 结构
 	var out server.Envelope[T]
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &out); err != nil {
 		return nil, fmt.Errorf("解析 response 结构失败: %w", err)
 	}
 	if !out.Ok {

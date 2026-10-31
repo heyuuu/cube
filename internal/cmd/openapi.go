@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
-	"os"
-	"path/filepath"
 
+	"github.com/heyuuu/x/store"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
@@ -35,25 +33,15 @@ func writeOpenAPIFile(a *app.App, outPath string) error {
 		return fmt.Errorf("生成 OpenAPI 失败: %w", err)
 	}
 
-	// 2 空格缩进便于人工检查（HTTP 端点仍用 compact）
-	var pretty bytes.Buffer
-	if err := json.Indent(&pretty, data, "", "  "); err != nil {
-		return fmt.Errorf("格式化 OpenAPI JSON 失败: %w", err)
-	}
-	pretty.WriteByte('\n')
-	data = pretty.Bytes()
-
 	outPath, err = ExtendPath(outPath)
 	if err != nil {
 		return fmt.Errorf("解析输出文件绝对路径失败: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
-		return fmt.Errorf("创建输出目录失败: %w", err)
-	}
-
-	if err := os.WriteFile(outPath, data, 0644); err != nil {
+	// spec 以 jsontext.Value 交给 SaveJSON：2 空格缩进便于人工检查（HTTP 端点仍用 compact），
+	// marshal 时顺带完成语法校验
+	if err := store.SaveJSON(outPath, jsontext.Value(data)); err != nil {
 		return fmt.Errorf("写入文件失败: %w", err)
 	}
-	fmt.Printf("已生成 OpenAPI spec: %s (%d bytes)\n", outPath, len(data))
+	fmt.Printf("已生成 OpenAPI spec: %s\n", outPath)
 	return nil
 }

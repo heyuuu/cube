@@ -32,13 +32,13 @@ func projectName(r ScanRule, path string) string {
 	return r.Group + ":" + subName
 }
 
-// Path 返回项目绝对路径（唯一标识）。
+// Path 返回项目绝对路径（唯一标识）
 func (p Project) Path() string { return p.path }
 
-// Group 返回所属工作区名。
+// Group 返回所属工作区名
 func (p Project) Group() string { return p.group }
 
-// Name 返回展示名（{组名}:{组内相对路径}）。
+// Name 返回展示名（{组名}:{组内相对路径}）
 func (p Project) Name() string { return p.name }
 
 // Tags 返回特征 tag 列表。

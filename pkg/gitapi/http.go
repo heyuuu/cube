@@ -2,7 +2,7 @@ package gitapi
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -63,7 +63,7 @@ func (c *baseClient) doGet(ctx context.Context, path string, query url.Values, o
 		if out == nil {
 			return nil
 		}
-		if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		if err := json.UnmarshalRead(resp.Body, out); err != nil {
 			return fmt.Errorf("解析平台 API 响应失败: %w", err)
 		}
 		return nil

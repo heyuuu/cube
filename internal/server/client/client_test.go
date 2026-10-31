@@ -4,7 +4,7 @@ package client
 // （shutdown 后确认下线 / 被新实例接管）。token 鉴权走真实 Gen/Verify 配对。
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -21,7 +21,7 @@ func startMockCubeServer(t *testing.T, version string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(server.Envelope[handlers.StatusResponse]{
+		_ = json.MarshalWrite(w, server.Envelope[handlers.StatusResponse]{
 			Ok:   true,
 			Data: &handlers.StatusResponse{App: "cube", Version: version, Instance: "mock-inst"},
 		})
@@ -97,7 +97,7 @@ func TestClientStop_ShutdownAndConfirm(t *testing.T) {
 		var req struct {
 			Token string `json:"token"`
 		}
-		_ = json.NewDecoder(r.Body).Decode(&req)
+		_ = json.UnmarshalRead(r.Body, &req)
 		if err := handlers.VerifyShutdownToken(req.Token, "old-inst", time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -139,7 +139,7 @@ func TestClientStop_ReplacedByNewInstance(t *testing.T) {
 		var req struct {
 			Token string `json:"token"`
 		}
-		_ = json.NewDecoder(r.Body).Decode(&req)
+		_ = json.UnmarshalRead(r.Body, &req)
 		if err := handlers.VerifyShutdownToken(req.Token, instance, time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return

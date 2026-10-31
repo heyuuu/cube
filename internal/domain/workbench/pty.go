@@ -7,7 +7,8 @@ package workbench
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -27,6 +28,11 @@ type ptyMessage struct {
 	Rows int    `json:"rows"`
 	Code int    `json:"code"`
 }
+
+// ptyJSONOpts PTY 帧编解码选项。终端是字节管道，输出不保证合法 UTF-8（二进制输出、
+// 多字节字符被 Read 边界截断），v2 默认拒绝无效 UTF-8 会让整帧被吞成空帧；
+// 沿用 v1 语义替换为 U+FFFD，保住帧内其余内容。
+var ptyJSONOpts = jsontext.AllowInvalidUTF8(true)
 
 // servePtySession 处理一个 PTY 会话的全部机制：起 shell → 双向泵 → 任一端结束后清理。
 // 退出路径（三方任一结束都触发整体清理）：
@@ -102,7 +108,7 @@ func servePtySession(ctx context.Context, conn *websocket.Conn, dir string, cols
 				continue
 			}
 			var msg ptyMessage
-			if err := json.Unmarshal(data, &msg); err != nil {
+			if err := json.Unmarshal(data, &msg, ptyJSONOpts); err != nil {
 				continue
 			}
 			switch msg.Type {
@@ -142,7 +148,7 @@ func servePtySession(ctx context.Context, conn *websocket.Conn, dir string, cols
 
 // mustJSON 序列化 PTY 帧，失败时兜底一个空 output 帧（不让单条编码失败中断泵）。
 func mustJSON(msg ptyMessage) []byte {
-	b, err := json.Marshal(msg)
+	b, err := json.Marshal(msg, ptyJSONOpts)
 	if err != nil {
 		return []byte(`{"type":"output","data":""}`)
 	}

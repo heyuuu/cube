@@ -8,10 +8,13 @@
 package cubefile
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/heyuuu/x/store"
 )
 
 const cubeFileName = ".cube/cube.json"
@@ -50,12 +53,8 @@ func (f *File) UnmarshalJSON(data []byte) error {
 // Load 读取并解析 root/.cube/cube.json；文件不存在或坏 JSON 返回 (nil, false)
 // （坏 JSON 属可恢复降级，由调用方决定降级语义——workspace 场景等价无声明走探测）。
 func Load(root string) (*File, bool) {
-	data, err := os.ReadFile(filepath.Join(root, ".cube", "cube.json"))
+	f, err := store.LoadJSON[File](filepath.Join(root, cubeFileName))
 	if err != nil {
-		return nil, false
-	}
-	var f File
-	if err := f.UnmarshalJSON(data); err != nil {
 		return nil, false
 	}
 	return &f, true
@@ -66,13 +65,13 @@ func Load(root string) (*File, bool) {
 // workspaces 为空清单时字段仍写出（空数组是有效声明，不能被 omitempty 吞掉）。
 func Save(root string, f *File) error {
 	raw, err := os.ReadFile(filepath.Join(root, cubeFileName))
-	var merged map[string]json.RawMessage
+	var merged map[string]jsontext.Value
 	if err == nil && json.Unmarshal(raw, &merged) == nil {
 		for _, k := range knownKeys {
 			delete(merged, k)
 		}
 	} else {
-		merged = map[string]json.RawMessage{}
+		merged = map[string]jsontext.Value{}
 	}
 	// 已知节显式组装（不走 File 的 omitempty tag，保留「空数组声明」语义）
 	if f.WorkspacesSet {
@@ -85,15 +84,9 @@ func Save(root string, f *File) error {
 			merged["workspaceScanRule"] = v
 		}
 	}
-	out, err := json.MarshalIndent(merged, "", "  ")
-	if err != nil {
-		return fmt.Errorf("序列化 cube.json 失败: %w", err)
-	}
-	dir := filepath.Join(root, ".cube")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("创建 .cube 目录失败: %w", err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "cube.json"), append(out, '\n'), 0o644); err != nil {
+	// store.SaveJSON 的 Deterministic 保证 map key 排序、字节稳定——
+	// cube.json 进 git 跟仓库走，顺序抖动会制造无意义 diff
+	if err := store.SaveJSON(filepath.Join(root, cubeFileName), merged); err != nil {
 		return fmt.Errorf("写入 cube.json 失败: %w", err)
 	}
 	return nil

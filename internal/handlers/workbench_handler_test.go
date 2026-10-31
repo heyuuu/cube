@@ -3,7 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -399,7 +399,7 @@ func postJSON(t *testing.T, url string, body string) envelope {
 		t.Fatalf("POST %s 应为 200, got %d", url, httpResp.StatusCode)
 	}
 	var env envelope
-	if err := json.NewDecoder(httpResp.Body).Decode(&env); err != nil {
+	if err := json.UnmarshalRead(httpResp.Body, &env); err != nil {
 		t.Fatalf("POST %s 响应不是合法 envelope: %v", url, err)
 	}
 	return env
