@@ -8,11 +8,6 @@ import (
 	"github.com/heyuuu/x/di"
 
 	"cube/internal/config"
-	"cube/internal/domain/forge"
-	"cube/internal/domain/opener"
-	"cube/internal/domain/project"
-	"cube/internal/domain/template"
-	"cube/internal/domain/usage"
 	"cube/internal/logger"
 	"cube/internal/server"
 )
@@ -61,12 +56,8 @@ func (a *App) Init(cfgFile string, debug bool, local bool) error {
 				di.Value(paths),
 				server.NewServer,
 			},
-
 			/* services */
-			serviceFactories(),
-
-			/* handlers */
-			handlerFactories(),
+			bootFactories(),
 		)...,
 	)
 	if err != nil {
@@ -117,38 +108,11 @@ func (a *App) StopBackgroundJobs() {
 
 /* 快捷方法 */
 
-// Server 返回 server 单例（Init 后可用）。
-func (a *App) Server() *server.Server {
+// mustGet 从 DI 容器里获取实例
+func mustGet[T any](a *App) T {
 	a.checkInit()
-	return di.MustGet[*server.Server](a.container)
+	return di.MustGet[T](a.container)
 }
 
-// ProjectService 返回 project 服务单例（Init 后可用）。
-func (a *App) ProjectService() *project.Service {
-	a.checkInit()
-	return di.MustGet[*project.Service](a.container)
-}
-
-// OpenerService 返回 opener 服务单例（Init 后可用）。
-func (a *App) OpenerService() *opener.Service {
-	a.checkInit()
-	return di.MustGet[*opener.Service](a.container)
-}
-
-// UsageService 返回 usage 服务单例（Init 后可用）。
-func (a *App) UsageService() *usage.Service {
-	a.checkInit()
-	return di.MustGet[*usage.Service](a.container)
-}
-
-// TemplateService 返回 template 服务单例（Init 后可用）。
-func (a *App) TemplateService() *template.Service {
-	a.checkInit()
-	return di.MustGet[*template.Service](a.container)
-}
-
-// ForgeService 返回 forge 服务单例（Init 后可用）。
-func (a *App) ForgeService() *forge.Service {
-	a.checkInit()
-	return di.MustGet[*forge.Service](a.container)
-}
+// Server 返回 HTTP 服务（Init 后可用）。
+func (a *App) Server() *server.Server { return mustGet[*server.Server](a) }

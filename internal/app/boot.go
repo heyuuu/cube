@@ -15,8 +15,9 @@ import (
 
 // 注册清单：新增业务 domain 只改本文件（gen 脚本以文件内注入点标记为锚点自动追加）。
 
-func serviceFactories() []any {
+func bootFactories() []any {
 	return []any{
+		/* services */
 		project.NewServiceInject,
 		opener.NewServiceInject,
 		usage.NewServiceInject,
@@ -26,17 +27,10 @@ func serviceFactories() []any {
 
 		/* <<service-factory inject point>> */
 		/* 上面是 generate 脚本注入点标识，不要删除 */
-	}
-}
 
-func handlerFactories() []any {
-	return []any{
-		/* 系统端点 */
-		handlers.NewSystemHandler,
-		/* 静态资源端点 */
-		di.Value(handlers.NewStaticHandler(web.FS())),
-
-		/* 业务 handler */
+		/* handlers */
+		handlers.NewSystemHandler,                     // 系统端点
+		di.Value(handlers.NewStaticHandler(web.FS())), // 静态资源端点
 		handlers.NewConfigHandler,
 		handlers.NewProjectHandler,
 		handlers.NewOpenerHandler,
@@ -51,3 +45,18 @@ func handlerFactories() []any {
 		/* 上面是 generate 脚本注入点标识，不要删除 */
 	}
 }
+
+// ProjectService 返回 project 服务单例（Init 后可用）。
+func (a *App) ProjectService() *project.Service { return mustGet[*project.Service](a) }
+
+// OpenerService 返回 opener 服务单例（Init 后可用）。
+func (a *App) OpenerService() *opener.Service { return mustGet[*opener.Service](a) }
+
+// UsageService 返回 usage 服务单例（Init 后可用）。
+func (a *App) UsageService() *usage.Service { return mustGet[*usage.Service](a) }
+
+// TemplateService 返回 template 服务单例（Init 后可用）。
+func (a *App) TemplateService() *template.Service { return mustGet[*template.Service](a) }
+
+// ForgeService 返回 forge 服务单例（Init 后可用）。
+func (a *App) ForgeService() *forge.Service { return mustGet[*forge.Service](a) }
