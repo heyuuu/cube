@@ -39,7 +39,6 @@ dev:
 dev-web:
     pnpm --dir {{ ui_src }} dev
 
-# 热重载开发（air）
 dev-server:
     @# 启动前清除 6001 上的残留：air 被异常退出后孤儿 server 会一直占着端口，导致后续 air 热重启端口冲突起不来。
     @# 必须带 -sTCP:LISTEN 只杀监听进程——不带过滤会把连着 6001 的客户端（vite 代理、浏览器连接等）一起杀掉
