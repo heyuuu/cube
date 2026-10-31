@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"cube/internal/config"
+	"github.com/heyuuu/x/store"
 )
 
 // settings.json 中的 account 域节名。
@@ -46,8 +46,7 @@ func ValidateAccount(a Account, forges []Forge) error {
 
 // loadAccounts 读全部 account（坏条目跳过不阻断）。
 func loadAccounts(file string) []Account {
-	var specs []Account
-	config.LoadSection(file, accountsSection, &specs)
+	specs := store.LoadSection[[]Account](file, accountsSection)
 
 	accounts := make([]Account, 0, len(specs))
 	for _, a := range specs {
@@ -64,7 +63,7 @@ func loadAccounts(file string) []Account {
 
 // saveAccounts 覆写 accounts 节。
 func saveAccounts(file string, accounts []Account) error {
-	return config.SaveSection(file, accountsSection, accounts)
+	return store.SaveSection(file, accountsSection, accounts)
 }
 
 // findAccount 按 forgeHost+username 找 account，无匹配返回 nil。

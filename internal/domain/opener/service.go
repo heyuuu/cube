@@ -9,6 +9,8 @@ import (
 	"cube/internal/server"
 	"cube/pkg/fuzzy"
 	"cube/pkg/x"
+
+	"github.com/heyuuu/x/store"
 )
 
 // settingsSection settings.json 中 opener 域的节名。
@@ -37,11 +39,10 @@ func NewService(settingsFile string, executor Executor, baseURL string) *Service
 }
 
 // openers 现读 settings.json 的 openers 节并逐条构造。
-// settings 包已把文件级/节级坏数据降级为空；这里处理条目级：坏条目跳过不阻断
+// store.LoadSection 已把文件级/节级坏数据降级为空；这里处理条目级：坏条目跳过不阻断
 // （配置错误不应让 list 等命令不可用），与旧 config 时代行为一致。
 func (s *Service) openers() []Opener {
-	var specs []Spec
-	config.LoadSection(s.settingsFile, settingsSection, &specs)
+	specs := store.LoadSection[[]Spec](s.settingsFile, settingsSection)
 
 	list := make([]Opener, 0, len(specs))
 	for _, spec := range specs {
@@ -95,21 +96,19 @@ func (s *Service) SaveOpener(spec Spec) error {
 		return err
 	}
 
-	var specs []Spec
-	config.LoadSection(s.settingsFile, settingsSection, &specs)
+	specs := store.LoadSection[[]Spec](s.settingsFile, settingsSection)
 	specs = x.UpsertKeyed(specs, func(cur Spec) string { return cur.Name }, spec)
-	return config.SaveSection(s.settingsFile, settingsSection, specs)
+	return store.SaveSection(s.settingsFile, settingsSection, specs)
 }
 
 // DeleteOpener 按名删除一条 opener；不存在时返回中文错误。
 func (s *Service) DeleteOpener(name string) error {
-	var specs []Spec
-	config.LoadSection(s.settingsFile, settingsSection, &specs)
+	specs := store.LoadSection[[]Spec](s.settingsFile, settingsSection)
 	rest, removed := x.RemoveKeyed(specs, func(cur Spec) string { return cur.Name }, name)
 	if !removed {
 		return fmt.Errorf("未找到指定 opener: %s", name)
 	}
-	if err := config.SaveSection(s.settingsFile, settingsSection, rest); err != nil {
+	if err := store.SaveSection(s.settingsFile, settingsSection, rest); err != nil {
 		return err
 	}
 	// 连带清理 openerIntents 节对该 opener 的引用（默认 + 候选），避免悬挂引用
@@ -131,7 +130,7 @@ func (s *Service) DeleteOpener(name string) error {
 		}
 	}
 	if dirty {
-		return config.SaveSection(s.settingsFile, intentsSection, intents)
+		return store.SaveSection(s.settingsFile, intentsSection, intents)
 	}
 	return nil
 }
@@ -140,20 +139,18 @@ func (s *Service) DeleteOpener(name string) error {
 // 均按此序），前端拖拽排序落库走这里。未列名的条目（含坏条目，list 本就不可见）保持
 // 原相对顺序排在末尾，不丢数据；出现未知名或重复名返回中文错误。
 func (s *Service) ReorderOpeners(names []string) error {
-	var specs []Spec
-	config.LoadSection(s.settingsFile, settingsSection, &specs)
+	specs := store.LoadSection[[]Spec](s.settingsFile, settingsSection)
 	ordered, err := x.ReorderKeyed(specs, func(cur Spec) string { return cur.Name }, names, "opener", func(k string) string { return k })
 	if err != nil {
 		return err
 	}
-	return config.SaveSection(s.settingsFile, settingsSection, ordered)
+	return store.SaveSection(s.settingsFile, settingsSection, ordered)
 }
 
 // loadIntents 现读 openerIntents 节为 map[Intent]IntentSpec。
 // 读侧校验（坏条目跳过 + slog.Warn）：未知 intent 键跳过。
 func (s *Service) loadIntents() map[Intent]IntentSpec {
-	raw := map[string]IntentSpec{}
-	config.LoadSection(s.settingsFile, intentsSection, &raw)
+	raw := store.LoadSection[map[string]IntentSpec](s.settingsFile, intentsSection)
 
 	out := make(map[Intent]IntentSpec, len(raw))
 	for key, spec := range raw {
@@ -256,7 +253,7 @@ func (s *Service) SaveIntentDefault(intent Intent, openerName string) error {
 	spec := specs[intent]
 	spec.DefaultOpener = openerName
 	specs[intent] = spec
-	return config.SaveSection(s.settingsFile, intentsSection, specs)
+	return store.SaveSection(s.settingsFile, intentsSection, specs)
 }
 
 // DeleteIntentDefault 清除某 intent 的默认 opener（候选 openers 清单如有则保留）。
@@ -275,5 +272,5 @@ func (s *Service) DeleteIntentDefault(intent Intent) error {
 	} else {
 		specs[intent] = spec
 	}
-	return config.SaveSection(s.settingsFile, intentsSection, specs)
+	return store.SaveSection(s.settingsFile, intentsSection, specs)
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"cube/internal/config"
 	"cube/internal/testfixture"
 	"cube/pkg/gitapi"
 	"cube/pkg/iconkit"
@@ -161,11 +160,8 @@ func TestFetchAccountPersist(t *testing.T) {
 	}
 }
 
-// settings 引用占位（iconkit/settings 在裁剪后的用例中仍被间接使用，防止 import 漂移）。
-var (
-	_ = config.SaveSection
-	_ = iconkit.ValidateIcon
-)
+// iconkit 引用占位（裁剪后的用例中仍被间接使用，防止 import 漂移）。
+var _ = iconkit.ValidateIcon
 
 // TestReorderAccounts 按键重排 accounts 节（顺序即 forge 页展示序）；未知/重复键报错。
 func TestReorderAccounts(t *testing.T) {

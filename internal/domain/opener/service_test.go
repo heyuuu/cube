@@ -3,8 +3,9 @@ package opener
 import (
 	"testing"
 
-	"cube/internal/config"
 	"cube/internal/testfixture"
+
+	"github.com/heyuuu/x/store"
 )
 
 // newServiceAt 建一个指向测试专属 settings.json 的 Service（注入 fakeExecutor）。
@@ -13,7 +14,7 @@ func newServiceAt(t *testing.T, specs []Spec) (*Service, *fakeExecutor) {
 	ws := testfixture.NewWorkspace(t)
 	file := ws.Join("settings.json")
 	if specs != nil {
-		if err := config.SaveSection(file, settingsSection, specs); err != nil {
+		if err := store.SaveSection(file, settingsSection, specs); err != nil {
 			t.Fatalf("写入测试 settings.json 失败: %v", err)
 		}
 	}
@@ -79,7 +80,7 @@ func TestServiceDirectRead(t *testing.T) {
 
 	t.Run("保存后无需重建 Service 即生效（直读不缓存）", func(t *testing.T) {
 		s, _ := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
-		if err := config.SaveSection(s.settingsFile, settingsSection,
+		if err := store.SaveSection(s.settingsFile, settingsSection,
 			[]Spec{{Name: "newone", Actions: map[Role]string{"open-dir": `exec: newone`}}}); err != nil {
 			t.Fatalf("写入失败: %v", err)
 		}
@@ -93,7 +94,7 @@ func TestServiceDirectRead(t *testing.T) {
 
 	t.Run("其他节不受影响", func(t *testing.T) {
 		s, _ := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
-		if err := config.SaveSection(s.settingsFile, "other", map[string]int{"a": 1}); err != nil {
+		if err := store.SaveSection(s.settingsFile, "other", map[string]int{"a": 1}); err != nil {
 			t.Fatalf("写入失败: %v", err)
 		}
 		if got := s.AllOpeners(); len(got) != 1 || got[0].Name() != "code" {
@@ -217,7 +218,7 @@ func TestServiceReorder(t *testing.T) {
 // writeIntents 写测试 openerIntents 节。
 func writeIntents(t *testing.T, file string, intents map[Intent]IntentSpec) {
 	t.Helper()
-	if err := config.SaveSection(file, intentsSection, intents); err != nil {
+	if err := store.SaveSection(file, intentsSection, intents); err != nil {
 		t.Fatalf("写入测试 openerIntents 失败: %v", err)
 	}
 }

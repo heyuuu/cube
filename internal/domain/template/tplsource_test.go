@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"cube/internal/config"
 	"cube/internal/testfixture"
+
+	"github.com/heyuuu/x/store"
 )
 
 // newConfigService 建配置管理测试 Service（settings.json 落临时目录）。
@@ -119,7 +120,7 @@ func TestTplSourcesSkipBad(t *testing.T) {
 		map[string]string{"name": "a/b", "repoUrl": "git@github.com:a/b.git"}, // 坏 name
 		map[string]string{"name": "no-url", "repoUrl": ""},                    // 坏 url
 	)
-	if err := config.SaveSection(s.settingsFile, tplSourcesSection, raw); err != nil {
+	if err := store.SaveSection(s.settingsFile, tplSourcesSection, raw); err != nil {
 		t.Fatalf("写入原始配置失败: %v", err)
 	}
 

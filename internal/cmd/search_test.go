@@ -4,9 +4,10 @@ import (
 	"path"
 	"testing"
 
-	"cube/internal/config"
 	"cube/internal/domain/project"
 	"cube/internal/testfixture"
+
+	"github.com/heyuuu/x/store"
 )
 
 // newCmdServiceAt 为测试构造一个扫描指定根目录的 project.Service。
@@ -19,7 +20,7 @@ func newCmdServiceAt(t *testing.T, scanRoot, group string, maxDepth int) *projec
 	scanRules := []project.ScanRule{
 		{Group: group, Path: scanRoot, MaxDepth: maxDepth},
 	}
-	if err := config.SaveSection(settingsFile, "scanRules", scanRules); err != nil {
+	if err := store.SaveSection(settingsFile, "scanRules", scanRules); err != nil {
 		t.Fatalf("写测试 settings.json 失败: %v", err)
 	}
 	return project.NewService(settingsFile, ws.Mkdir("cache"))

@@ -7,6 +7,8 @@ import (
 
 	"cube/internal/config"
 	"cube/pkg/x"
+
+	"github.com/heyuuu/x/store"
 )
 
 // Service 是模板引擎（cube create）的入口。
@@ -50,8 +52,7 @@ func (s *Service) Create(sourceRef string, tplName string, targetPath string, cl
 
 // TplSources 读全部模板源（直读不缓存）。坏条目（name/repoUrl 非法）跳过不阻断。
 func (s *Service) TplSources() []TplSource {
-	var specs []TplSource
-	config.LoadSection(s.settingsFile, tplSourcesSection, &specs)
+	specs := store.LoadSection[[]TplSource](s.settingsFile, tplSourcesSection)
 
 	sources := make([]TplSource, 0, len(specs))
 	for _, src := range specs {
@@ -75,7 +76,7 @@ func (s *Service) SaveTplSource(src TplSource) error {
 
 	specs := s.TplSources()
 	specs = x.UpsertKeyed(specs, func(cur TplSource) string { return cur.Name }, src)
-	return config.SaveSection(s.settingsFile, tplSourcesSection, specs)
+	return store.SaveSection(s.settingsFile, tplSourcesSection, specs)
 }
 
 // DeleteTplSource 按 name 删除一条模板源；不存在时返回中文错误。
@@ -85,7 +86,7 @@ func (s *Service) DeleteTplSource(name string) error {
 	if !removed {
 		return fmt.Errorf("未找到指定模板源: %s", name)
 	}
-	return config.SaveSection(s.settingsFile, tplSourcesSection, rest)
+	return store.SaveSection(s.settingsFile, tplSourcesSection, rest)
 }
 
 // ReorderTplSources 按 names 顺序重排模板源节（顺序即 create 交互选择序）。
@@ -98,5 +99,5 @@ func (s *Service) ReorderTplSources(names []string) error {
 	if err != nil {
 		return err
 	}
-	return config.SaveSection(s.settingsFile, tplSourcesSection, ordered)
+	return store.SaveSection(s.settingsFile, tplSourcesSection, ordered)
 }

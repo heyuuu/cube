@@ -12,6 +12,8 @@ import (
 	"cube/pkg/gitapi"
 	"cube/pkg/iconkit"
 	"cube/pkg/x"
+
+	"github.com/heyuuu/x/store"
 )
 
 // settings.json 中的 forge 域节名。
@@ -46,8 +48,7 @@ func NewService(settingsFile, cacheFile string) *Service {
 
 // Forges 读全部 forge（直读不缓存）。坏条目（host 空 / kind 未知 / icon 非法）跳过不阻断。
 func (s *Service) Forges() []Forge {
-	var specs []Forge
-	config.LoadSection(s.settingsFile, forgesSection, &specs)
+	specs := store.LoadSection[[]Forge](s.settingsFile, forgesSection)
 
 	forges := make([]Forge, 0, len(specs))
 	for _, f := range specs {
@@ -81,7 +82,7 @@ func (s *Service) SaveForge(f Forge) error {
 
 	specs := s.Forges()
 	specs = x.UpsertKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, f)
-	return config.SaveSection(s.settingsFile, forgesSection, specs)
+	return store.SaveSection(s.settingsFile, forgesSection, specs)
 }
 
 // ReorderForges 按 hosts 顺序重排 forges 节（顺序即展示序，1042 forge 页沿用）。
@@ -96,7 +97,7 @@ func (s *Service) ReorderForges(hosts []string) error {
 	if err != nil {
 		return err
 	}
-	return config.SaveSection(s.settingsFile, forgesSection, ordered)
+	return store.SaveSection(s.settingsFile, forgesSection, ordered)
 }
 
 // DeleteForge 按 host 删除一条 forge，并级联清理该 host 下的 account
@@ -108,7 +109,7 @@ func (s *Service) DeleteForge(host string) error {
 	if !removed {
 		return fmt.Errorf("未找到指定 forge: %s", host)
 	}
-	if err := config.SaveSection(s.settingsFile, forgesSection, rest); err != nil {
+	if err := store.SaveSection(s.settingsFile, forgesSection, rest); err != nil {
 		return err
 	}
 	return s.retainAccounts(func(a Account) bool { return NormalizeHost(a.ForgeHost) != host })

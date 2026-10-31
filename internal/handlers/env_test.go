@@ -25,6 +25,8 @@ import (
 	"cube/internal/domain/workbench"
 	"cube/internal/server"
 	"cube/internal/testfixture"
+
+	"github.com/heyuuu/x/store"
 )
 
 // --- 测试环境 ---
@@ -47,19 +49,19 @@ func newTestEnv(t *testing.T) *testEnv {
 	ws.MakeProjectDir("g2/proj2", testfixture.WithGodot())
 
 	settingsFile := ws.Join("settings.json")
-	if err := config.SaveSection(settingsFile, "openers", []opener.Spec{
+	if err := store.SaveSection(settingsFile, "openers", []opener.Spec{
 		{Name: "finder", Actions: map[opener.Role]string{"open-dir": "exec: /usr/bin/open $0"}},
 		{Name: "broken"}, // 缺 commands，解析失败被跳过
 	}); err != nil {
 		t.Fatalf("写入测试 settings.json 失败: %v", err)
 	}
-	if err := config.SaveSection(settingsFile, "scanRules", []project.ScanRule{
+	if err := store.SaveSection(settingsFile, "scanRules", []project.ScanRule{
 		{Group: "g1", Path: ws.Join("g1"), MaxDepth: 1},
 		{Group: "g2", Path: ws.Join("g2"), MaxDepth: 1},
 	}); err != nil {
 		t.Fatalf("写入测试 settings.json 失败: %v", err)
 	}
-	if err := config.SaveSection(settingsFile, "cloneRules", []project.CloneRule{
+	if err := store.SaveSection(settingsFile, "cloneRules", []project.CloneRule{
 		{RepoHost: "github.com", LocalPath: ws.Join("repo")},
 	}); err != nil {
 		t.Fatalf("写入测试 settings.json 失败: %v", err)

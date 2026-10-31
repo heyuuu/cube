@@ -6,8 +6,9 @@ import (
 	"slices"
 	"testing"
 
-	"cube/internal/config"
 	"cube/internal/testfixture"
+
+	"github.com/heyuuu/x/store"
 )
 
 // newServiceAt 为测试构造一个扫描指定根目录的 Service。
@@ -30,12 +31,12 @@ func newServiceWithRules(t *testing.T, ws *testfixture.Workspace, scan []ScanRul
 func saveRules(t *testing.T, settingsFile string, scan []ScanRule, clone []CloneRule) {
 	t.Helper()
 	if scan != nil {
-		if err := config.SaveSection(settingsFile, scanRulesSection, scan); err != nil {
+		if err := store.SaveSection(settingsFile, scanRulesSection, scan); err != nil {
 			t.Fatalf("写测试 settings.json scanRule 节失败: %v", err)
 		}
 	}
 	if clone != nil {
-		if err := config.SaveSection(settingsFile, cloneRulesSection, clone); err != nil {
+		if err := store.SaveSection(settingsFile, cloneRulesSection, clone); err != nil {
 			t.Fatalf("写测试 settings.json cloneRule 节失败: %v", err)
 		}
 	}
