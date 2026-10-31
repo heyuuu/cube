@@ -11,12 +11,12 @@ import (
 	"cube/internal/server"
 )
 
-// StaticHandler 前端静态资源出口（go:embed 产物）。
+// StaticHandler 前端静态资源 handler：挂载 embed 的 ui 产物并提供 SPA fallback。
 type StaticHandler struct {
 	fs fs.FS
 }
 
-// NewStaticHandler 构造 StaticHandler。
+// NewStaticHandler 构造 StaticHandler；fs 为 nil 时 Register 不挂载任何路由（纯后端模式）。
 func NewStaticHandler(fs fs.FS) *StaticHandler {
 	return &StaticHandler{fs: fs}
 }
@@ -35,7 +35,7 @@ func (h *StaticHandler) Register(r *server.Routes) {
 	// index.html 启动时读一次即可（embed 内容恒定）；读不到即纯后端模式，页面路径按 404 处理
 	indexFile, _ := fs.ReadFile(h.fs, "index.html")
 	if indexFile == nil {
-		slog.Info("web/ui 未构建，前端未嵌入，仅提供 API（需要前端执行 make build-ui 后重启）")
+		slog.Info("web/dist 未构建，前端未嵌入，仅提供 API（需要前端执行 just build-ui 后重启）")
 	}
 
 	r.Raw("GET /", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {

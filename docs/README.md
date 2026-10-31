@@ -1,6 +1,6 @@
 # cube 文档
 
-> cube —— 面向个人开发者的本地项目管理工具（CLI 优先 + 本地 Web）。
+> cube —— 面向个人开发者的本地项目管理工具（Web UI 优先，CLI 简单可行兜底）。
 
 ## 目录索引
 
@@ -16,22 +16,9 @@
 
 **ID 分配规则（硬约束）**：提案 ID 全局唯一、不得重复，三个目录（顶层 / `parked/` / `archived/`）共用一套编号空间。**新建提案前必须先执行 `make last-proposal` 获取当前最大 ID，新提案 ID = 最大 ID + 1**，不得凭记忆或猜测取号。
 
-- [`archived/1040-forge管理/`](proposals/archived/1040-forge管理/) — ✅ 已实现（2026-09-05）：forge（git 托管平台实例）配置管理——`Forge{host,kind,icon}` 存 settings `forges` 节（host 归一化唯一键、kind 四值枚举 github/gitea/gitee/generic），CLI `forge list`、Web settings Forge 分区增删改、API list/save/delete；repo→forge 匹配在前端（repoUrl 解析 host 查表，projects 列表/树名称旁展示 icon），不写 git.json 快照
+顶层活动提案：
 
-- [`archived/1041-forge-account/`](proposals/archived/1041-forge-account/) — ✅ 已实现（2026-09-06）：forge account / namespace 与远端拉取对账——Account（纯 API 凭证，token 打码）+ Namespace（personal/org、可选挂 account）存 settings 两节；API 客户端沉淀 `util/gitapi`（github/gitea/gitee 三方言）；拉取手动出站 + easycache，探测 detect；对账纯函数三分（未 clone/孤儿/已 clone）；9 个 API，settings Forge 分区下挂两子表
-- [`archived/1044-forge-account-only/`](proposals/archived/1044-forge-account-only/) — ✅ 已实现（2026-09-07）：推翻 namespace 模型——实测各平台「按命名空间列仓库」端点分裂且不可靠（github/gitee `/users/{path}/repos` 只回公开库、gitee org 列表混幽灵条目），只保留 account 拉取（三平台统一 `GET /user/repos`，「列表即真相」）；Namespace/detect/forgeNamespaces 节删除，孤儿 = 同 namespace（URL 推导）但不在拉取结果
-- [`archived/1042-forge页/`](proposals/archived/1042-forge页/) — ✅ 已实现（2026-09-07）：前台 Forges 页——远端仓库视角列表（无 tree 模式），account 摘要条（fetchedAt 新鲜度 + 显式刷新），筛选 chips（forge/状态，公共 FilterRow）+ 表头排序（公共 SortHead），RepoUrl 合并列，未 clone 复制 clone 命令（不做 clone 执行）；拉取结果落盘 + fetchedAt 前端展示
-- [`archived/1038-opener默认/`](proposals/archived/1038-opener默认/) — ✅ 已实现（2026-08-31）：cmd 字符串化 → per-role actions 动作串（exec:/url:，站内路由拼 BaseURL）→ intent 8 值枚举 + `openerIntents` 节（默认 opener + 候选）→ CLI `-o` 三态（无=默认 / 裸=交互 / name=模糊）→ 前端快捷位意图化 + url 动作当前浏览器直开；已知取舍：url 前端直开不计 usage
-- [`1036-server进程管理定调/`](proposals/archived/1036-server进程管理定调/) — 移除 `start -d` 自 fork 后台（argv 不透传 + 启动失败无声的结构性 bug，常驻由 launchd/air 承担后无消费者）+ whoami instance 实例标识（stop 按 instance 判旧实例下线，launchctl 保活占回端口不误判）+ daemon 设计定调（零参数发现配置 / 可管理性三条件 / supervisor-ready 六条 / 桌面 app helper 的 socket 重连与 pipe 生命线）；`server reload` 搁置（解挂条件在提案内）
-- [`1030-monorepo-workspace/`](proposals/archived/1030-monorepo-workspace/) — monorepo 子目录打开支持：`.cube/cube.json`（workspaces 显式声明 / workspaceScanRule 探测正选，文件格式层独立 `project/cubefile`），workspace 进 projcache 采集与 `OpenTargets`（gitcache 更名 projcache）；CLI `workspace init`、Web 下拉/展开行/编辑弹窗、工作台副本行 workspace 子行
-- [`1015-工作台面板组装/`](proposals/archived/1015-工作台面板组装/) — 工作台自定义布局（面板组装，最后做）
-- [`1014-工作台PTY面板/`](proposals/archived/1014-工作台PTY面板/) — 工作台 PTY 终端（WebSocket + xterm.js）
-- [`1013-工作台diff面板/`](proposals/archived/1013-工作台diff面板/) — 工作台双源 diff（目录 + 文件对比）
-- [`1012-工作台代码阅读面板/`](proposals/archived/1012-工作台代码阅读面板/) — 工作台代码阅读（CodeMirror6 + 轻编辑）
-- [`1011-工作台git树面板/`](proposals/archived/1011-工作台git树面板/) — 工作台 git 树（commit 图 + 工作副本状态）
-- [`1010-workbench基座/`](proposals/archived/1010-workbench基座/) — 工作台基座（路由 + TreeSource + 核心 API + 面板骨架）
-- [`1008-workspace工作台/`](proposals/archived/1008-workspace工作台/) — workspace 工作台总纲（决策记录 + 子提案索引）
-
+- [`1045-模板源映射与临时拉取/`](proposals/1045-模板源映射与临时拉取/) — ✅ 已交付（2026-10-08）：git 模板源改「settings 映射 + 临时拉取」轻量形态——`tplSources` 节（name↔repoUrl 映射，forge 同款 CRUD），create 引用语法 `@<source>/<tpl>` npm scope 式四形态，命名源临时浅 clone 用后即删（零状态管理）；默认源 core 不自动初始化
 
 #### [proposals/parked/](proposals/parked/) — 挂起提案
 
@@ -49,10 +36,24 @@
 
 已实现的需求总结（从 proposals 顶层移入，记录最终落地形态与方案演变）。
 
+- [`archived/1040-forge管理/`](proposals/archived/1040-forge管理/) — ✅ 已实现（2026-09-05）：forge（git 托管平台实例）配置管理——`Forge{host,kind,icon}` 存 settings `forges` 节（host 归一化唯一键、kind 四值枚举 github/gitea/gitee/generic），CLI `forge list`、Web settings Forge 分区增删改、API list/save/delete；repo→forge 匹配在前端（repoUrl 解析 host 查表，projects 列表/树名称旁展示 icon），不写 git.json 快照
+- [`archived/1041-forge-account/`](proposals/archived/1041-forge-account/) — ✅ 已实现（2026-09-06）：forge account / namespace 与远端拉取对账——Account（纯 API 凭证，token 打码）+ Namespace（personal/org、可选挂 account）存 settings 两节；API 客户端沉淀 `pkg/gitapi`（github/gitea/gitee 三方言）；拉取手动出站 + easycache，探测 detect；对账纯函数三分（未 clone/孤儿/已 clone）；9 个 API，settings Forge 分区下挂两子表
+- [`archived/1044-forge-account-only/`](proposals/archived/1044-forge-account-only/) — ✅ 已实现（2026-09-07）：推翻 namespace 模型——实测各平台「按命名空间列仓库」端点分裂且不可靠（github/gitee `/users/{path}/repos` 只回公开库、gitee org 列表混幽灵条目），只保留 account 拉取（三平台统一 `GET /user/repos`，「列表即真相」）；Namespace/detect/forgeNamespaces 节删除，孤儿 = 同 namespace（URL 推导）但不在拉取结果
+- [`archived/1042-forge页/`](proposals/archived/1042-forge页/) — ✅ 已实现（2026-09-07）：前台 Forges 页——远端仓库视角列表（无 tree 模式），account 摘要条（fetchedAt 新鲜度 + 显式刷新），筛选 chips（forge/状态，公共 FilterRow）+ 表头排序（公共 SortHead），RepoUrl 合并列，未 clone 复制 clone 命令（不做 clone 执行）；拉取结果落盘 + fetchedAt 前端展示
+- [`archived/1038-opener默认/`](proposals/archived/1038-opener默认/) — ✅ 已实现（2026-08-31）：cmd 字符串化 → per-role actions 动作串（exec:/url:，站内路由拼 BaseURL）→ intent 8 值枚举 + `openerIntents` 节（默认 opener + 候选）→ CLI `-o` 三态（无=默认 / 裸=交互 / name=模糊）→ 前端快捷位意图化 + url 动作当前浏览器直开；已知取舍：url 前端直开不计 usage
+- [`1036-server进程管理定调/`](proposals/archived/1036-server进程管理定调/) — 移除 `start -d` 自 fork 后台（argv 不透传 + 启动失败无声的结构性 bug，常驻由 launchd/air 承担后无消费者）+ whoami instance 实例标识（stop 按 instance 判旧实例下线，launchctl 保活占回端口不误判）+ daemon 设计定调（零参数发现配置 / 可管理性三条件 / supervisor-ready 六条 / 桌面 app helper 的 socket 重连与 pipe 生命线）；`server reload` 搁置（解挂条件在提案内）
+- [`1030-monorepo-workspace/`](proposals/archived/1030-monorepo-workspace/) — monorepo 子目录打开支持：`.cube/cube.json`（workspaces 显式声明 / workspaceScanRule 探测正选，文件格式层独立 cubefile 子包），workspace 进 projcache 采集与 `OpenTargets`（gitcache 更名 projcache）；CLI `workspace init`、Web 下拉/展开行/编辑弹窗、工作台副本行 workspace 子行
+- [`1015-工作台面板组装/`](proposals/archived/1015-工作台面板组装/) — 工作台自定义布局（面板组装，最后做）
+- [`1014-工作台PTY面板/`](proposals/archived/1014-工作台PTY面板/) — 工作台 PTY 终端（WebSocket + xterm.js）
+- [`1013-工作台diff面板/`](proposals/archived/1013-工作台diff面板/) — 工作台双源 diff（目录 + 文件对比）
+- [`1012-工作台代码阅读面板/`](proposals/archived/1012-工作台代码阅读面板/) — 工作台代码阅读（CodeMirror6 + 轻编辑）
+- [`1011-工作台git树面板/`](proposals/archived/1011-工作台git树面板/) — 工作台 git 树（commit 图 + 工作副本状态）
+- [`1010-workbench基座/`](proposals/archived/1010-workbench基座/) — 工作台基座（路由 + TreeSource + 核心 API + 面板骨架）
+- [`1008-workspace工作台/`](proposals/archived/1008-workspace工作台/) — workspace 工作台总纲（决策记录 + 子提案索引）
 - [`1031-worktree管理/`](proposals/archived/1031-worktree管理/) — 工作台 worktree/分支写侧：新增 worktree（新建分支/检出已有/detached 三形态，默认同级 `<repoName>.worktrees/<分支名>/`）+ 删除（非 force 预检 dirty/untracked/ahead 返回 denied+reasons，force 强删 + prune，主目录恒拒）+ 分支增删（被检出硬拒、未合并 force 语义；新建为验收前补充）；写后经 `RefreshOne` 定向刷新 gitcache；伴随定位修订「Web UI 优先，CLI 简单可行兜底」；前端默认分支名 `worktree-%02d`、回车提交等验收优化
 - [`1032-worktree归并为项目打开目标/`](proposals/archived/1032-worktree归并为项目打开目标/) — worktree 从独立项目归并为主项目打开目标：scan 只收录 `.git` 为目录的主仓库（`.git` 文件 SkipDir），worktree 经 `git.WorktreeList` 枚举进 gitcache 快照（`Entry.Worktrees`，任意位置可见，存在性三处防护）；打开流程三入口选目标（CLI tui / alfred 平铺直达 / Web 子菜单），usage 记「项目+目录」双维度；`pickProject` 归并链路（pull/push/info 在 worktree 内=操作主仓库）；doctor worktree-lost + `--fix` 自动 prune；`worktree` tag 移除
 - [`1034-最近使用排序与usage统一/`](proposals/archived/1034-最近使用排序与usage统一/) — 统一项目使用记录：history 两表重写为 usage JSONL（`state/usage.jsonl`，O_APPEND 无锁追加 + 启动 compaction，`dir` 字段为 1030/1032 预留）；打开入口收口到 `POST /api/project/open`（三入口全接入）；列表排序前端化（表头点击 + 最近使用列）；gorm/sqlite/data.db 整体移除；伴随项目查询键统一为 path（FindByName 删除）
-- [`1033-util-store文件存储/`](proposals/archived/1033-util-store文件存储/) — util/store 文件存储原语包（WriteFileAtomic 原子写 / SaveJson·LoadJson 缩进 JSON + ErrFileMissing 哨兵 / JSONL 追加·全量读·全量重写·正向逆向流式迭代 iter.Seq2）；gitcache·config·settings 三处手写原子写全部收敛；1034 usage JSONL 的地基
+- [`1033-util-store文件存储/`](proposals/archived/1033-util-store文件存储/) — util/store 文件存储原语包（WriteFileAtomic 原子写 / SaveJson·LoadJson 缩进 JSON + ErrFileMissing 哨兵 / JSONL 追加·全量读·全量重写·正向逆向流式迭代 iter.Seq2）；gitcache·config·settings 三处手写原子写全部收敛；1034 usage JSONL 的地基（后上游化为 `github.com/heyuuu/x/store`，本地包已移除）
 - [`1029-scan-clone规则迁移settings/`](proposals/archived/1029-scan-clone规则迁移settings/) — scan/clone 规则迁 settings.json（`scanRules`/`cloneRules` 分节，Service 直读不缓存、写侧校验、保存即重扫）；settings 页「项目·扫描」+「项目·Clone」两分区（增删改 + 拖拽）；超额增强：scanRule 可选 icon + icon 语义下沉 util/iconkit + 前端 renderIcon/IconField 共享件；group 筛选改规则序
 - [`1025-settings配置页/`](proposals/archived/1025-settings配置页/) — settings 配置页：`/settings` 分区导航（URL 记忆）+ ⌘,/rail 新 tab 入口；Config 过渡分区收编 `/config` 只读展示（默认分区，旧路由移除）；Opener 分区完整增删改（Sheet 抽屉 + 冻结列 + icon 渲染 + 拖拽排序 reorder API + lucide 搜索点选）
 - [`1016-opener改造/`](proposals/archived/1016-opener改造/) — opener 改造：数据迁 settings.json（节级 API + 直读）+ 接口化 + icon 全链路（lucide/base64/`.app` 提取）+ Web 增删改；web 形态最终拆除，收敛为 `cube web workbench` exec 组合

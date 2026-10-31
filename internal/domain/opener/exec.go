@@ -337,8 +337,8 @@ func (o *actionOpener) BuildArgs(role Role, slotArgs ...string) (bin string, arg
 }
 
 // resolveBin 自引用替换：bin 为 "cube" 或以 "/cube" 结尾时，换成当前进程的可执行文件。
-// opener 可组合 cube 自身 CLI（如 "cube ui workbench $0"），dev 环境（air/run.sh
-// 源码直跑）PATH 里未必有 cube、或装的是旧版本；替换后始终与当前进程同源。
+// opener 可组合 cube 自身 CLI（如 "cube ui workbench $0"），dev 环境（air /
+// just run 源码直跑）PATH 里未必有 cube、或装的是旧版本；替换后始终与当前进程同源。
 // os.Executable 失败时保留原值降级（交给 PATH 解析兜底）。
 func resolveBin(bin string) string {
 	if bin != "cube" && !strings.HasSuffix(bin, "/cube") {

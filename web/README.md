@@ -22,18 +22,18 @@ pnpm dev
 
 ## 常用命令
 
-| 命令 | 说明 |
-| --- | --- |
-| `pnpm dev` | 启动开发服务器 |
-| `pnpm build` | 类型检查 + 生产构建（`tsc -b && vite build`） |
-| `pnpm preview` | 预览生产构建 |
-| `pnpm check` | 提交前总闸：lint + typecheck + format 检查 |
-| `pnpm fix` | 自动修复 lint 与格式问题 |
-| `pnpm lint` / `pnpm lint:fix` | oxlint + 自定义规则 |
-| `pnpm typecheck` | TypeScript 类型检查（tsgo） |
-| `pnpm format` / `pnpm format:check` | oxfmt 格式化 |
-| `pnpm test` / `pnpm test:watch` / `pnpm test:ui` | 运行测试（收集 `src/**/*.test.ts`） |
-| `pnpm new-page <name>` | 生成新页面脚手架 |
+| 命令                                             | 说明                                          |
+| ------------------------------------------------ | --------------------------------------------- |
+| `pnpm dev`                                       | 启动开发服务器                                |
+| `pnpm build`                                     | 类型检查 + 生产构建（`tsc -b && vite build`） |
+| `pnpm preview`                                   | 预览生产构建                                  |
+| `pnpm check`                                     | 提交前总闸：lint + typecheck + format 检查    |
+| `pnpm fix`                                       | 自动修复 lint 与格式问题                      |
+| `pnpm lint` / `pnpm lint:fix`                    | oxlint + 自定义规则                           |
+| `pnpm typecheck`                                 | TypeScript 类型检查（tsgo）                   |
+| `pnpm format` / `pnpm format:check`              | oxfmt 格式化                                  |
+| `pnpm test` / `pnpm test:watch` / `pnpm test:ui` | 运行测试（收集 `src/**/*.test.ts`）           |
+| `pnpm new-page <name>`                           | 生成新页面脚手架                              |
 
 注意：脚本内部按 `src/` 相对路径查找文件，请从仓库根目录运行。
 

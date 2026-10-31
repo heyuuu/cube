@@ -2,7 +2,7 @@ package opener
 
 import "cube/pkg/iconkit"
 
-// Icon 图标声明，语义与校验收敛在 util/iconkit（跨领域共享）；
+// Icon 图标声明，语义与校验收敛在 pkg/iconkit（跨领域共享）；
 // 这里只保留 opener 特有策略：icon 必有值，未配置时按主 role 填默认图。
 type Icon = iconkit.Icon
 

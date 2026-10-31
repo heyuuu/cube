@@ -1,7 +1,7 @@
 // 图标渲染：按 icon 声明（lucide 图名 / image base64）动态渲染，
 // 无声明或名字无效时 fallback。lucide 配置值是 kebab-case 图名（如 folder-open），
 // icons 映射键是 PascalCase，此处做一次转换。
-// 语义与后端 util/iconkit 对齐，opener / scanRules 等数据共用。
+// 语义与后端 pkg/iconkit 对齐，opener / scanRules 等数据共用。
 import { icons } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';

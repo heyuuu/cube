@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { matchForgeFilter, repoHostOf, repoHostsOf, repoPathOf } from './forge';
 
-// 语义与后端 forge.RepoHost 对齐（见 server/forge/types.go 的 TestRepoHost）
+// 语义与后端 forge.RepoHost 对齐（见 internal/domain/forge/types.go 的 TestRepoHost）
 describe('repoHostOf', () => {
   it('解析 ssh 形态 git@host:path', () => {
     expect(repoHostOf('git@github.com:heyuuu/cube.git')).toBe('github.com');

@@ -2,7 +2,7 @@ package workbench
 
 // worktree / 分支写侧（提案 1031）：新增 worktree、删除 worktree、删除分支。
 // Service 入口方法在 service.go（薄编排），本文件是预检、预填路径推导等主题逻辑，
-// 以包级函数暴露。git 子进程调用全部走 util/git 类型化函数（AGENTS.md 规则 14）。
+// 以包级函数暴露。git 子进程调用全部走 pkg/git 类型化函数（AGENTS.md 规则 13）。
 
 import (
 	"fmt"

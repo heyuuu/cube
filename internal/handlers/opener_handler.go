@@ -22,7 +22,7 @@ type OpenerDTO struct {
 	Icon    IconDTO           `json:"icon"`    // 恒有值（未配置时后端按主 role 填默认 lucide 图）
 }
 
-// IconDTO icon 声明的 API 形态（opener / scanRule 等共用，语义见 util/iconkit）。
+// IconDTO icon 声明的 API 形态（opener / scanRule 等共用，语义见 pkg/iconkit）。
 type IconDTO struct {
 	Type  string `json:"type"`  // lucide | image
 	Value string `json:"value"` // lucide 图名 或 base64 PNG

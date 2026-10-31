@@ -1,7 +1,7 @@
 package workbench
 
 // worktree / 分支写侧的 Service 层测试：预填路径、预检拒绝、主目录防护、
-// 定向刷新回调触发。git 层行为已由 util/git 的测试覆盖，这里只测编排。
+// 定向刷新回调触发。git 层行为已由 pkg/git 的测试覆盖，这里只测编排。
 
 import (
 	"errors"

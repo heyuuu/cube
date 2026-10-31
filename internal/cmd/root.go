@@ -42,7 +42,7 @@ func newRootCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   version2.AppName,
 		Short: version2.AppName + " " + version2.Version(),
-		Long: `cube —— 面向个人开发者的本地多项目管理工具（CLI 优先 + 本地 Web）。
+		Long: `cube —— 面向个人开发者的本地多项目管理工具（Web UI 优先，CLI 简单可行兜底）。
 
 命令按领域分组：
   - 项目：list(列表) info(详情) open(打开) init/clone(初始化) check(检查)

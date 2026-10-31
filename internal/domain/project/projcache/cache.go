@@ -283,7 +283,7 @@ func collectEntries(paths []string) map[string]*Entry {
 }
 
 // collectEntry 采集单个项目的 git 信息。
-// 依赖 util/git 包的错误约定：业务空值场景返回零值+nil；但 git 子进程执行失败
+// 依赖 pkg/git 包的错误约定：业务空值场景返回零值+nil；但 git 子进程执行失败
 // （如指向已删主仓库的 worktree 残骸）会返回 nil+err，必须上抛跳过，否则解引用 nil panic。
 func collectEntry(path string) (*Entry, error) {
 	// 一次 Remotes() 同时派生 repoURL（origin 的 fetch 地址，与 git.RemoteURL 同口径）与

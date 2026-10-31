@@ -7,7 +7,7 @@ import (
 	"cube/pkg/iconkit"
 )
 
-// IconHandler icon 声明的通用辅助出口（提取图标）。icon 语义属 util/iconkit
+// IconHandler icon 声明的通用辅助出口（提取图标）。icon 语义属 pkg/iconkit
 // 跨域共享（opener / scanRules / forge 的 IconField 共用此端点），不挂任何单一 domain。
 type IconHandler struct{}
 

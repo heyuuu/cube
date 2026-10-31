@@ -17,7 +17,7 @@ package git
 // 封装边界：包外一律调用本包的类型化函数（缺什么就在包内新增封装，含输出解析），
 // 不直接 exec git、不拼子命令参数，也不存在「调用方传 args 的通用执行口」。
 // git 参数与输出的平台/环境兼容（quotePath 转义 / locale / pager / 退出码语义）
-// 只允许收敛在本包单点处理，见 AGENTS.md 规则 14。
+// 只允许收敛在本包单点处理，见 AGENTS.md 规则 13。
 //
 // 此外，与具体 git 实现无关的辅助能力也归在本包：FindGitRoot（按 .git 探测仓库根）、
 // ParseRepoURL（解析 SSH/HTTPS 仓库地址）等，只与 git 的概念/约定相关。

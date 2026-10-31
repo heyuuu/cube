@@ -1,5 +1,5 @@
 // Package gitapi 提供 git 托管平台的 REST API 客户端（github / gitea / gitee）。
-// 与 util/git 成对：git 管本机 git 子进程，gitapi 管平台 HTTP API。
+// 与 pkg/git 成对：git 管本机 git 子进程，gitapi 管平台 HTTP API。
 // 当前只做一件事：通过 account（token）拉取认证账号名下的全部仓库（含私有库、
 // 所属组织仓库）。刻意不做按命名空间列仓库——各平台该能力端点分裂且部分不可靠
 // （github/gitee 的 /users/{path}/repos 只回公开库；org 列表会混入无权限的幽灵条目），
