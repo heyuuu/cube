@@ -10,7 +10,7 @@ type projectDirSpec struct {
 	dirty    bool
 }
 
-// WithGodot 在 project 目录放一个 game.godot 文件。
+// WithGodot 在 project 目录放一个 project.godot 文件。
 func WithGodot() ProjectOption { return func(s *projectDirSpec) { s.godot = true } }
 
 // WithWorktree 用 .git 文件（非目录）模拟 worktree。

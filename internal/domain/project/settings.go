@@ -24,7 +24,7 @@ func loadScanRules(settingsFile string) []ScanRule {
 	var specs []ScanRule
 	config.LoadSection(settingsFile, scanRulesSection, &specs)
 
-	var rules []ScanRule
+	rules := make([]ScanRule, 0, len(specs))
 	for _, r := range specs {
 		if !filepath.IsAbs(r.Path) {
 			slog.Warn("scan 规则路径配置错误，path 必须为绝对路径", "group", r.Group, "path", r.Path)

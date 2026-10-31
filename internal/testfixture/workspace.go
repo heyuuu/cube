@@ -119,7 +119,7 @@ func (w *Workspace) MakeProjectDir(relPath string, opts ...ProjectOption) string
 	}
 
 	if spec.godot {
-		w.WriteFile(filepath.Join(relPath, "game.godot"), []byte("godot project"))
+		w.WriteFile(filepath.Join(relPath, "project.godot"), []byte("godot project"))
 	}
 	return dir
 }

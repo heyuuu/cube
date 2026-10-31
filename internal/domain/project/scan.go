@@ -2,11 +2,11 @@ package project
 
 import (
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"cube/pkg/iconkit"
+	"cube/pkg/x"
 )
 
 // ScanRule 扫描规则
@@ -26,11 +26,6 @@ type ScanRule struct {
 //
 // 注：worktree 目录（.git 为文件）不是项目（1032 归并为项目打开目标），
 // 历史的 worktree tag 已随归并移除。
-
-// 附加 tag：项目均为 git 项目（见上方约定），只标额外特征。
-const (
-	TagGodot = "godot" // Godot 项目（含 project.godot）
-)
 
 func scan(rules []ScanRule) ([]*Project, error) {
 	var all []*Project
@@ -58,12 +53,13 @@ func scanOne(r ScanRule) ([]*Project, error) {
 		}
 
 		// 检查目录，返回此目录为项目或跳过目录或nil
-		isProject, tags, checkErr := checkProjectPath(path)
+		isProject, checkErr := checkProjectPath(path)
 		if checkErr != nil {
 			return checkErr
 		}
 		if isProject {
-			projects = append(projects, newProject(r, path, mergeTags(r.Tags, tags)))
+			tags := mergeTags(r.Tags, smellTags(path))
+			projects = append(projects, newProject(r, path, tags))
 			return fs.SkipDir
 		}
 
@@ -89,37 +85,16 @@ func skipDirName(name string) bool {
 	return strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")
 }
 
-func checkProjectPath(path string) (isProject bool, tags []string, err error) {
+func checkProjectPath(path string) (isProject bool, err error) {
 	// 跳过特殊前缀的目录
 	if skipDirName(filepath.Base(path)) {
-		return false, nil, fs.SkipDir
+		return false, fs.SkipDir
 	}
 
-	// 获取子文件/子目录用于判断是否是项目及对应 tag
-	dirEntries, err := os.ReadDir(path)
-	if err != nil {
-		return false, nil, err
-	}
-	hasGit := false
-	for _, entry := range dirEntries {
-		if entry.Name() == ".git" {
-			if !entry.IsDir() {
-				// .git 是文件 → linked worktree：不是项目（1032 归并为所属主项目的打开目标），
-				// 其 git worktree 的可见性来自 git 主项目的 worktree 枚举而非扫描；
-				// worktree 子目录也不可能再含主仓库，直接跳过
-				return false, nil, fs.SkipDir
-			}
-			hasGit = true
-		} else if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".godot") {
-			// godot 标签：在已是 git 项目的前提下，额外标记 godot 引擎项目
-			tags = append(tags, TagGodot)
-		}
-	}
-	// 项目判定：必须含 .git（前提：所有项目都是 git 项目）
-	if hasGit {
-		return true, tags, nil
-	}
-	return false, nil, nil
+	// 判断 .git 目录是否存在
+	// 注意，判断的是 .git 目录；git worktree 目录会有 .git 文件，但是 git worktree 目录不作为单独项目
+	gitPath := filepath.Join(path, ".git")
+	return x.IsDir(gitPath), nil
 }
 
 // MatchScanRule 判断 absPath（git init 后）能否被 scan 收录为新项目，
