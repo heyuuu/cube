@@ -76,14 +76,14 @@ build-ui:
 # 编译到 {{output}} 并验证版本信息
 build: build-ui
     @echo "==> go build ({{version}} @ {{commit}})"
-    go build -ldflags "{{ldflags}}" -o {{output}} ./cmd/cube
+    go build -ldflags "{{ldflags}}" -o {{output}} {{ main_cmd }}
     @echo "==> built {{output}} ({{version}} @ {{commit}}, {{build_time}})"
     @"{{output}}" version
 
 # go install 安装到 GOBIN 并验证
 install: build-ui
     @echo ">>> 编译安装 go install ... ({{version}} @ {{commit}} {{build_time}})"
-    go install -ldflags "{{ldflags}}"
+    go install -ldflags "{{ldflags}}" {{ main_cmd }}
 
     @# 安装完成，确认生效：PATH 上的 cube 必须是刚构建的版本（输出含本次BUILD_TIME），否则视为安装未生效（GOBIN 不在 PATH / 旧版本在前等），中止
     @cube version | grep -qF "{{build_time}}" || { echo "!! 安装校验失败：PATH 上的 cube 不是刚构建的版本（检查 GOBIN 是否在 PATH 且优先于旧安装）" >&2; exit 1; }
