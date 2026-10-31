@@ -8,7 +8,7 @@ import (
 
 	"cube/internal/app"
 	"cube/internal/domain/opener"
-	"cube/pkg/slicekit"
+	"cube/pkg/x"
 )
 
 // cmd `alfred opener-search`
@@ -75,7 +75,7 @@ func sortOpeners(openers []opener.Opener, history []string) []opener.Opener {
 	slices.SortFunc(targets, func(t1, t2 *target) int {
 		return t1.weight - t2.weight
 	})
-	return slicekit.Map(targets, func(t *target) opener.Opener {
+	return x.Map(targets, func(t *target) opener.Opener {
 		return openers[t.index]
 	})
 }

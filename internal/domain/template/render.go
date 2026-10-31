@@ -6,8 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cube/pkg/oskit"
-	"cube/pkg/slicekit"
+	"cube/pkg/x"
 )
 
 // ReplaceRule 替换规则
@@ -39,7 +38,7 @@ func Render(tpl *Template, targetDir string, vars map[string]string) (int, error
 			data = []byte(applyRules(string(data), rules))
 		}
 
-		if err := oskit.WriteFile(outPath, data, 0644); err != nil {
+		if err := x.WriteFile(outPath, data, 0644); err != nil {
 			return fmt.Errorf("写入文件失败: %w", err)
 		}
 
@@ -59,7 +58,7 @@ func isBinary(data []byte) bool {
 
 // matchRules 返回 glob 命中 rel 的所有分组的规则，按分组的 glob 字典序拼接。
 func matchRules(rules []ReplaceRule, rel string) []ReplaceRule {
-	return slicekit.Filter(rules, func(r ReplaceRule) bool {
+	return x.Filter(rules, func(r ReplaceRule) bool {
 		return r.MatchScope(rel)
 	})
 }

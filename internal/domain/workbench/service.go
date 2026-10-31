@@ -19,7 +19,7 @@ import (
 	"cube/internal/domain/project"
 	"cube/internal/domain/project/workspace"
 	"cube/pkg/git"
-	"cube/pkg/slicekit"
+	"cube/pkg/x"
 
 	"github.com/coder/websocket"
 )
@@ -85,9 +85,9 @@ func (s *Service) Refs(path string) (*Refs, error) {
 	getName := func(r git.Ref) string { return r.Name }
 	return &Refs{
 		Head:    head,
-		Locals:  slicekit.Map(refs.Locals, getName),
-		Remotes: slicekit.Map(refs.Remotes, getName),
-		Tags:    slicekit.Map(refs.Tags, getName),
+		Locals:  x.Map(refs.Locals, getName),
+		Remotes: x.Map(refs.Remotes, getName),
+		Tags:    x.Map(refs.Tags, getName),
 	}, nil
 }
 

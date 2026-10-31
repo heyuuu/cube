@@ -1,5 +1,4 @@
-// Package slicekit 切片运算小工具（Map / Filter 等纯函数，不含业务语义）。
-package slicekit
+package x
 
 // Map 逐元素映射为新切片。
 func Map[S ~[]E1, E1 any, E2 any](s S, mapper func(E1) E2) []E2 {
@@ -14,7 +13,7 @@ func Map[S ~[]E1, E1 any, E2 any](s S, mapper func(E1) E2) []E2 {
 	return result
 }
 
-// Filter 按谓词过滤（保序）。
+// Filter 按谓词过滤
 func Filter[S ~[]E, E any](s S, filter func(E) bool) []E {
 	if len(s) == 0 {
 		return nil

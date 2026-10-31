@@ -8,8 +8,8 @@ import (
 	"cube/internal/app"
 	"cube/internal/domain/project"
 	"cube/pkg/pathkit"
-	"cube/pkg/slicekit"
 	"cube/pkg/tui"
+	"cube/pkg/x"
 )
 
 const (
@@ -99,7 +99,7 @@ func checkCloneRules(service *project.Service) {
 func checkGitDirty(service *project.Service) {
 	projects := service.Projects()
 
-	targets := slicekit.Filter(projects, func(p *project.Project) bool {
+	targets := x.Filter(projects, func(p *project.Project) bool {
 		info, ok := service.GitInfo(p.Path())
 		if !ok || len(info.RepoURL) == 0 {
 			return false

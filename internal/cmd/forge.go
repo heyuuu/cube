@@ -8,8 +8,8 @@ import (
 	"cube/internal/app"
 	"cube/internal/domain/forge"
 	"cube/pkg/iconkit"
-	"cube/pkg/slicekit"
 	"cube/pkg/tui"
+	"cube/pkg/x"
 )
 
 // newForgeCmd forge 子命令组（git 托管平台配置管理，提案 1040）。
@@ -43,7 +43,7 @@ func runForgeList(a *app.App) error {
 			"Kind",
 			"Icon",
 		},
-		slicekit.Map(forges, func(f forge.Forge) []string {
+		x.Map(forges, func(f forge.Forge) []string {
 			return []string{f.Host, f.Kind, iconSummary(f.Icon)}
 		}),
 	)

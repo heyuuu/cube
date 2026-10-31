@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"cube/internal/config"
-	"cube/pkg/slicekit"
+	"cube/pkg/x"
 )
 
 // Service 是模板引擎（cube create）的入口。
@@ -74,14 +74,14 @@ func (s *Service) SaveTplSource(src TplSource) error {
 	}
 
 	specs := s.TplSources()
-	specs = slicekit.UpsertKeyed(specs, func(cur TplSource) string { return cur.Name }, src)
+	specs = x.UpsertKeyed(specs, func(cur TplSource) string { return cur.Name }, src)
 	return config.SaveSection(s.settingsFile, tplSourcesSection, specs)
 }
 
 // DeleteTplSource 按 name 删除一条模板源；不存在时返回中文错误。
 func (s *Service) DeleteTplSource(name string) error {
 	name = strings.TrimSpace(name)
-	rest, removed := slicekit.RemoveKeyed(s.TplSources(), func(cur TplSource) string { return cur.Name }, name)
+	rest, removed := x.RemoveKeyed(s.TplSources(), func(cur TplSource) string { return cur.Name }, name)
 	if !removed {
 		return fmt.Errorf("未找到指定模板源: %s", name)
 	}
@@ -91,7 +91,7 @@ func (s *Service) DeleteTplSource(name string) error {
 // ReorderTplSources 按 names 顺序重排模板源节（顺序即 create 交互选择序）。
 // 未列出的条目保持原相对顺序排在末尾，不丢数据；未知或重复 name 返回中文错误。
 func (s *Service) ReorderTplSources(names []string) error {
-	ordered, err := slicekit.ReorderKeyed(
+	ordered, err := x.ReorderKeyed(
 		s.TplSources(), func(cur TplSource) string { return cur.Name }, names,
 		"模板源", func(k string) string { return k },
 	)

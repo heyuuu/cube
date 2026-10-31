@@ -8,7 +8,7 @@ import (
 	"cube/internal/config"
 	"cube/internal/server"
 	"cube/pkg/fuzzy"
-	"cube/pkg/slicekit"
+	"cube/pkg/x"
 )
 
 // settingsSection settings.json 中 opener 域的节名。
@@ -59,7 +59,7 @@ func (s *Service) AllOpeners() []Opener { return s.openers() }
 
 // RoleOpeners 返回声明了指定 role 的 opener。
 func (s *Service) RoleOpeners(role Role) []Opener {
-	return slicekit.Filter(s.openers(), func(o Opener) bool {
+	return x.Filter(s.openers(), func(o Opener) bool {
 		return slices.Contains(o.Roles(), role)
 	})
 }
@@ -97,7 +97,7 @@ func (s *Service) SaveOpener(spec Spec) error {
 
 	var specs []Spec
 	config.LoadSection(s.settingsFile, settingsSection, &specs)
-	specs = slicekit.UpsertKeyed(specs, func(cur Spec) string { return cur.Name }, spec)
+	specs = x.UpsertKeyed(specs, func(cur Spec) string { return cur.Name }, spec)
 	return config.SaveSection(s.settingsFile, settingsSection, specs)
 }
 
@@ -105,7 +105,7 @@ func (s *Service) SaveOpener(spec Spec) error {
 func (s *Service) DeleteOpener(name string) error {
 	var specs []Spec
 	config.LoadSection(s.settingsFile, settingsSection, &specs)
-	rest, removed := slicekit.RemoveKeyed(specs, func(cur Spec) string { return cur.Name }, name)
+	rest, removed := x.RemoveKeyed(specs, func(cur Spec) string { return cur.Name }, name)
 	if !removed {
 		return fmt.Errorf("未找到指定 opener: %s", name)
 	}
@@ -121,7 +121,7 @@ func (s *Service) DeleteOpener(name string) error {
 			dirty = true
 		}
 		if slices.Contains(spec.Openers, name) {
-			spec.Openers = slicekit.Filter(spec.Openers, func(n string) bool { return n != name })
+			spec.Openers = x.Filter(spec.Openers, func(n string) bool { return n != name })
 			dirty = true
 		}
 		if spec.DefaultOpener == "" && len(spec.Openers) == 0 {
@@ -142,7 +142,7 @@ func (s *Service) DeleteOpener(name string) error {
 func (s *Service) ReorderOpeners(names []string) error {
 	var specs []Spec
 	config.LoadSection(s.settingsFile, settingsSection, &specs)
-	ordered, err := slicekit.ReorderKeyed(specs, func(cur Spec) string { return cur.Name }, names, "opener", func(k string) string { return k })
+	ordered, err := x.ReorderKeyed(specs, func(cur Spec) string { return cur.Name }, names, "opener", func(k string) string { return k })
 	if err != nil {
 		return err
 	}

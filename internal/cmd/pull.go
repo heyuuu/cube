@@ -8,8 +8,8 @@ import (
 
 	"cube/internal/app"
 	"cube/pkg/git"
-	"cube/pkg/slicekit"
 	"cube/pkg/tui"
+	"cube/pkg/x"
 )
 
 // newPullCmd 是 `cube pull` 命令入口（push 的反向：从单个 remote 批量更新本地分支）。
@@ -201,7 +201,7 @@ func pickPullBranches(candidates []branchDiff, currentBranch string, flagRefs []
 	if err != nil {
 		return nil, err
 	}
-	return slicekit.Map(picked, func(d branchDiff) string { return d.Branch }), nil
+	return x.Map(picked, func(d branchDiff) string { return d.Branch }), nil
 }
 
 // pullDefaultBranches 计算多选列表的默认勾选项：远端领先的分支；

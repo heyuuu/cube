@@ -9,8 +9,8 @@ import (
 	"cube/internal/app"
 	"cube/internal/domain/project"
 	"cube/pkg/pathkit"
-	"cube/pkg/slicekit"
 	"cube/pkg/tui"
+	"cube/pkg/x"
 )
 
 func newListCmd(a *app.App) *cobra.Command {
@@ -64,7 +64,7 @@ func showProjects(service *project.Service, projects []*project.Project) {
 			"Path",
 			"RepoUrl",
 		},
-		slicekit.Map(projects, func(p *project.Project) []string {
+		x.Map(projects, func(p *project.Project) []string {
 			repoURL := ""
 			if info, ok := service.GitInfo(p.Path()); ok {
 				repoURL = info.RepoURL

@@ -8,7 +8,7 @@ import (
 
 	"cube/internal/config"
 	"cube/pkg/iconkit"
-	"cube/pkg/slicekit"
+	"cube/pkg/x"
 )
 
 // settings.json 中 project 域的两个规则节：分节存储，可独立读取与写入。
@@ -95,7 +95,7 @@ func saveScanRule(settingsFile string, rule ScanRule) error {
 
 	var specs []ScanRule
 	config.LoadSection(settingsFile, scanRulesSection, &specs)
-	specs = slicekit.UpsertKeyed(specs, func(cur ScanRule) string { return cur.Path }, rule)
+	specs = x.UpsertKeyed(specs, func(cur ScanRule) string { return cur.Path }, rule)
 	return config.SaveSection(settingsFile, scanRulesSection, specs)
 }
 
@@ -103,7 +103,7 @@ func saveScanRule(settingsFile string, rule ScanRule) error {
 func deleteScanRule(settingsFile, path string) error {
 	var specs []ScanRule
 	config.LoadSection(settingsFile, scanRulesSection, &specs)
-	rest, removed := slicekit.RemoveKeyed(specs, func(cur ScanRule) string { return cur.Path }, path)
+	rest, removed := x.RemoveKeyed(specs, func(cur ScanRule) string { return cur.Path }, path)
 	if !removed {
 		return fmt.Errorf("未找到指定 scan 规则: %s", path)
 	}
@@ -115,7 +115,7 @@ func deleteScanRule(settingsFile, path string) error {
 func reorderScanRules(settingsFile string, paths []string) error {
 	var specs []ScanRule
 	config.LoadSection(settingsFile, scanRulesSection, &specs)
-	ordered, err := slicekit.ReorderKeyed(specs, func(cur ScanRule) string { return cur.Path }, paths, "scan 规则", func(k string) string { return k })
+	ordered, err := x.ReorderKeyed(specs, func(cur ScanRule) string { return cur.Path }, paths, "scan 规则", func(k string) string { return k })
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func saveCloneRule(settingsFile string, rule CloneRule) error {
 
 	var specs []CloneRule
 	config.LoadSection(settingsFile, cloneRulesSection, &specs)
-	specs = slicekit.UpsertKeyed(specs, cloneRuleKey, rule)
+	specs = x.UpsertKeyed(specs, cloneRuleKey, rule)
 	return config.SaveSection(settingsFile, cloneRulesSection, specs)
 }
 
@@ -144,7 +144,7 @@ func saveCloneRule(settingsFile string, rule CloneRule) error {
 func deleteCloneRule(settingsFile string, key CloneRuleKey) error {
 	var specs []CloneRule
 	config.LoadSection(settingsFile, cloneRulesSection, &specs)
-	rest, removed := slicekit.RemoveKeyed(specs, cloneRuleKey, key)
+	rest, removed := x.RemoveKeyed(specs, cloneRuleKey, key)
 	if !removed {
 		return fmt.Errorf("未找到指定 clone 规则: %s%s", key.RepoHost, key.RepoPrefix)
 	}
@@ -156,7 +156,7 @@ func deleteCloneRule(settingsFile string, key CloneRuleKey) error {
 func reorderCloneRules(settingsFile string, keys []CloneRuleKey) error {
 	var specs []CloneRule
 	config.LoadSection(settingsFile, cloneRulesSection, &specs)
-	ordered, err := slicekit.ReorderKeyed(specs, cloneRuleKey, keys, "clone 规则", formatCloneRuleKey)
+	ordered, err := x.ReorderKeyed(specs, cloneRuleKey, keys, "clone 规则", formatCloneRuleKey)
 	if err != nil {
 		return err
 	}

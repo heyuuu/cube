@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"cube/pkg/oskit"
+	"cube/pkg/x"
 )
 
 // 构建测试目录，返回目录地址
@@ -14,7 +14,7 @@ func makeTestDir(t *testing.T, files map[string]string) string {
 
 	dir := t.TempDir()
 	for name, content := range files {
-		err := oskit.WriteFile(filepath.Join(dir, name), []byte(content), 0644)
+		err := x.WriteFile(filepath.Join(dir, name), []byte(content), 0644)
 		if err != nil {
 			t.Fatal(err)
 		}

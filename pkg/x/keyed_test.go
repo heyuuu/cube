@@ -1,4 +1,4 @@
-package slicekit
+package x
 
 import (
 	"strings"

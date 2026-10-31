@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"cube/pkg/oskit"
+	"cube/pkg/x"
 )
 
 // Template 模板
@@ -17,12 +17,12 @@ type Template struct {
 
 // LoadTemplate 加载模板目录：校验并解析根目录 template.yaml。
 func LoadTemplate(tplPath string) (*Template, error) {
-	if !oskit.IsDir(tplPath) {
+	if !x.IsDir(tplPath) {
 		return nil, fmt.Errorf("模板目录不存在或不是目录: %s", tplPath)
 	}
 
 	meteFilePath := filepath.Join(tplPath, MetaFileName)
-	if !oskit.IsFile(meteFilePath) {
+	if !x.IsFile(meteFilePath) {
 		return nil, fmt.Errorf("模板 %s 文件不存在或非文件: %s", MetaFileName, meteFilePath)
 	}
 

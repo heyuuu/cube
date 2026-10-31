@@ -11,7 +11,7 @@ import (
 	"cube/internal/config"
 	"cube/pkg/gitapi"
 	"cube/pkg/iconkit"
-	"cube/pkg/slicekit"
+	"cube/pkg/x"
 )
 
 // settings.json 中的 forge 域节名。
@@ -80,7 +80,7 @@ func (s *Service) SaveForge(f Forge) error {
 	}
 
 	specs := s.Forges()
-	specs = slicekit.UpsertKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, f)
+	specs = x.UpsertKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, f)
 	return config.SaveSection(s.settingsFile, forgesSection, specs)
 }
 
@@ -92,7 +92,7 @@ func (s *Service) ReorderForges(hosts []string) error {
 	for i, raw := range hosts {
 		keys[i] = NormalizeHost(raw)
 	}
-	ordered, err := slicekit.ReorderKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, keys, "forge", func(k string) string { return k })
+	ordered, err := x.ReorderKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, keys, "forge", func(k string) string { return k })
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (s *Service) ReorderForges(hosts []string) error {
 func (s *Service) DeleteForge(host string) error {
 	host = NormalizeHost(host)
 	specs := s.Forges()
-	rest, removed := slicekit.RemoveKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, host)
+	rest, removed := x.RemoveKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, host)
 	if !removed {
 		return fmt.Errorf("未找到指定 forge: %s", host)
 	}
@@ -135,7 +135,7 @@ func (s *Service) SaveAccount(a Account) error {
 		return err
 	}
 	accounts := loadAccounts(s.settingsFile)
-	accounts = slicekit.UpsertKeyed(accounts, accountKey, a)
+	accounts = x.UpsertKeyed(accounts, accountKey, a)
 	return saveAccounts(s.settingsFile, accounts)
 }
 
@@ -148,7 +148,7 @@ func (s *Service) ReorderAccounts(keys []string) error {
 		h, u := key2acct(raw)
 		normalized[i] = acctCacheKey(NormalizeHost(h), NormalizeUsername(u))
 	}
-	ordered, err := slicekit.ReorderKeyed(accounts, accountKey, normalized, "account", formatAccountKey)
+	ordered, err := x.ReorderKeyed(accounts, accountKey, normalized, "account", formatAccountKey)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (s *Service) ReorderAccounts(keys []string) error {
 func (s *Service) DeleteAccount(forgeHost, username string) error {
 	forgeHost, username = NormalizeHost(forgeHost), NormalizeUsername(username)
 	accounts := loadAccounts(s.settingsFile)
-	rest, removed := slicekit.RemoveKeyed(accounts, accountKey, acctCacheKey(forgeHost, username))
+	rest, removed := x.RemoveKeyed(accounts, accountKey, acctCacheKey(forgeHost, username))
 	if !removed {
 		return fmt.Errorf("未找到指定 account: %s@%s", username, forgeHost)
 	}

@@ -8,7 +8,7 @@ import (
 
 	"cube/internal/domain/opener"
 	"cube/internal/server"
-	"cube/pkg/slicekit"
+	"cube/pkg/x"
 )
 
 // --- dto ---
@@ -76,7 +76,7 @@ func (h *OpenerHandler) Register(r *server.Routes) {
 
 func (h *OpenerHandler) openerList(_ struct{}) (ListResult[*OpenerDTO], error) {
 	openers := h.service.AllOpeners()
-	list := slicekit.Map(openers, toOpenerDTO)
+	list := x.Map(openers, toOpenerDTO)
 	return listResult(list), nil
 }
 
@@ -88,7 +88,7 @@ type OpenerIntentDTO struct {
 }
 
 func (h *OpenerHandler) openerIntents(_ struct{}) (ListResult[*OpenerIntentDTO], error) {
-	list := slicekit.Map(h.service.Intents(), func(i opener.IntentInfo) *OpenerIntentDTO {
+	list := x.Map(h.service.Intents(), func(i opener.IntentInfo) *OpenerIntentDTO {
 		return &OpenerIntentDTO{
 			Intent:        string(i.Intent),
 			DefaultOpener: i.DefaultOpener,

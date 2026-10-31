@@ -7,8 +7,8 @@ import (
 
 	"cube/internal/app"
 	"cube/internal/domain/opener"
-	"cube/pkg/slicekit"
 	"cube/pkg/tui"
+	"cube/pkg/x"
 )
 
 func newOpenersCmd(a *app.App) *cobra.Command {
@@ -40,7 +40,7 @@ func showOpeners(list []opener.Opener) {
 			"Summary",
 			"Roles",
 		},
-		slicekit.Map(list, func(o opener.Opener) []string {
+		x.Map(list, func(o opener.Opener) []string {
 			return []string{
 				o.Name(),
 				o.Summary(),

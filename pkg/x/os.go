@@ -1,5 +1,6 @@
-// Package oskit 文件系统小工具（存在性判定 / 带父目录自动创建的写文件）。
-package oskit
+package x
+
+// 文件系统小工具（存在性判定 / 带父目录自动创建的写文件）
 
 import (
 	"os"

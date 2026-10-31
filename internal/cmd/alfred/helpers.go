@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"cube/pkg/slicekit"
+	"cube/pkg/x"
 )
 
 // H Alfred Script Filter JSON 顶层对象（字段名→值）。
@@ -20,7 +20,7 @@ type Item struct {
 
 // PrintResult 把源列表逐项映射为 Item 后输出。
 func PrintResult[T any](items []T, fn func(item T) Item) error {
-	return PrintItems(slicekit.Map(items, fn))
+	return PrintItems(x.Map(items, fn))
 }
 
 // PrintItems 直接输出已构造好的 Item 列表（条目不与单一源列表一一对应时用，如项目平铺展开为多目标）。
