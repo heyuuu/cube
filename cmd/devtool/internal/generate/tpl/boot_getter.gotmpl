@@ -1,0 +1,3 @@
+{{/* 追加到 app/boot.go 文件尾部：新 domain 的 Service Getter，与 boot.go 已有 Getter 同形 */}}
+// {{.exported}}Service 返回 {{.domain}} 服务单例（Init 后可用）。
+func (a *App) {{.exported}}Service() *{{.domain}}.Service { return mustGet[*{{.domain}}.Service](a) }

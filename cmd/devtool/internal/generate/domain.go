@@ -81,7 +81,8 @@ func genDomain(module, domain string) error {
 	return nil
 }
 
-// injectBoot 把新 domain 的 service 工厂与 handler 工厂注入 boot.go 的两个锚点处。
+// injectBoot 把新 domain 的 service 工厂与 handler 工厂注入 boot.go 的两个锚点处，
+// 并在文件尾部追加该 domain 的 Service Getter。
 func injectBoot(path, module, domain, exported string) error {
 	src, err := os.ReadFile(path)
 	if err != nil {
@@ -99,16 +100,25 @@ func injectBoot(path, module, domain, exported string) error {
 		}
 	}
 
+	getter, err := renderTemplate("boot_getter.gotmpl", map[string]string{
+		"domain":   domain,
+		"exported": exported,
+	})
+	if err != nil {
+		return err
+	}
+
 	text = strings.Replace(text, "import (\n",
 		"import (\n\t\""+module+"/internal/domain/"+domain+"\"\n", 1)
 	text = strings.Replace(text, serviceMarker,
 		fmt.Sprintf("\t\t%s.NewService,\n\n", domain)+serviceMarker, 1)
 	text = strings.Replace(text, handlerMarker,
 		fmt.Sprintf("\t\thandlers.New%sHandler,\n\n", exported)+handlerMarker, 1)
+	text += "\n" + getter + "\n"
 
 	if err := writeFormatted(path, text); err != nil {
 		return err
 	}
-	fmt.Printf("已注入 boot.go: %s.NewService、handlers.New%sHandler\n", domain, exported)
+	fmt.Printf("已注入 boot.go: %s.NewService、handlers.New%sHandler、App.%sService\n", domain, exported, exported)
 	return nil
 }
