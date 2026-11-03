@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 	"cube/pkg/tui"
 )
@@ -45,8 +47,8 @@ ref 默认勾选当前分支；执行前展示推送计划并二次确认。
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			// 定位项目：query 匹配（规则同 info），以项目根为仓库
-			query := getArg(args, 0)
-			proj, err := pickProject(a.ProjectService(), query, a.Local())
+			query := xslices.Get(args, 0)
+			proj, err := cmdutil.PickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}
@@ -181,7 +183,7 @@ func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remotes []g
 	// fetch 后重读 refs，拿到最新 remote-tracking；远端没有同名分支的显示 ↑0 ↓0 会误导（像是已同步），跳过
 	remoteBranches := map[string]map[string]bool{}
 	if fresh, err := git.Refs(repoPath); err == nil {
-		remoteBranches = buildRemoteBranchMap(fresh)
+		remoteBranches = cmdutil.BuildRemoteBranchMap(fresh)
 	}
 
 	type refItem struct {

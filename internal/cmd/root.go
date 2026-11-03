@@ -1,17 +1,19 @@
-// Package cmd cube 主 CLI 命令层：组装根命令与全部子命令，装配经 app 惰性触发。
 package cmd
 
 import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
 	"cube/internal/cmd/alfred"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/cmd/dev"
-	version2 "cube/internal/version"
+	"cube/internal/cmd/project"
+	"cube/internal/version"
 )
 
 // Execute 构建并执行根命令，失败时打日志并以非零码退出。
@@ -28,10 +30,10 @@ func Execute() {
 
 // 默认配置文件路径，区分开发环境、正式环境
 func defaultConfigPath() string {
-	if version2.IsDev() {
-		return "~/.config/" + version2.AppName + "-dev/config.json"
+	if version.IsDev() {
+		return "~/.config/" + version.AppName + "-dev/config.json"
 	}
-	return "~/.config/" + version2.AppName + "/config.json"
+	return "~/.config/" + version.AppName + "/config.json"
 }
 
 func newRootCmd(a *app.App) *cobra.Command {
@@ -40,8 +42,8 @@ func newRootCmd(a *app.App) *cobra.Command {
 	var local bool
 
 	cmd := &cobra.Command{
-		Use:   version2.AppName,
-		Short: version2.AppName + " " + version2.Version(),
+		Use:   version.AppName,
+		Short: version.AppName + " " + version.Version(),
 		Long: `cube —— 面向个人开发者的本地多项目管理工具（Web UI 优先，CLI 简单可行兜底）。
 
 命令按领域分组：
@@ -59,7 +61,7 @@ func newRootCmd(a *app.App) *cobra.Command {
 			// PersistentPreRunE 之前发生的输入类错误仍附 usage；运行期错误不再附 usage
 			cmd.SilenceUsage = true
 			// 展开 cfgFile 路径
-			absCfgFile, err := ExtendPath(cfgFile)
+			absCfgFile, err := cmdutil.ExtendPath(cfgFile)
 			if err != nil {
 				return fmt.Errorf("解析 config 路径失败: %w", err)
 			}
@@ -87,8 +89,7 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(newOpenapiCmd(a))
 
 	// project 相关
-	cmd.AddCommand(newListCmd(a))      // 项目列表
-	cmd.AddCommand(newInfoCmd(a))      // 项目信息
+	cmd.AddCommand(project.NewCmd(a))  // project 相关
 	cmd.AddCommand(newOpenCmd(a))      // 打开项目
 	cmd.AddCommand(newPathCmd(a))      // 输出项目路径（供 shell 包装函数 cd）
 	cmd.AddCommand(newInitCmd(a))      // 初始化空项目
@@ -118,4 +119,44 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(newCheckCmd(a))
 
 	/* <<subcommand inject point>> */
+
+	// 绑定命令别名
+	registerAliasCommands(cmd, map[string][]string{
+		"list": {"project", "list"},
+		"info": {"project", "info"},
+	})
+}
+
+func registerAliasCommands(cmd *cobra.Command, aliases map[string][]string) {
+	for name, alias := range aliases {
+		registerAliasCommand(cmd, name, alias)
+	}
+}
+
+func registerAliasCommand(cmd *cobra.Command, name string, alias []string) {
+	target := findCommand(cmd, alias)
+	if target == nil {
+		// 注册期错误属于代码 bug，启动即暴露
+		panic(fmt.Sprintf("别名 %s 的目标命令 %v 不存在", name, alias))
+	}
+	// 浅拷贝：flag set 与 RunE 闭包共享，别名命令与目标命令行为始终一致
+	clone := *target
+	clone.Use = name
+	clone.Aliases = nil
+	clone.Short = fmt.Sprintf("命令 %s 的别名", strings.Join(alias, " "))
+	clone.Long = ""
+	cmd.AddCommand(&clone)
+}
+
+// findCommand 按路径逐层查找子命令，任一层未命中返回 nil。
+func findCommand(root *cobra.Command, path []string) *cobra.Command {
+	cur := root
+	for _, name := range path {
+		next, _, err := cur.Find([]string{name})
+		if err != nil || next == cur {
+			return nil
+		}
+		cur = next
+	}
+	return cur
 }

@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/project/cubefile"
 	"cube/internal/domain/project/workspace"
 	"cube/pkg/tui"
@@ -34,7 +36,7 @@ func newWorkspaceInitCmd(a *app.App) *cobra.Command {
 query 支持项目名模糊搜索，规则同 open 命令。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			proj, err := pickProject(a.ProjectService(), getArg(args, 0), a.Local())
+			proj, err := cmdutil.PickProject(a.ProjectService(), xslices.Get(args, 0), a.Local())
 			if err != nil {
 				return err
 			}

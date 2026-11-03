@@ -1,4 +1,4 @@
-package cmd
+package cmdutil
 
 import (
 	"path/filepath"
@@ -32,19 +32,20 @@ func TestExtendPath(t *testing.T) {
 			got, err := ExtendPath(c.in)
 			if c.wantErr {
 				if err == nil {
-					t.Fatalf("AbsPath(%q) 期望报错，实际返回 %q", c.in, got)
+					t.Fatalf("ExtendPath(%q) 期望报错，实际返回 %q", c.in, got)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("AbsPath(%q) 出错: %v", c.in, err)
+				t.Fatalf("ExtendPath(%q) 出错: %v", c.in, err)
 			}
 			if got != c.want {
-				t.Fatalf("AbsPath(%q) = %q, want %q", c.in, got, c.want)
+				t.Fatalf("ExtendPath(%q) = %q, want %q", c.in, got, c.want)
 			}
 		})
 	}
 }
+
 func TestPrettyTime(t *testing.T) {
 	now := time.Now()
 	tests := []struct {
@@ -73,7 +74,7 @@ func TestPrettyTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := prettyTime(tt.t); got != tt.want {
+			if got := PrettyTime(tt.t); got != tt.want {
 				t.Errorf("prettyTime() = %q, want %q", got, tt.want)
 			}
 		})

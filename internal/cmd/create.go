@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/template"
 )
 
@@ -62,7 +63,7 @@ func newCreateCmd(a *app.App) *cobra.Command {
 			}
 
 			// 目标路径在本层展开为绝对路径（~/ 相对路径），domain 不感知进程 cwd
-			target, err = ExtendPath(target)
+			target, err = cmdutil.ExtendPath(target)
 			if err != nil {
 				return fmt.Errorf("解析目标路径失败: %w", err)
 			}
@@ -110,8 +111,8 @@ func parseCliTpl(cliTpl string) (sourceRef string, tplName string, err error) {
 	}
 
 	// 本地路径：./ ~/ / 开头
-	if isPathQuery(cliTpl) {
-		absPath, err := ExtendPath(cliTpl)
+	if cmdutil.IsPathQuery(cliTpl) {
+		absPath, err := cmdutil.ExtendPath(cliTpl)
 		if err != nil {
 			return "", "", err
 		}

@@ -1,18 +1,17 @@
-package cmd
+package project
 
 import (
-	"fmt"
 	"slices"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/project"
-	"cube/pkg/pathkit"
-	"cube/pkg/tui"
-	"cube/pkg/x"
 )
 
+// newListCmd `cube project list` 命令。
 func newListCmd(a *app.App) *cobra.Command {
 	var group string
 	cmd := &cobra.Command{
@@ -29,10 +28,10 @@ query 支持两种搜索模式：
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			// 获取输入参数
-			query := getArg(args, 0)
+			query := xslices.Get(args, 0)
 
 			// 项目列表
-			projects, err := searchProjects(a.ProjectService(), query, false)
+			projects, err := cmdutil.SearchProjects(a.ProjectService(), query, false)
 			if err != nil {
 				return err
 			}
@@ -47,33 +46,11 @@ query 支持两种搜索模式：
 			// 展示项目列表（最近使用的项目置顶）
 			latest := a.UsageService().LatestByProject()
 			projects = project.SortByRecentUsage(projects, latest, 10)
-			showProjects(a.ProjectService(), projects)
+			cmdutil.ShowProjects(a.ProjectService(), projects)
 
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&group, "group", "g", "", "限定分组 group")
 	return cmd
-}
-
-// 输出表格
-func showProjects(service *project.Service, projects []*project.Project) {
-	tui.PrintTable(
-		[]string{
-			fmt.Sprintf("项目(%d)", len(projects)),
-			"Path",
-			"RepoUrl",
-		},
-		x.Map(projects, func(p *project.Project) []string {
-			repoURL := ""
-			if info, ok := service.GitInfo(p.Path()); ok {
-				repoURL = info.RepoURL
-			}
-			return []string{
-				p.Name(),
-				pathkit.PrettyPath(p.Path()),
-				repoURL,
-			}
-		}),
-	)
 }

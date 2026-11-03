@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 	"cube/pkg/tui"
 	"cube/pkg/x"
@@ -52,8 +54,8 @@ remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			// 定位项目：query 匹配（规则同 push），以项目根为仓库
-			query := getArg(args, 0)
-			proj, err := pickProject(a.ProjectService(), query, a.Local())
+			query := xslices.Get(args, 0)
+			proj, err := cmdutil.PickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}
@@ -139,7 +141,7 @@ func pullCandidates(repoPath string, remoteName string) ([]branchDiff, error) {
 	}
 
 	// 候选 = 与指定 remote 同名的本地分支（其它 remote 的同名分支不参与）
-	remoteHasBranch := buildRemoteBranchMap(repoRefs)
+	remoteHasBranch := cmdutil.BuildRemoteBranchMap(repoRefs)
 	var diffs []branchDiff
 	for _, ref := range repoRefs.Locals {
 		b := ref.Branch

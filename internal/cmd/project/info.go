@@ -1,4 +1,4 @@
-package cmd
+package project
 
 import (
 	"fmt"
@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 	"cube/pkg/tui"
 )
@@ -27,6 +29,7 @@ var (
 // infoKeyWidth 是键名列宽度（含对齐），多行值的续行缩进也依赖它。
 const infoKeyWidth = 13
 
+// newInfoCmd `cube project info` 命令。
 func newInfoCmd(a *app.App) *cobra.Command {
 	var verbose bool
 	cmd := &cobra.Command{
@@ -45,10 +48,10 @@ query 支持两种搜索模式：
   - 按差距生成的 cube pull / cube push 建议命令。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			query := getArg(args, 0)
+			query := xslices.Get(args, 0)
 
 			// 匹配项目
-			proj, err := pickProject(a.ProjectService(), query, a.Local())
+			proj, err := cmdutil.PickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}
@@ -60,8 +63,8 @@ query 支持两种搜索模式：
 
 			// 路径 query 命中 worktree 时注明当前所属（1032 归并：项目身份是主仓库，
 			// 但用户在 worktree 目录里执行，需指出实际所在副本）
-			if isPathQuery(query) {
-				if absPath, err := ExtendPath(query); err == nil {
+			if cmdutil.IsPathQuery(query) {
+				if absPath, err := cmdutil.ExtendPath(query); err == nil {
 					if root, ok := git.FindGitRoot(absPath); ok && root != proj.Path() {
 						branch := git.CurrentBranch(root)
 						if branch != "" {
@@ -90,7 +93,7 @@ query 支持两种搜索模式：
 				printInfoKV("branch", branch)
 				if info.DefaultBranch != "" {
 					// ahead/behind 是默认分支相对 origin 的差异
-					printInfoKV("default", info.DefaultBranch+" "+formatAheadBehind(info.Ahead, info.Behind))
+					printInfoKV("default", info.DefaultBranch+" "+cmdutil.FormatAheadBehind(info.Ahead, info.Behind))
 				}
 				printInfoKV("dirty", boolToCnColored(info.Dirty))
 				printInfoKV("branches", fmt.Sprintf("%d 个", len(info.Branches)))
@@ -178,7 +181,7 @@ func formatInfoGitURL(repoURL string) string {
 
 // formatInfoSnapshot 渲染 snapshot 值：相对时间为主，绝对时间放括号里备查。
 func formatInfoSnapshot(t time.Time) string {
-	return prettyTime(t) + " " + infoDimStyle.Render("("+t.Format("2006-01-02 15:04:05")+")")
+	return cmdutil.PrettyTime(t) + " " + infoDimStyle.Render("("+t.Format("2006-01-02 15:04:05")+")")
 }
 
 // printInfoVerbose 打印 -v 的三段扩展：未提交文件 / 分支同步状态 / pull·push 建议。
@@ -213,15 +216,15 @@ func printInfoVerbose(repoPath string) {
 		return
 	}
 
-	remoteHasBranch := buildRemoteBranchMap(repoRefs)
-	branches := pickSharedBranches(repoRefs, remoteHasBranch)
-	diffs := collectBranchRemoteDiffs(repoPath, branches, remotes, remoteHasBranch)
+	remoteHasBranch := cmdutil.BuildRemoteBranchMap(repoRefs)
+	branches := cmdutil.PickSharedBranches(repoRefs, remoteHasBranch)
+	diffs := cmdutil.CollectBranchRemoteDiffs(repoPath, branches, remotes, remoteHasBranch)
 
 	printInfoSection("分支同步状态")
 	if len(branches) == 0 {
 		tui.Print("没有本地与任一 remote 同名的分支，无可对比项。\n")
 	} else {
-		tui.PrintTable(buildStatusHeaders(remotes), buildStatusRowsFromDiffs(diffs, branches, remotes, currentBranch))
+		tui.PrintTable(cmdutil.BuildStatusHeaders(remotes), cmdutil.BuildStatusRowsFromDiffs(diffs, branches, remotes, currentBranch))
 	}
 
 	printInfoSection("同步建议")
@@ -262,7 +265,7 @@ type syncSuggestion struct {
 //   - 分叉   → 不给命令（快进/普通推送都会被拒），提示手动处理
 //
 // 输出顺序：先 pull（先更新本地）再 push，分叉提示排最后。
-func buildSyncSuggestions(diffs []branchRemoteDiff, repoPath string) []syncSuggestion {
+func buildSyncSuggestions(diffs []cmdutil.BranchRemoteDiff, repoPath string) []syncSuggestion {
 	var out []syncSuggestion
 	for _, d := range diffs {
 		if d.Behind > 0 && d.Ahead == 0 {

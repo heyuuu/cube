@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/opener"
 	"cube/internal/domain/project"
 	"cube/pkg/tui"
@@ -26,10 +28,10 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 -o 不带值时交互选择；-o <name> 按名模糊匹配。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			query := getArg(args, 0)
+			query := xslices.Get(args, 0)
 
 			// 匹配项目
-			proj, err := pickProject(a.ProjectService(), query, a.Local())
+			proj, err := cmdutil.PickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}

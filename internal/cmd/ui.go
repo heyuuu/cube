@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/server/client"
 )
 
@@ -77,7 +78,7 @@ func openPage(a *app.App, route string, rawPath string) error {
 	if rawPath[0] != '/' && rawPath[0] != '~' && rawPath[0] != '.' {
 		rawPath = "./" + rawPath
 	}
-	absPath, err := ExtendPath(rawPath)
+	absPath, err := cmdutil.ExtendPath(rawPath)
 	if err != nil {
 		return fmt.Errorf("解析路径失败: %w", err)
 	}

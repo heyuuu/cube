@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 )
 
 // cmd `cube path`
@@ -21,10 +23,10 @@ func newPathCmd(a *app.App) *cobra.Command {
 取消选择或非 TTY 多目标时以非零退出码结束，不输出路径。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			query := getArg(args, 0)
+			query := xslices.Get(args, 0)
 
 			// 匹配项目（与 open 一致）
-			proj, err := pickProject(a.ProjectService(), query, a.Local())
+			proj, err := cmdutil.PickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}

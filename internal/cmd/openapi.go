@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 )
 
 func newOpenapiCmd(a *app.App) *cobra.Command {
@@ -33,7 +34,7 @@ func writeOpenAPIFile(a *app.App, outPath string) error {
 		return fmt.Errorf("生成 OpenAPI 失败: %w", err)
 	}
 
-	outPath, err = ExtendPath(outPath)
+	outPath, err = cmdutil.ExtendPath(outPath)
 	if err != nil {
 		return fmt.Errorf("解析输出文件绝对路径失败: %w", err)
 	}

@@ -1,9 +1,10 @@
-package cmd
+package project
 
 import (
 	"strings"
 	"testing"
 
+	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 )
 
@@ -28,7 +29,7 @@ func stripAnsi(s string) string {
 // 仅落后给 pull、仅领先给 push、分叉只提示不给命令、已同步不产生条目；
 // 输出顺序为 pull 在前 push 在后（先更新本地再推送）。
 func TestBuildSyncSuggestions(t *testing.T) {
-	diffs := []branchRemoteDiff{
+	diffs := []cmdutil.BranchRemoteDiff{
 		{Branch: "develop", Remote: "origin", Ahead: 1, Behind: 0},
 		{Branch: "master", Remote: "origin", Ahead: 0, Behind: 2},
 		{Branch: "feature", Remote: "gitee", Ahead: 2, Behind: 3},

@@ -1,4 +1,4 @@
-package cmd
+package cmdutil
 
 // 本文件收敛「本地分支 × remote 同名分支」差距计算的共享助手，
 // 供 info -v 的分支同步状态段与 pull 的候选分支计算复用。
@@ -13,9 +13,9 @@ import (
 	"cube/pkg/git"
 )
 
-// buildRemoteBranchMap 把远程分支列表组织成 map[branch]set[remote]，便于 O(1) 查询
+// BuildRemoteBranchMap 把远程分支列表组织成 map[branch]set[remote]，便于 O(1) 查询
 // 「某 remote 是否有某分支」。
-func buildRemoteBranchMap(refs *git.RefsResult) map[string]map[string]bool {
+func BuildRemoteBranchMap(refs *git.RefsResult) map[string]map[string]bool {
 	m := make(map[string]map[string]bool)
 	for _, ref := range refs.Remotes {
 		if m[ref.Branch] == nil {
@@ -26,9 +26,9 @@ func buildRemoteBranchMap(refs *git.RefsResult) map[string]map[string]bool {
 	return m
 }
 
-// pickSharedBranches 取「本地分支 ∩ 任一 remote 同名分支」的并集，结果按名排序。
+// PickSharedBranches 取「本地分支 ∩ 任一 remote 同名分支」的并集，结果按名排序。
 // 本地有但所有 remote 都没有的分支被排除（无对比对象）。
-func pickSharedBranches(refs *git.RefsResult, remoteHasBranch map[string]map[string]bool) []string {
+func PickSharedBranches(refs *git.RefsResult, remoteHasBranch map[string]map[string]bool) []string {
 	var shared []string
 	for _, ref := range refs.Locals {
 		if len(remoteHasBranch[ref.Branch]) > 0 {
@@ -39,8 +39,8 @@ func pickSharedBranches(refs *git.RefsResult, remoteHasBranch map[string]map[str
 	return shared
 }
 
-// buildStatusHeaders 构造宽表表头：Branch + 每个 remote 名。
-func buildStatusHeaders(remotes []git.Remote) []string {
+// BuildStatusHeaders 构造宽表表头：Branch + 每个 remote 名。
+func BuildStatusHeaders(remotes []git.Remote) []string {
 	headers := make([]string, 0, 1+len(remotes))
 	headers = append(headers, "Branch")
 	for _, r := range remotes {
@@ -49,45 +49,45 @@ func buildStatusHeaders(remotes []git.Remote) []string {
 	return headers
 }
 
-// branchRemoteDiff 描述一个本地分支相对一个 remote 同名分支的领先/落后 commit 数。
+// BranchRemoteDiff 描述一个本地分支相对一个 remote 同名分支的领先/落后 commit 数。
 // info -v 的同步宽表与 pull/push 建议都基于它。
-type branchRemoteDiff struct {
+type BranchRemoteDiff struct {
 	Branch string
 	Remote string
 	Ahead  int // 本地领先
 	Behind int // 本地落后（远端有更新）
 }
 
-// collectBranchRemoteDiffs 计算每个 (分支 × remote) 对的 ahead/behind，
+// CollectBranchRemoteDiffs 计算每个 (分支 × remote) 对的 ahead/behind，
 // 只含该 remote 上存在同名分支的对（无对比对象的格子不产生数据）。
-func collectBranchRemoteDiffs(
+func CollectBranchRemoteDiffs(
 	repoPath string,
 	branches []string,
 	remotes []git.Remote,
 	remoteHasBranch map[string]map[string]bool,
-) []branchRemoteDiff {
-	var diffs []branchRemoteDiff
+) []BranchRemoteDiff {
+	var diffs []BranchRemoteDiff
 	for _, b := range branches {
 		for _, r := range remotes {
 			if !remoteHasBranch[b][r.Name] {
 				continue
 			}
 			ahead, behind, _ := git.AheadBehindRemote(repoPath, b, r.Name, b)
-			diffs = append(diffs, branchRemoteDiff{Branch: b, Remote: r.Name, Ahead: ahead, Behind: behind})
+			diffs = append(diffs, BranchRemoteDiff{Branch: b, Remote: r.Name, Ahead: ahead, Behind: behind})
 		}
 	}
 	return diffs
 }
 
-// buildStatusRowsFromDiffs 由预计算的 (分支×remote) 差距构造宽表行：
+// BuildStatusRowsFromDiffs 由预计算的 (分支×remote) 差距构造宽表行：
 //   - 某格的 remote 没有该分支 → "-"（无对比对象，diffs 中也无该对）
 //   - ahead/behind 全 0（已同步）→ "✓"
 //   - 否则 → "+ahead/-behind"（任一项为 0 时省略，如 "+3" / "-1"）
 //
 // 当前分支名前加 "*"。
-func buildStatusRowsFromDiffs(diffs []branchRemoteDiff, branches []string, remotes []git.Remote, currentBranch string) [][]string {
+func BuildStatusRowsFromDiffs(diffs []BranchRemoteDiff, branches []string, remotes []git.Remote, currentBranch string) [][]string {
 	// (branch, remote) → diff 索引，避免在表格构造里重复算 ahead/behind
-	diffAt := make(map[string]branchRemoteDiff, len(diffs))
+	diffAt := make(map[string]BranchRemoteDiff, len(diffs))
 	for _, d := range diffs {
 		diffAt[d.Branch+"@"+d.Remote] = d
 	}
@@ -104,7 +104,7 @@ func buildStatusRowsFromDiffs(diffs []branchRemoteDiff, branches []string, remot
 
 		for j, r := range remotes {
 			if d, ok := diffAt[branch+"@"+r.Name]; ok {
-				row[1+j] = formatAheadBehind(d.Ahead, d.Behind)
+				row[1+j] = FormatAheadBehind(d.Ahead, d.Behind)
 			} else {
 				row[1+j] = "-"
 			}
@@ -114,10 +114,10 @@ func buildStatusRowsFromDiffs(diffs []branchRemoteDiff, branches []string, remot
 	return rows
 }
 
-// formatAheadBehind 把 (ahead, behind) 格式化为一格内容：
+// FormatAheadBehind 把 (ahead, behind) 格式化为一格内容：
 //   - 全 0 → "✓"
 //   - 否则形如 "+3/-1"；ahead 或 behind 为 0 时省略该半边（"+3" / "-1"）
-func formatAheadBehind(ahead, behind int) string {
+func FormatAheadBehind(ahead, behind int) string {
 	if ahead == 0 && behind == 0 {
 		return "✓"
 	}

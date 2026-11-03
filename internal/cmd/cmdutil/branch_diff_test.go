@@ -1,4 +1,4 @@
-package cmd
+package cmdutil
 
 import (
 	"reflect"
@@ -10,7 +10,7 @@ import (
 // TestBuildRemoteBranchMap 验证远程分支按短名组织成 map[branch]set[remote]，
 // 含斜杠分支名（feature/fix-bug）在多 remote 下的归属。
 func TestBuildRemoteBranchMap(t *testing.T) {
-	m := buildRemoteBranchMap(git.BuildRefs([]string{
+	m := BuildRemoteBranchMap(git.BuildRefs([]string{
 		"refs/remotes/origin/master",
 		"refs/remotes/origin/feature/fix-bug",
 		"refs/remotes/upstream/feature/fix-bug",
@@ -21,7 +21,7 @@ func TestBuildRemoteBranchMap(t *testing.T) {
 		"feature/fix-bug": {"origin": true, "upstream": true},
 	}
 	if !reflect.DeepEqual(m, want) {
-		t.Fatalf("buildRemoteBranchMap = %v，期望 %v", m, want)
+		t.Fatalf("BuildRemoteBranchMap = %v，期望 %v", m, want)
 	}
 }
 
@@ -38,10 +38,10 @@ func TestPickSharedBranches(t *testing.T) {
 		"feature/fix-bug": {"origin": true, "upstream": true},
 	}
 
-	got := pickSharedBranches(refs, m)
+	got := PickSharedBranches(refs, m)
 	want := []string{"feature/fix-bug", "master"} // local-only 无远程同名分支，排除
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("pickSharedBranches = %v，期望 %v", got, want)
+		t.Fatalf("PickSharedBranches = %v，期望 %v", got, want)
 	}
 }
 
@@ -50,20 +50,20 @@ func TestPickSharedBranches(t *testing.T) {
 func TestBuildStatusRowsFromDiffs(t *testing.T) {
 	remotes := []git.Remote{{Name: "origin"}, {Name: "gitee"}}
 	branches := []string{"develop", "master"}
-	diffs := []branchRemoteDiff{
+	diffs := []BranchRemoteDiff{
 		{Branch: "develop", Remote: "origin", Behind: 2},
 		{Branch: "develop", Remote: "gitee", Ahead: 0, Behind: 0},
 		{Branch: "master", Remote: "origin", Ahead: 1},
 		// master 在 gitee 上无同名分支 → 该格 "-"
 	}
 
-	rows := buildStatusRowsFromDiffs(diffs, branches, remotes, "develop")
+	rows := BuildStatusRowsFromDiffs(diffs, branches, remotes, "develop")
 
 	want := [][]string{
 		{"* develop", "-2", "✓"},
 		{"master", "+1", "-"},
 	}
 	if !reflect.DeepEqual(rows, want) {
-		t.Fatalf("buildStatusRowsFromDiffs = %v，期望 %v", rows, want)
+		t.Fatalf("BuildStatusRowsFromDiffs = %v，期望 %v", rows, want)
 	}
 }

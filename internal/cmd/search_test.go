@@ -4,6 +4,7 @@ import (
 	"path"
 	"testing"
 
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/config"
 	"cube/internal/domain/project"
 	"cube/internal/testfixture"
@@ -39,7 +40,7 @@ func TestSearchProjects_PathQueryCwd(t *testing.T) {
 
 	// 项目根：query="." 命中
 	t.Chdir(repo)
-	projs, err := searchProjects(s, ".", true)
+	projs, err := cmdutil.SearchProjects(s, ".", true)
 	if err != nil {
 		t.Fatalf("searchProjects(\".\") 出错: %v", err)
 	}
@@ -50,7 +51,7 @@ func TestSearchProjects_PathQueryCwd(t *testing.T) {
 	// 项目子目录：query="." 向上标定命中
 	sub := ws.Mkdir(path.Join("root", "proj", "sub"))
 	t.Chdir(sub)
-	projs, err = searchProjects(s, ".", true)
+	projs, err = cmdutil.SearchProjects(s, ".", true)
 	if err != nil {
 		t.Fatalf("searchProjects(\".\") 出错: %v", err)
 	}
@@ -71,13 +72,13 @@ func TestPickProject_LocalMode(t *testing.T) {
 	s := newCmdServiceAt(t, root, "g1", 5)
 
 	// 非 local：query 空匹配两个项目，走交互选择，非 TTY 下报错
-	if _, err := pickProject(s, "", false); err == nil {
+	if _, err := cmdutil.PickProject(s, "", false); err == nil {
 		t.Fatalf("非 local 模式下 query 空应因多项匹配无法交互而报错")
 	}
 
 	// local：query 缺省以 cwd 定位，在 projA 子目录内向上命中唯一项目
 	t.Chdir(ws.Mkdir(path.Join("root", "projA", "sub")))
-	proj, err := pickProject(s, "", true)
+	proj, err := cmdutil.PickProject(s, "", true)
 	if err != nil {
 		t.Fatalf("local 模式下 pickProject(\"\") 出错: %v", err)
 	}
@@ -86,7 +87,7 @@ func TestPickProject_LocalMode(t *testing.T) {
 	}
 
 	// local 下显式 query 不干预：仍按名称搜索命中 projB
-	proj, err = pickProject(s, "projB", true)
+	proj, err = cmdutil.PickProject(s, "projB", true)
 	if err != nil {
 		t.Fatalf("pickProject(\"projB\") 出错: %v", err)
 	}
@@ -104,7 +105,7 @@ func TestSearchProjects_QueryModes(t *testing.T) {
 	s := newCmdServiceAt(t, root, "g1", 5)
 
 	// name query：不走路径分支
-	projs, err := searchProjects(s, "proj", false)
+	projs, err := cmdutil.SearchProjects(s, "proj", false)
 	if err != nil {
 		t.Fatalf("searchProjects(name) 出错: %v", err)
 	}
@@ -113,7 +114,7 @@ func TestSearchProjects_QueryModes(t *testing.T) {
 	}
 
 	// ~user 语法不支持：显式报错（而非静默空列表）
-	if _, err = searchProjects(s, "~user/x", false); err == nil {
+	if _, err = cmdutil.SearchProjects(s, "~user/x", false); err == nil {
 		t.Fatal("~user 语法应报错")
 	}
 }

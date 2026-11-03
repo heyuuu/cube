@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/project"
 	"cube/pkg/pathkit"
 	"cube/pkg/tui"
@@ -124,5 +125,5 @@ func checkGitDirty(service *project.Service) {
 	})
 
 	fmt.Printf("> github dirty 的项目 %d 个:\n", len(targets))
-	showProjects(service, targets)
+	cmdutil.ShowProjects(service, targets)
 }
