@@ -14,7 +14,7 @@ var module string
 func NewGenerateCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:               "generate",
-		Short:             "代码生成：domain 脚手架、api 端点",
+		Short:             "代码生成：domain 脚手架、api 端点、command 命令",
 		SilenceUsage:      true,                                             // 运行期错误只报错，不再附整段 usage
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true}, // 内部工具，不需要补全子命令
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) (err error) {
@@ -26,6 +26,7 @@ func NewGenerateCmd() *cobra.Command {
 
 	root.AddCommand(newDomainCmd())
 	root.AddCommand(newAPICmd())
+	root.AddCommand(newCommandGenCmd())
 
 	return root
 }
@@ -50,6 +51,23 @@ func newAPICmd() *cobra.Command {
 		Args:  exactArgs(3),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return genAPI(args[0], args[1], args[2])
+		},
+	}
+}
+
+// newCommandGenCmd command 子命令：1 个参数生成根命令，2 个参数生成命令组子命令。
+func newCommandGenCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "command <name> | command <group> <name>",
+		Short: "生成 cobra 命令脚手架（根命令或命令组子命令）",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 || len(args) > 2 {
+				return fmt.Errorf("%s 需要 1~2 个参数，实际收到 %d 个，用法: generate %s", cmd.Name(), len(args), cmd.Use)
+			}
+			return nil
+		},
+		RunE: func(_ *cobra.Command, args []string) error {
+			return genCommand(module, args)
 		},
 	}
 }

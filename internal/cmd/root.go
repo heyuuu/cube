@@ -116,4 +116,6 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 
 	// 待整理命令
 	cmd.AddCommand(newCheckCmd(a))
+
+	/* <<subcommand inject point>> */
 }

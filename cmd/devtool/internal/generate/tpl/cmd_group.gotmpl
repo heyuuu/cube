@@ -1,0 +1,21 @@
+// Package {{.group}} 提供 `cube {{.group}}` 命令组，提供{{.group}}相关命令
+package {{.group}}
+
+import (
+	"github.com/spf13/cobra"
+
+	"{{.module}}/internal/app"
+)
+
+// NewCmd 是 `cube {{.group}}` 命令组入口，纯分发。
+func NewCmd(a *app.App) *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "{{.group}}",
+	}
+
+	cmd.AddCommand(new{{.subExported}}Cmd(a)) // {{.subName}}
+
+	/* <<subcommand inject point>> */
+
+	return cmd
+}
