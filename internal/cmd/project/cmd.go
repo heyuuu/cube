@@ -10,7 +10,8 @@ import (
 // NewCmd 是 `cube project` 命令组入口，纯分发。
 func NewCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "project",
+		Use:     "project",
+		Aliases: []string{"p", "proj"},
 	}
 
 	cmd.AddCommand(newListCmd(a)) // 项目列表

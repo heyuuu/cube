@@ -1,4 +1,4 @@
-package cmd
+package opener
 
 import (
 	"fmt"
@@ -11,7 +11,8 @@ import (
 	"cube/pkg/x"
 )
 
-func newOpenersCmd(a *app.App) *cobra.Command {
+// newListCmd `cube opener list` 命令。
+func newListCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "openers [query]",
 		Short: "列出可用 Opener 列表(支持模糊搜索)",

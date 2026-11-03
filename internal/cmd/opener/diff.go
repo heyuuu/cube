@@ -1,4 +1,4 @@
-package cmd
+package opener
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 	"cube/pkg/tui"
 )
 
-// newDiffCmd 是 `cube diff` 命令入口。
+// newDiffCmd `cube opener diff` 命令。
 func newDiffCmd(a *app.App) *cobra.Command {
 	var openerName string
 	cmd := &cobra.Command{

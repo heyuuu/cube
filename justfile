@@ -110,7 +110,7 @@ run *args:
 #   just gen api <GET|POST> <domain> <base-name>  在已有 domain 的 handler 追加 api 端点
 gen *args:
     go run {{ devtool_cmd }} generate {{args}}
-    just fix
+    just fmt
 
 # 生成 api
 gen-api:

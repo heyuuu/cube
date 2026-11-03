@@ -12,6 +12,7 @@ import (
 	"cube/internal/cmd/alfred"
 	"cube/internal/cmd/cmdutil"
 	"cube/internal/cmd/dev"
+	"cube/internal/cmd/opener"
 	"cube/internal/cmd/project"
 	"cube/internal/cmd/server"
 	"cube/internal/cmd/tpl"
@@ -100,10 +101,8 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	// tpl 相关
 	cmd.AddCommand(tpl.NewCmd(a))
 
-	// open 相关
-	cmd.AddCommand(newOpenersCmd(a))
-	cmd.AddCommand(newOpenPathCmd(a))
-	cmd.AddCommand(newDiffCmd(a))
+	// opener 相关
+	cmd.AddCommand(opener.NewCmd(a))
 
 	// forge（git 托管平台配置，1040）
 	cmd.AddCommand(newForgeCmd(a))
@@ -121,8 +120,6 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	// 待整理命令
 	cmd.AddCommand(newCheckCmd(a))
 
-	cmd.AddCommand(server.NewCmd(a)) // server 相关
-
 	/* <<subcommand inject point>> */
 
 	// 绑定命令别名
@@ -132,6 +129,10 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 		"info": {"project", "info"},
 		// tpl
 		"create": {"tpl", "create"},
+		// opener
+		"openers":   {"opener", "list"},
+		"diff":      {"opener", "diff"},
+		"open-path": {"opener", "open"},
 	})
 }
 
