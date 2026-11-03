@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/opener"
 )
 
@@ -33,7 +34,7 @@ func newOpenCmd(a *app.App) *cobra.Command {
 			if isDir {
 				intent, role = opener.IntentDir, opener.RoleOpenDir
 			}
-			pick, err := pickOpener(a.OpenerService(), intent, openerName)
+			pick, err := cmdutil.PickOpener(a.OpenerService(), intent, openerName)
 			if err != nil {
 				return err
 			}
@@ -46,6 +47,6 @@ func newOpenCmd(a *app.App) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&openerName, "opener", "o", "", "打开工具(opener)名；不带值时交互选择，缺省用默认 opener")
-	cmd.Flags().Lookup("opener").NoOptDefVal = interactivePick
+	cmd.Flags().Lookup("opener").NoOptDefVal = cmdutil.InteractivePick
 	return cmd
 }

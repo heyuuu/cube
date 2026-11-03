@@ -37,7 +37,7 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 			}
 
 			// 选 opener（intent: dir，不带 -o 时用默认）
-			o, err := pickOpener(a.OpenerService(), opener.IntentDir, openerName)
+			o, err := cmdutil.PickOpener(a.OpenerService(), opener.IntentDir, openerName)
 			if err != nil {
 				return err
 			}
@@ -64,7 +64,7 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 		},
 	}
 	cmd.Flags().StringVarP(&openerName, "opener", "o", "", "打开工具(opener)名；不带值时交互选择，缺省用默认 opener")
-	cmd.Flags().Lookup("opener").NoOptDefVal = interactivePick
+	cmd.Flags().Lookup("opener").NoOptDefVal = cmdutil.InteractivePick
 	return cmd
 }
 

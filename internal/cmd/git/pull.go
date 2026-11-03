@@ -1,4 +1,4 @@
-package cmd
+package git
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ import (
 	"cube/pkg/x"
 )
 
-// newPullCmd 是 `cube pull` 命令入口（push 的反向：从单个 remote 批量更新本地分支）。
+// newPullCmd 是 `cube git pull` 命令入口（push 的反向：从单个 remote 批量更新本地分支）。
 //
 // 行为：query 定位已收录项目（规则同 push），选择一个来源 remote
 // （仅 1 个 remote 时自动选中，多个时交互单选），多选分支后逐条快进更新：

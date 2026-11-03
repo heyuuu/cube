@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/opener"
 	"cube/pkg/tui"
 )
@@ -48,7 +49,7 @@ func newDiffCmd(a *app.App) *cobra.Command {
 			}
 
 			// 选 opener（不带 -o 时用该 intent 的默认）
-			pick, err := pickOpener(a.OpenerService(), intent, openerName)
+			pick, err := cmdutil.PickOpener(a.OpenerService(), intent, openerName)
 			if err != nil {
 				if errors.Is(err, tui.ErrUserAborted) {
 					return nil
@@ -64,6 +65,6 @@ func newDiffCmd(a *app.App) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&openerName, "opener", "o", "", "打开工具(opener)名；不带值时交互选择，缺省用默认 opener")
-	cmd.Flags().Lookup("opener").NoOptDefVal = interactivePick
+	cmd.Flags().Lookup("opener").NoOptDefVal = cmdutil.InteractivePick
 	return cmd
 }
