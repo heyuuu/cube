@@ -24,7 +24,7 @@ func newServiceWithRules(t *testing.T, ws *testfixture.Workspace, scan []ScanRul
 	t.Helper()
 	settingsFile := ws.Join("settings.json")
 	saveRules(t, settingsFile, scan, clone)
-	return NewService(settingsFile, ws.Mkdir("cache"))
+	return newServiceEx(settingsFile, ws.Mkdir("cache"))
 }
 
 // saveRules 分节写 scanRule / cloneRule 两个 settings 节（nil 的部分跳过不写）。

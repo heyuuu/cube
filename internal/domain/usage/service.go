@@ -32,13 +32,13 @@ type Service struct {
 	usageFilePath string // usage.jsonl 文件路径
 }
 
-// NewServiceInject 由 Paths 装配 Service（DI 注入用）。
-func NewServiceInject(paths config.Paths) *Service {
-	return NewService(paths.StateDir())
+// NewService 由 Config 装配 Service（DI 注入用）。
+func NewService(cfg *config.Config) *Service {
+	return newServiceEx(cfg.StateDir())
 }
 
-// NewService 以 state 目录路径构造 Service（记录文件为其下 usage.jsonl）。
-func NewService(statePath string) *Service {
+// newServiceEx 以 state 目录路径构造 Service（记录文件为其下 usage.jsonl）。
+func newServiceEx(statePath string) *Service {
 	return &Service{
 		usageFilePath: filepath.Join(statePath, usageFileName),
 	}

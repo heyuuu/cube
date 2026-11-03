@@ -7,9 +7,9 @@
 //   - settings.json：运行中可变更的用户可管理数据，多节 JSON 文档，各领域只读写自己的节。
 //     节级读写 API 在外部包 github.com/heyuuu/x/store（store.LoadSection / store.SaveSection）：
 //     读失败一律降级为空（读路径永不阻塞调用方）；写走锁内读-改-写 + 原子写，
-//     文件为坏 JSON 时拒写，避免静默覆盖其他节。本包只经 Paths 提供 settings.json 路径。
+//     文件为坏 JSON 时拒写，避免静默覆盖其他节。本包只经 Config 提供 settings.json 路径。
 //
-// Paths（paths.go）是数据目录下子路径的唯一事实源（settings.json、log/、state/、cache/），
+// Config 的路径方法（paths.go）是数据目录下子路径的唯一事实源（settings.json、log/、state/、cache/），
 // 调用方不得自行硬拼——目录分层语义（根放要随机器带走的重要数据 / state 放丢了可接受但不理想的
 // 运行期状态 / cache 放随时可重建的纯缓存）收敛于此。
 //

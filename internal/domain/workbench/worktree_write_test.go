@@ -17,7 +17,7 @@ import (
 // newWriteService 返回带记录回调的 Service：refreshed 收到刷新请求的主项目路径。
 func newWriteService() (*Service, *[]string) {
 	var refreshed []string
-	s := NewService(func(path string) error {
+	s := newServiceEx(func(path string) error {
 		refreshed = append(refreshed, path)
 		return nil
 	})

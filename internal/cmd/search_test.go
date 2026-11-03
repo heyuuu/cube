@@ -4,15 +4,16 @@ import (
 	"path"
 	"testing"
 
+	"cube/internal/config"
 	"cube/internal/domain/project"
 	"cube/internal/testfixture"
 
 	"github.com/heyuuu/x/store"
 )
 
-// newCmdServiceAt 为测试构造一个扫描指定根目录的 project.Service。
-// （project 包有同类 helper 但包内私有；cmd 测试按同样方式就地构造，
-// 不沉淀进 testfixture 以避免其反向依赖 project。）
+// newCmdServiceAt 为测试构造一个扫描指定根目录的 project.Service：
+// settings.json / cache 都从 DataDir=ws.Dir 派生，与真实装配同构。
+// （不沉淀进 testfixture 以避免其反向依赖 project。）
 func newCmdServiceAt(t *testing.T, scanRoot, group string, maxDepth int) *project.Service {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
@@ -23,7 +24,7 @@ func newCmdServiceAt(t *testing.T, scanRoot, group string, maxDepth int) *projec
 	if err := store.SaveSection(settingsFile, "scanRules", scanRules); err != nil {
 		t.Fatalf("写测试 settings.json 失败: %v", err)
 	}
-	return project.NewService(settingsFile, ws.Mkdir("cache"))
+	return project.NewService(&config.Config{DataDir: ws.Dir})
 }
 
 // TestSearchProjects_PathQueryCwd 验证路径 query 的 cwd 解析发生在 cmd 层：

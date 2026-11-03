@@ -280,7 +280,7 @@ func (h *ProjectHandler) Register(r *server.Routes) {
 └── log/app.log          # 日志
 ```
 
-**规则**：config.json 与 settings.json 是**配置/数据**（换机器要带走）；state/ cache/ log/ 是**运行期状态**（程序管）。路径一律由 config 包的 `Paths` 结构统一计算（`MakePaths(dataDir)`），调用方不硬拼。
+**规则**：config.json 与 settings.json 是**配置/数据**（换机器要带走）；state/ cache/ log/ 是**运行期状态**（程序管）。路径一律由 config 包 `Config` 的路径方法统一计算（自 `DataDir` 派生），调用方不硬拼。
 
 ### 6.2 config.json 分节
 

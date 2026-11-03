@@ -36,13 +36,13 @@ type Service struct {
 	newClient clientFactory // 可注入（测试）；nil 用 gitapi.NewClient
 }
 
-// NewServiceInject 由 Paths 装配 Service（DI 注入用），拉取缓存落 cache/forge-repos.json。
-func NewServiceInject(paths config.Paths) *Service {
-	return NewService(paths.SettingsFile(), filepath.Join(paths.CacheDir(), "forge-repos.json"))
+// NewService 由 Config 装配 Service（DI 注入用），拉取缓存落 cache/forge-repos.json。
+func NewService(cfg *config.Config) *Service {
+	return newServiceEx(cfg.SettingsFile(), filepath.Join(cfg.CacheDir(), "forge-repos.json"))
 }
 
-// NewService 以 settings 文件与拉取缓存文件路径构造 Service。
-func NewService(settingsFile, cacheFile string) *Service {
+// newServiceEx 以 settings 文件与拉取缓存文件路径构造 Service。
+func newServiceEx(settingsFile, cacheFile string) *Service {
 	return &Service{settingsFile: settingsFile, cacheFile: cacheFile}
 }
 

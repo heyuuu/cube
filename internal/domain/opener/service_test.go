@@ -19,7 +19,7 @@ func newServiceAt(t *testing.T, specs []Spec) (*Service, *fakeExecutor) {
 		}
 	}
 	fake := &fakeExecutor{}
-	return NewService(file, fake, ""), fake
+	return newServiceEx(file, fake, ""), fake
 }
 
 func TestServiceDirectRead(t *testing.T) {

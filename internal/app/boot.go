@@ -18,12 +18,12 @@ import (
 func bootFactories() []any {
 	return []any{
 		/* services */
-		project.NewServiceInject,
-		opener.NewServiceInject,
-		usage.NewServiceInject,
-		workbench.NewServiceInject,
-		template.NewServiceInject,
-		forge.NewServiceInject,
+		project.NewService,
+		opener.NewService,
+		usage.NewService,
+		workbench.NewService,
+		template.NewService,
+		forge.NewService,
 
 		/* <<service-factory inject point>> */
 		/* 上面是 generate 脚本注入点标识，不要删除 */

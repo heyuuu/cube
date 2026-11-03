@@ -13,7 +13,7 @@ import (
 func newConfigService(t *testing.T) *Service {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
-	return NewService(ws.Join("settings.json"))
+	return newServiceEx(ws.Join("settings.json"))
 }
 
 // TestValidateTplSource name / repoUrl 校验表。

@@ -40,10 +40,8 @@ func (a *App) Init(cfgFile string, debug bool, local bool) error {
 		return fmt.Errorf("加载配置文件失败: %w", err)
 	}
 
-	paths := config.MakePaths(cfg.DataDir)
-
 	// 尽量在其他行为前初始化 Logger
-	logger.Init(paths.LogDir(), debug)
+	logger.Init(cfg.LogDir(), debug)
 
 	// 初始化 DI 容器
 	// 业务单例都在此注册，方便自动注入
@@ -52,8 +50,6 @@ func (a *App) Init(cfgFile string, debug bool, local bool) error {
 			/* 默认对象 */
 			[]any{
 				di.Value(cfg),
-				di.Value(cfg.Server),
-				di.Value(paths),
 				server.NewServer,
 			},
 			/* services */

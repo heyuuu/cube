@@ -27,14 +27,20 @@ type Service struct {
 	baseURL      string   // 站内路由基地址（如 http://127.0.0.1:6001），装配注入
 }
 
-// NewServiceInject di 装配入口：从 config/paths 组装 settings 路径与 baseURL。
-func NewServiceInject(cfg *config.Config, paths config.Paths) *Service {
-	return NewService(paths.SettingsFile(), nil, server.BaseURL(cfg.Server))
+// NewService di 装配入口：从 config 组装 settings 路径与 baseURL，用默认执行器。
+func NewService(cfg *config.Config) *Service {
+	return NewServiceWithExecutor(cfg, nil)
 }
 
-// NewService 构造 Service。executor 可选（测试传 fake）；baseURL 供 url 动作的
+// NewServiceWithExecutor 与 NewService 同构，但注入自定义 Executor
+// （跨包测试的 fake 注入口；executor 传 nil 则用默认执行器）。
+func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
+	return newServiceEx(cfg.SettingsFile(), executor, server.BaseURL(cfg.Server))
+}
+
+// newServiceEx 构造 Service。executor 可选（测试传 fake）；baseURL 供 url 动作的
 // 站内路由拼接（来自 config 的 server.port，opener 包不 import config，由装配层传值）。
-func NewService(settingsFile string, executor Executor, baseURL string) *Service {
+func newServiceEx(settingsFile string, executor Executor, baseURL string) *Service {
 	return &Service{settingsFile: settingsFile, executor: executor, baseURL: baseURL}
 }
 

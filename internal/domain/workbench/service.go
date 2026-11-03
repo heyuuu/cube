@@ -35,13 +35,13 @@ type Service struct {
 	ptyCancels map[int]context.CancelFunc
 }
 
-// NewServiceInject di 装配入口：注入 project.Service 的 git 信息定向刷新能力。
-func NewServiceInject(projectService *project.Service) *Service {
-	return NewService(projectService.RefreshGitInfo)
+// NewService di 装配入口：注入 project.Service 的 git 信息定向刷新能力。
+func NewService(projectService *project.Service) *Service {
+	return newServiceEx(projectService.RefreshGitInfo)
 }
 
-// NewService 构造 Service（cacheRefresh 为 nil 表示无刷新能力，跳过）。
-func NewService(cacheRefresh func(path string) error) *Service {
+// newServiceEx 构造 Service（cacheRefresh 为 nil 表示无刷新能力，跳过）。
+func newServiceEx(cacheRefresh func(path string) error) *Service {
 	return &Service{cacheRefresh: cacheRefresh, ptyCancels: map[int]context.CancelFunc{}}
 }
 

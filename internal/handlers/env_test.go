@@ -49,7 +49,12 @@ func newTestEnv(t *testing.T) *testEnv {
 	ws.MakeProjectDir("g1/proj1")
 	ws.MakeProjectDir("g2/proj2", testfixture.WithGodot())
 
-	settingsFile := ws.Join("settings.json")
+	cfg := &config.Config{
+		DataDir: ws.Join("data"),
+		Server:  config.ServerConfig{Port: 6101},
+	}
+
+	settingsFile := cfg.SettingsFile()
 	if err := store.SaveSection(settingsFile, "openers", []opener.Spec{
 		{Name: "finder", Actions: map[opener.Role]string{"open-dir": "exec: /usr/bin/open $0"}},
 		{Name: "broken"}, // 缺 commands，解析失败被跳过
@@ -68,24 +73,22 @@ func newTestEnv(t *testing.T) *testEnv {
 		t.Fatalf("写入测试 settings.json 失败: %v", err)
 	}
 
-	projSvc := project.NewService(settingsFile, ws.Join("cache"))
-	forgeSvc := forge.NewService(settingsFile, "")
-	tplSvc := template.NewService(settingsFile)
+	// 服务全部从 cfg 派生（与 app 装配同构）；唯一例外是 opener 注入 fake executor。
+	projSvc := project.NewService(cfg)
+	forgeSvc := forge.NewService(cfg)
+	tplSvc := template.NewService(cfg)
 	exec := &fakeExecutor{}
-	openerSvc := opener.NewService(settingsFile, exec, "http://127.0.0.1:6001")
-	usageSvc := usage.NewService(ws.Dir)
-	cfg := &config.Config{
-		DataDir: ws.Join("data"),
-	}
+	openerSvc := opener.NewServiceWithExecutor(cfg, exec)
+	usageSvc := usage.NewService(cfg)
 
 	srv := server.NewServer(
-		config.ServerConfig{Port: 6101},
+		cfg,
 		[]server.Handler{
 			NewProjectHandler(projSvc, openerSvc, usageSvc),
 			NewOpenerHandler(openerSvc),
 			NewConfigHandler(cfg),
 			NewMdHandler(),
-			NewWorkbenchHandler(workbench.NewService(nil)),
+			NewWorkbenchHandler(workbench.NewService(projSvc)),
 			NewForgeHandler(forgeSvc, projSvc),
 			NewTemplateHandler(tplSvc),
 			NewUsageHandler(usageSvc),

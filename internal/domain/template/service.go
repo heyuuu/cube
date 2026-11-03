@@ -17,13 +17,13 @@ type Service struct {
 	settingsFile string
 }
 
-// NewServiceInject 由 Paths 装配 Service（DI 注入用）。
-func NewServiceInject(paths config.Paths) *Service {
-	return NewService(paths.SettingsFile())
+// NewService 由 Config 装配 Service（DI 注入用）。
+func NewService(cfg *config.Config) *Service {
+	return newServiceEx(cfg.SettingsFile())
 }
 
-// NewService 以 settings 文件路径构造 Service。
-func NewService(settingsFile string) *Service {
+// newServiceEx 以 settings 文件路径构造 Service。
+func newServiceEx(settingsFile string) *Service {
 	return &Service{
 		settingsFile: settingsFile,
 	}
