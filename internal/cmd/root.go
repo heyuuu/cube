@@ -13,6 +13,8 @@ import (
 	"cube/internal/cmd/cmdutil"
 	"cube/internal/cmd/dev"
 	"cube/internal/cmd/project"
+	"cube/internal/cmd/server"
+	"cube/internal/cmd/tpl"
 	"cube/internal/version"
 )
 
@@ -84,7 +86,7 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(newVersionCmd())
 
 	// web server 相关
-	cmd.AddCommand(newServerCmd(a))
+	cmd.AddCommand(server.NewCmd(a))
 	cmd.AddCommand(newUICmd(a))
 	cmd.AddCommand(newOpenapiCmd(a))
 
@@ -92,10 +94,11 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(project.NewCmd(a))  // project 相关
 	cmd.AddCommand(newOpenCmd(a))      // 打开项目
 	cmd.AddCommand(newPathCmd(a))      // 输出项目路径（供 shell 包装函数 cd）
-	cmd.AddCommand(newInitCmd(a))      // 初始化空项目
-	cmd.AddCommand(newCreateCmd(a))    // 使用模板初始化项目
 	cmd.AddCommand(newCloneCmd(a))     // 使用 RepoURL 初始化项目
 	cmd.AddCommand(newWorkspaceCmd(a)) // monorepo workspace 声明管理
+
+	// tpl 相关
+	cmd.AddCommand(tpl.NewCmd(a))
 
 	// open 相关
 	cmd.AddCommand(newOpenersCmd(a))
@@ -118,12 +121,17 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	// 待整理命令
 	cmd.AddCommand(newCheckCmd(a))
 
+	cmd.AddCommand(server.NewCmd(a)) // server 相关
+
 	/* <<subcommand inject point>> */
 
 	// 绑定命令别名
 	registerAliasCommands(cmd, map[string][]string{
+		// project
 		"list": {"project", "list"},
 		"info": {"project", "info"},
+		// tpl
+		"create": {"tpl", "create"},
 	})
 }
 

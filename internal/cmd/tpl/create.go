@@ -1,4 +1,4 @@
-package cmd
+package tpl
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"cube/internal/domain/template"
 )
 
-// cmd `cube create`（模板引擎：命名 git 源 / 本地目录，单模板或模板集）
+// cmd `cube tpl create`（模板引擎：命名 git 源 / 本地目录，单模板或模板集）
 //
 // 两种主用法，其余是边缘校验：
 //  1. cube create [模板源] <目标路径> —— 交互式逐步创建（模板名/变量缺啥问啥）；
