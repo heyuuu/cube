@@ -106,14 +106,13 @@ outer:
 		// rel != "." 时才有中间层级可检查；rel == "." 即规则根自身（深度 0）
 		if rel != "." {
 			// 深度检查：直接子目录为深度 0，超出 maxDepth 的路径遍历不可达（-1 不限深）
-			segments := strings.Split(rel, string(filepath.Separator))
-			if r.MaxDepth >= 0 && len(segments)-1 > r.MaxDepth {
+			if r.MaxDepth >= 0 && strings.Count(rel, string(filepath.Separator)) > r.MaxDepth {
 				continue
 			}
 
 			// 前缀检查：规则根到 absPath 的每一级目录都不得以 "." / "_" 开头，
 			// 否则遍历在上级就被剪掉
-			for _, segment := range segments {
+			for _, segment := range strings.Split(rel, string(filepath.Separator)) {
 				if skipDirName(segment) {
 					continue outer
 				}
