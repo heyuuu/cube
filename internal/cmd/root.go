@@ -12,6 +12,7 @@ import (
 	"cube/internal/cmd/alfred"
 	"cube/internal/cmd/cmdutil"
 	"cube/internal/cmd/dev"
+	"cube/internal/cmd/forge"
 	"cube/internal/cmd/git"
 	"cube/internal/cmd/opener"
 	"cube/internal/cmd/project"
@@ -105,11 +106,11 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(opener.NewCmd(a))
 	// git 相关
 	cmd.AddCommand(git.NewCmd(a))
-
-	// forge（git 托管平台配置，1040）
-	cmd.AddCommand(newForgeCmd(a))
-	// 内部命令
+	// forge（git 托管平台配置）
+	cmd.AddCommand(forge.NewCmd(a))
+	// alfred 工作流命令
 	cmd.AddCommand(alfred.NewCmd(a))
+	// dev 开发用命令
 	cmd.AddCommand(dev.NewCmd(a))
 
 	// 待整理命令
