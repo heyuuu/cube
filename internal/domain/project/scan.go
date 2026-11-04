@@ -112,7 +112,7 @@ outer:
 
 			// 前缀检查：规则根到 absPath 的每一级目录都不得以 "." / "_" 开头，
 			// 否则遍历在上级就被剪掉
-			for _, segment := range strings.Split(rel, string(filepath.Separator)) {
+			for segment := range strings.SplitSeq(rel, string(filepath.Separator)) {
 				if skipDirName(segment) {
 					continue outer
 				}
