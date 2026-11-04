@@ -18,6 +18,7 @@ import (
 	"cube/internal/cmd/project"
 	"cube/internal/cmd/server"
 	"cube/internal/cmd/tpl"
+	"cube/internal/cmd/ui"
 	"cube/internal/version"
 )
 
@@ -90,8 +91,8 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 
 	// web server 相关
 	cmd.AddCommand(server.NewCmd(a))
-	cmd.AddCommand(newUICmd(a))
-	cmd.AddCommand(newOpenapiCmd(a))
+	// ui 相关 (打开具体页面)
+	cmd.AddCommand(ui.NewCmd(a))
 
 	// project 相关
 	cmd.AddCommand(project.NewCmd(a))  // project 相关
@@ -120,30 +121,24 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	/* <<subcommand inject point>> */
 
 	// 绑定命令别名
-	registerAliasCommands(cmd, map[string][]string{
-		// project
-		"list": {"project", "list"},
-		"info": {"project", "info"},
-		// tpl
-		"create": {"tpl", "create"},
-		// opener
-		"openers":   {"opener", "list"},
-		"diff":      {"opener", "diff"},
-		"open-path": {"opener", "open"},
-		// git
-		"push": {"git", "push"},
-		"pull": {"git", "pull"},
-	})
-}
-
-func registerAliasCommands(cmd *cobra.Command, aliases map[string][]string) {
+	aliases := map[string]string{
+		"openapi":   "server openapi",
+		"list":      "project list",
+		"info":      "project info",
+		"create":    "tpl create",
+		"openers":   "opener list",
+		"diff":      "opener diff",
+		"open-path": "opener open",
+		"push":      "git push",
+		"pull":      "git pull",
+	}
 	for name, alias := range aliases {
 		registerAliasCommand(cmd, name, alias)
 	}
 }
 
-func registerAliasCommand(cmd *cobra.Command, name string, alias []string) {
-	target := findCommand(cmd, alias)
+func registerAliasCommand(cmd *cobra.Command, name string, alias string) {
+	target := findCommand(cmd, strings.Split(alias, " "))
 	if target == nil {
 		// 注册期错误属于代码 bug，启动即暴露
 		panic(fmt.Sprintf("别名 %s 的目标命令 %v 不存在", name, alias))
@@ -152,7 +147,7 @@ func registerAliasCommand(cmd *cobra.Command, name string, alias []string) {
 	clone := *target
 	clone.Use = name
 	clone.Aliases = nil
-	clone.Short = fmt.Sprintf("命令 %s 的别名", strings.Join(alias, " "))
+	clone.Short = fmt.Sprintf("命令 %s 的别名", alias)
 	clone.Long = ""
 	cmd.AddCommand(&clone)
 }

@@ -1,4 +1,4 @@
-package cmd
+package server
 
 import (
 	"encoding/json/jsontext"
@@ -11,6 +11,7 @@ import (
 	"cube/internal/cmd/cmdutil"
 )
 
+// newOpenapiCmd `cube server openapi` 命令。
 func newOpenapiCmd(a *app.App) *cobra.Command {
 	var outPath string
 	cmd := &cobra.Command{

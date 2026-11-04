@@ -23,9 +23,10 @@ func NewCmd(a *app.App) *cobra.Command {
 		Short: "管理本地 web server（start / stop / status / ui）",
 	}
 
-	cmd.AddCommand(newStartCmd(a))  // start
-	cmd.AddCommand(newStopCmd(a))   // stop
-	cmd.AddCommand(newStatusCmd(a)) // status
+	cmd.AddCommand(newStartCmd(a))   // start
+	cmd.AddCommand(newStopCmd(a))    // stop
+	cmd.AddCommand(newStatusCmd(a))  // status
+	cmd.AddCommand(newOpenapiCmd(a)) // openapi
 
 	/* <<subcommand inject point>> */
 
