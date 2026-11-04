@@ -19,13 +19,8 @@ type Service struct {
 
 // NewService 由 Config 装配 Service（DI 注入用）。
 func NewService(cfg *config.Config) *Service {
-	return newServiceEx(cfg.SettingsFile())
-}
-
-// newServiceEx 以 settings 文件路径构造 Service。
-func newServiceEx(settingsFile string) *Service {
 	return &Service{
-		settingsFile: settingsFile,
+		settingsFile: cfg.SettingsFile(),
 	}
 }
 

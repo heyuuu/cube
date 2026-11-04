@@ -120,7 +120,8 @@ func TestLoadSourceDir(t *testing.T) {
 func TestServiceCreateFromGitSource(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := makeTplRepo(t, ws)
-	s := newServiceEx(ws.Join("settings.json"))
+	s := NewService(ws.Cfg)
+
 	if err := s.SaveTplSource(TplSource{Name: "core", RepoURL: repo}); err != nil {
 		t.Fatalf("注册模板源失败: %v", err)
 	}
@@ -149,7 +150,7 @@ func TestServiceCreateFromGitSource(t *testing.T) {
 // TestServiceCreateTargetPrecheck 预检先行：目标路径非法时不发起 clone（注册表指向坏地址也不应报拉取错误）。
 func TestServiceCreateTargetPrecheck(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
-	s := newServiceEx(ws.Join("settings.json"))
+	s := NewService(ws.Cfg)
 	// 注册一个不可 clone 的源：若预检没先行，会先撞 clone 失败而不是路径错误
 	if err := s.SaveTplSource(TplSource{Name: "core", RepoURL: ws.Join("no-such-repo")}); err != nil {
 		t.Fatalf("注册模板源失败: %v", err)

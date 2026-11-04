@@ -12,7 +12,7 @@ import (
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
-	return newServiceEx(ws.Join("usage.jsonl"))
+	return NewService(ws.Cfg)
 }
 
 func TestRecordOpen_AndLatestByProject(t *testing.T) {

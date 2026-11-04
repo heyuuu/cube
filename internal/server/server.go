@@ -28,10 +28,6 @@ type Server struct {
 
 // NewServer 构造 Server：各 handler 完成路由注册，host 缺省为 localhost。
 func NewServer(c *config.Config, handlers []Handler) *Server {
-	return newServerEx(c.Server, handlers)
-}
-
-func newServerEx(c config.ServerConfig, handlers []Handler) *Server {
 	routes := newRoutes()
 
 	// 各 domain 注册自己的路由
@@ -39,13 +35,13 @@ func newServerEx(c config.ServerConfig, handlers []Handler) *Server {
 		handler.Register(routes)
 	}
 
-	host := c.Host
+	host := c.Server.Host
 	if host == "" {
 		host = "localhost"
 	}
 	return &Server{
 		host:   host,
-		port:   c.Port,
+		port:   c.Server.Port,
 		routes: routes,
 	}
 }

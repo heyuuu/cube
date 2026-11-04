@@ -12,7 +12,7 @@ import (
 func newService(t *testing.T) (*Service, *testfixture.Workspace) {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
-	return newServiceEx(ws.Join("settings.json"), ws.Join("cache/forge-repos.json")), ws
+	return NewService(ws.Cfg), ws
 }
 
 // TestSaveForge 新增与按 host 替换（归一化后同键）。
@@ -146,7 +146,7 @@ func TestFetchAccountPersist(t *testing.T) {
 	}
 
 	// 模拟重启：新 Service 指向同一落盘文件
-	s2 := newServiceEx(ws.Join("settings.json"), ws.Join("cache/forge-repos.json"))
+	s2 := NewService(ws.Cfg)
 	s2.newClient = s.newClient
 	entry, ok := s2.CachedAccountRepos("github.com", "heyuuu")
 	if !ok || len(entry.Repos) != 1 || entry.FetchedAt.IsZero() {

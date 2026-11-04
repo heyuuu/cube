@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -17,10 +16,6 @@ import (
 	"github.com/heyuuu/x/store"
 
 	"cube/internal/config"
-)
-
-const (
-	usageFileName = "usage.jsonl"
 )
 
 // retentionDays 记录保留天数。30 天足够保留频率信号且不会无限增长；
@@ -34,13 +29,8 @@ type Service struct {
 
 // NewService 由 Config 装配 Service（DI 注入用）。
 func NewService(cfg *config.Config) *Service {
-	return newServiceEx(cfg.StateDir())
-}
-
-// newServiceEx 以 state 目录路径构造 Service（记录文件为其下 usage.jsonl）。
-func newServiceEx(statePath string) *Service {
 	return &Service{
-		usageFilePath: filepath.Join(statePath, usageFileName),
+		usageFilePath: cfg.UsageFile(),
 	}
 }
 

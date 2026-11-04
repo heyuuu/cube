@@ -38,12 +38,10 @@ type Service struct {
 
 // NewService 由 Config 装配 Service（DI 注入用），拉取缓存落 cache/forge-repos.json。
 func NewService(cfg *config.Config) *Service {
-	return newServiceEx(cfg.SettingsFile(), filepath.Join(cfg.CacheDir(), "forge-repos.json"))
-}
-
-// newServiceEx 以 settings 文件与拉取缓存文件路径构造 Service。
-func newServiceEx(settingsFile, cacheFile string) *Service {
-	return &Service{settingsFile: settingsFile, cacheFile: cacheFile}
+	return &Service{
+		settingsFile: cfg.SettingsFile(),
+		cacheFile:    filepath.Join(cfg.CacheDir(), "forge-repos.json"),
+	}
 }
 
 // Forges 读全部 forge（直读不缓存）。坏条目（host 空 / kind 未知 / icon 非法）跳过不阻断。
