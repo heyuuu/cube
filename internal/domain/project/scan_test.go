@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"cube/internal/testfixture"
-
-	"github.com/heyuuu/x/store"
 )
 
 // newServiceAt 为测试构造一个扫描指定根目录的 Service。
@@ -22,23 +20,18 @@ func newServiceAt(t *testing.T, scanRoot, group string, maxDepth int) *Service {
 // newServiceWithRules 把 scan/clone 规则写进工作区的 settings.json 再构造 Service（规则数据源即 settings 节）。
 func newServiceWithRules(t *testing.T, ws *testfixture.Workspace, scan []ScanRule, clone []CloneRule) *Service {
 	t.Helper()
-	settingsFile := ws.Join("settings.json")
-	saveRules(t, settingsFile, scan, clone)
-	return newServiceEx(settingsFile, ws.Mkdir("cache"))
+	saveRules(t, ws, scan, clone)
+	return NewService(ws.Cfg)
 }
 
 // saveRules 分节写 scanRule / cloneRule 两个 settings 节（nil 的部分跳过不写）。
-func saveRules(t *testing.T, settingsFile string, scan []ScanRule, clone []CloneRule) {
+func saveRules(t *testing.T, ws *testfixture.Workspace, scan []ScanRule, clone []CloneRule) {
 	t.Helper()
 	if scan != nil {
-		if err := store.SaveSection(settingsFile, scanRulesSection, scan); err != nil {
-			t.Fatalf("写测试 settings.json scanRule 节失败: %v", err)
-		}
+		ws.SaveSection(scanRulesSection, scan)
 	}
 	if clone != nil {
-		if err := store.SaveSection(settingsFile, cloneRulesSection, clone); err != nil {
-			t.Fatalf("写测试 settings.json cloneRule 节失败: %v", err)
-		}
+		ws.SaveSection(cloneRulesSection, clone)
 	}
 }
 
@@ -397,7 +390,7 @@ func TestService_SettingsDirectRead(t *testing.T) {
 	root2 := ws.Mkdir("root2")
 	ws.MakeProjectDir(path.Join("root2", "a"))
 	ws.MakeProjectDir(path.Join("root2", "b"))
-	saveRules(t, ws.Join("settings.json"), []ScanRule{{Group: "g2", Path: root2, MaxDepth: 5}}, nil)
+	saveRules(t, ws, []ScanRule{{Group: "g2", Path: root2, MaxDepth: 5}}, nil)
 
 	// 规则立即更新（直读不缓存）
 	rules := s.ScanRules()

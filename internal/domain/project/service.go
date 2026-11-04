@@ -30,21 +30,16 @@ type Service struct {
 	stopCh chan struct{} // nil = 未启用；非 nil = 定时器在跑
 }
 
-// NewService di 装配入口：从 Config 组装 settings 路径与缓存目录。
+// NewService 构造 Service：加载 git 缓存（失败降级空缓存）并挂载项目扫描缓存。
 func NewService(cfg *config.Config) *Service {
-	return newServiceEx(cfg.SettingsFile(), cfg.CacheDir())
-}
-
-// newServiceEx 构造 Service：加载 git 缓存（失败降级空缓存）并挂载项目扫描缓存。
-func newServiceEx(settingsFile string, cacheDir string) *Service {
 	// 加载 git 信息缓存（降级优先：失败返回空缓存，不报错）
-	gitCache, err := projcache.Load(cacheDir)
+	gitCache, err := projcache.Load(cfg.CacheDir())
 	if err != nil {
 		log.Printf("加载 git 缓存失败: %v", err)
 	}
 
 	s := &Service{
-		settingsFile: settingsFile,
+		settingsFile: cfg.SettingsFile(),
 		gitCache:     gitCache,
 	}
 	// 扫描时现读规则（规则直读 settings.json，外部修改后 Reload 即可反映）

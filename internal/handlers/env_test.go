@@ -26,8 +26,6 @@ import (
 	"cube/internal/domain/workbench"
 	"cube/internal/server"
 	"cube/internal/testfixture"
-
-	"github.com/heyuuu/x/store"
 )
 
 // --- 测试环境 ---
@@ -46,32 +44,23 @@ type testEnv struct {
 func newTestEnv(t *testing.T) *testEnv {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
+	ws.Cfg.Server = config.ServerConfig{Port: 6101}
 	ws.MakeProjectDir("g1/proj1")
 	ws.MakeProjectDir("g2/proj2", testfixture.WithGodot())
 
-	cfg := &config.Config{
-		DataDir: ws.Join("data"),
-		Server:  config.ServerConfig{Port: 6101},
-	}
+	cfg := ws.Cfg
 
-	settingsFile := cfg.SettingsFile()
-	if err := store.SaveSection(settingsFile, "openers", []opener.Spec{
+	ws.SaveSection("openers", []opener.Spec{
 		{Name: "finder", Actions: map[opener.Role]string{"open-dir": "exec: /usr/bin/open $0"}},
 		{Name: "broken"}, // 缺 commands，解析失败被跳过
-	}); err != nil {
-		t.Fatalf("写入测试 settings.json 失败: %v", err)
-	}
-	if err := store.SaveSection(settingsFile, "scanRules", []project.ScanRule{
+	})
+	ws.SaveSection("scanRules", []project.ScanRule{
 		{Group: "g1", Path: ws.Join("g1"), MaxDepth: 1},
 		{Group: "g2", Path: ws.Join("g2"), MaxDepth: 1},
-	}); err != nil {
-		t.Fatalf("写入测试 settings.json 失败: %v", err)
-	}
-	if err := store.SaveSection(settingsFile, "cloneRules", []project.CloneRule{
+	})
+	ws.SaveSection("cloneRules", []project.CloneRule{
 		{RepoHost: "github.com", LocalPath: ws.Join("repo")},
-	}); err != nil {
-		t.Fatalf("写入测试 settings.json 失败: %v", err)
-	}
+	})
 
 	// 服务全部从 cfg 派生（与 app 装配同构）；唯一例外是 opener 注入 fake executor。
 	projSvc := project.NewService(cfg)

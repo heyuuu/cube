@@ -17,18 +17,26 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/heyuuu/x/store"
+
+	"cube/internal/config"
 )
+
+const testConfigDir = "config"
 
 // Workspace 表示一个测试的专属工作目录。
 // 每个测试获得独立子目录（带时间戳 + 测试名），互不污染，失败后可翻看现场。
 type Workspace struct {
 	testing.TB
-	Dir string // 该测试的工作目录（绝对路径）
+	Dir string         // 该测试的工作目录（绝对路径）
+	Cfg *config.Config // 测试 config 对象
 }
 
 // NewWorkspace 在系统临时目录下为当前测试创建一个独立工作目录。
 // 目录名格式：cube-test-<sanitized testname>-<随机后缀>。
 // 测试成功结束后自动删除；失败时保留并打印路径供排查。
+// 会生成默认 Config 配置，可以在创建后直接修改
 func NewWorkspace(t testing.TB) *Workspace {
 	t.Helper()
 	name := sanitizeName(t.Name())
@@ -36,7 +44,15 @@ func NewWorkspace(t testing.TB) *Workspace {
 	if err != nil {
 		t.Fatalf("testfixture: 创建工作目录失败: %v", err)
 	}
-	ws := &Workspace{TB: t, Dir: dir}
+
+	ws := &Workspace{
+		TB:  t,
+		Dir: dir,
+		Cfg: &config.Config{
+			DataDir: filepath.Join(dir, testConfigDir),
+		},
+	}
+
 	t.Cleanup(func() {
 		if t.Failed() {
 			t.Logf("测试失败，现场保留于: %s", dir)
@@ -93,6 +109,13 @@ func (w *Workspace) WriteFile(path string, content []byte) {
 // Cleanup 删除整个工作目录。通常不需要调（保留现场排查）。
 func (w *Workspace) Cleanup() {
 	_ = os.RemoveAll(w.Dir)
+}
+
+// SaveSection 构建测试环境时写入 section，失败直接测试报错
+func (w *Workspace) SaveSection(section string, value any) {
+	if err := store.SaveSection(w.Cfg.SettingsFile(), section, value); err != nil {
+		w.Fatalf("写测试 settings.json %s 节失败: %v", section, err)
+	}
 }
 
 // MakeProjectDir 建一个「会被 cube 扫描识别为 project」的目录（默认含真实 git 仓库）。

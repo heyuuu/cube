@@ -12,11 +12,9 @@ import (
 func newServiceAt(t *testing.T, specs []Spec) (*Service, *fakeExecutor) {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
-	file := ws.Join("settings.json")
+	file := ws.Cfg.SettingsFile()
 	if specs != nil {
-		if err := store.SaveSection(file, settingsSection, specs); err != nil {
-			t.Fatalf("写入测试 settings.json 失败: %v", err)
-		}
+		ws.SaveSection(settingsSection, specs)
 	}
 	fake := &fakeExecutor{}
 	return newServiceEx(file, fake, ""), fake

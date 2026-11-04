@@ -11,7 +11,7 @@ func TestConfigGet(t *testing.T) {
 	var got config.Config
 	decodeData(t, getJSON(t, env.url("/api/config")), &got)
 
-	if got.DataDir != env.ws.Join("data") {
+	if got.DataDir != env.ws.Cfg.DataDir {
 		t.Errorf("dataDir 不符, got %q", got.DataDir)
 	}
 }

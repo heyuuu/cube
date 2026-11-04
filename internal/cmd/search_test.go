@@ -5,11 +5,8 @@ import (
 	"testing"
 
 	"cube/internal/cmd/cmdutil"
-	"cube/internal/config"
 	"cube/internal/domain/project"
 	"cube/internal/testfixture"
-
-	"github.com/heyuuu/x/store"
 )
 
 // newCmdServiceAt 为测试构造一个扫描指定根目录的 project.Service：
@@ -18,14 +15,11 @@ import (
 func newCmdServiceAt(t *testing.T, scanRoot, group string, maxDepth int) *project.Service {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
-	settingsFile := ws.Join("settings.json")
 	scanRules := []project.ScanRule{
 		{Group: group, Path: scanRoot, MaxDepth: maxDepth},
 	}
-	if err := store.SaveSection(settingsFile, "scanRules", scanRules); err != nil {
-		t.Fatalf("写测试 settings.json 失败: %v", err)
-	}
-	return project.NewService(&config.Config{DataDir: ws.Dir})
+	ws.SaveSection("scanRules", scanRules)
+	return project.NewService(ws.Cfg)
 }
 
 // TestSearchProjects_PathQueryCwd 验证路径 query 的 cwd 解析发生在 cmd 层：
