@@ -96,7 +96,7 @@ func TestPickProject_LocalMode(t *testing.T) {
 	}
 }
 
-// TestSearchProjects_QueryModes name query 不走路径解析；不支持的路径语法显式报错。
+// TestSearchProjects_QueryModes name query 不走路径解析；非路径形态按名字搜索。
 func TestSearchProjects_QueryModes(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	root := ws.Mkdir("root")
@@ -113,8 +113,12 @@ func TestSearchProjects_QueryModes(t *testing.T) {
 		t.Fatalf("name 搜索应命中 1 个，实际 %d", len(projs))
 	}
 
-	// ~user 语法不支持：显式报错（而非静默空列表）
-	if _, err = cmdutil.SearchProjects(s, "~user/x", false); err == nil {
-		t.Fatal("~user 语法应报错")
+	// ~user 不满足路径形态：按名字搜索，自然落空为空列表
+	projs, err = cmdutil.SearchProjects(s, "~user/x", false)
+	if err != nil {
+		t.Fatalf("searchProjects(~user/x) 出错: %v", err)
+	}
+	if len(projs) != 0 {
+		t.Fatalf("~user/x 应按名字搜索落空，实际命中 %d", len(projs))
 	}
 }

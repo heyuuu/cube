@@ -3,6 +3,7 @@ package cmdutil
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/heyuuu/x/xstd/xslices"
 
@@ -11,14 +12,21 @@ import (
 	"cube/pkg/tui"
 )
 
-// IsPathQuery 判断 query 是否为路径(以`.`/`~`/`/` 开头时，当做路径)
+// IsPathQuery 判断 query 是否为路径, 仅以下情况满足
+// - ".", "..", "~"
+// - 以 "./", "../", "~/", "/" 开头
 func IsPathQuery(query string) bool {
-	return len(query) > 0 && (query[0] == '.' || query[0] == '~' || query[0] == '/')
+	if len(query) == 0 {
+		return false
+	}
+
+	prefix, _, _ := strings.Cut(query, "/")
+	return prefix == "." || prefix == ".." || prefix == "~" || prefix == ""
 }
 
 // SearchProjects 搜索项目列表
 //
-// query 为搜索关键词，默认为搜索项目名；当以`.`/`~`/`/` 开头时，当做路径。
+// query 为搜索关键词，默认为搜索项目名；当可能为路径时(以 IsPathQuery 判断)，当做路径。
 // 路径 query 在本层用 ExtendPath 基于 cwd 解析为绝对路径后再传入 domain——
 // cwd 依赖属于出口层职责，domain 只接受绝对路径/~ 前缀。
 // upper 表示是否向上搜索。仅 query 为路径时生效，用于在项目子目录标定当前目录时使用。
