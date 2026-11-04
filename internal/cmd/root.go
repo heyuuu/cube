@@ -19,6 +19,7 @@ import (
 	"cube/internal/cmd/server"
 	"cube/internal/cmd/tpl"
 	"cube/internal/cmd/ui"
+	"cube/internal/cmd/workspace"
 	"cube/internal/version"
 )
 
@@ -90,13 +91,12 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(newVersionCmd())
 
 	// web server 相关
-	cmd.AddCommand(server.NewCmd(a))
-	// ui 相关 (打开具体页面)
-	cmd.AddCommand(ui.NewCmd(a))
+	cmd.AddCommand(server.NewCmd(a)) // server 状态、启停 / 生成 openapi
+	cmd.AddCommand(ui.NewCmd(a))     // ui 相关 (打开具体页面)
 
 	// project 相关
-	cmd.AddCommand(project.NewCmd(a))  // project 相关
-	cmd.AddCommand(newWorkspaceCmd(a)) // monorepo workspace 声明管理
+	cmd.AddCommand(project.NewCmd(a))   // project 相关
+	cmd.AddCommand(workspace.NewCmd(a)) // 项目 workspace 管理(项目 .cube/cube.json 管理)
 
 	// tpl 相关
 	cmd.AddCommand(tpl.NewCmd(a))
