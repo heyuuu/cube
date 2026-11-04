@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/internal/domain/project"
 	"cube/pkg/pathkit"
 	"cube/pkg/tui"
-	"cube/pkg/x"
 )
 
 // IsPathQuery 判断 query 是否为路径(以`.`/`~`/`/` 开头时，当做路径)
@@ -86,7 +87,7 @@ func ShowProjects(service *project.Service, projects []*project.Project) {
 			"Path",
 			"RepoUrl",
 		},
-		x.Map(projects, func(p *project.Project) []string {
+		xslices.Map(projects, func(p *project.Project) []string {
 			repoURL := ""
 			if info, ok := service.GitInfo(p.Path()); ok {
 				repoURL = info.RepoURL

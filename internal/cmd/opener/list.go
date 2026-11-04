@@ -3,12 +3,12 @@ package opener
 import (
 	"fmt"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
 	"cube/internal/domain/opener"
 	"cube/pkg/tui"
-	"cube/pkg/x"
 )
 
 // newListCmd `cube opener list` 命令。
@@ -41,7 +41,7 @@ func showOpeners(list []opener.Opener) {
 			"Summary",
 			"Roles",
 		},
-		x.Map(list, func(o opener.Opener) []string {
+		xslices.Map(list, func(o opener.Opener) []string {
 			return []string{
 				o.Name(),
 				o.Summary(),

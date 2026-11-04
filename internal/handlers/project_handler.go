@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/internal/domain/opener"
 	"cube/internal/domain/project"
 	"cube/internal/domain/project/cubefile"
@@ -16,7 +18,6 @@ import (
 	"cube/internal/domain/usage"
 	"cube/internal/server"
 	"cube/pkg/iconkit"
-	"cube/pkg/x"
 )
 
 // --- dto ---
@@ -76,7 +77,7 @@ func (h *ProjectHandler) projectList(_ struct{}) (ProjectListResult, error) {
 	// 返回原始扫描序 + lastUsedAt；排序是视图偏好，由前端做（CLI/alfred 出口用 project.SortByRecentUsage）
 	projects := h.projectService.Projects()
 	latest := h.usageService.LatestByProject()
-	list := x.Map(projects, func(p *project.Project) *ProjectDTO {
+	list := xslices.Map(projects, func(p *project.Project) *ProjectDTO {
 		dto := h.toProjectDTO(p)
 		if t, ok := latest[p.Path()]; ok {
 			tt := t
@@ -296,19 +297,19 @@ func (h *ProjectHandler) workspaceGet(input struct {
 	root := proj.Path()
 	result := WorkspaceStateResult{Effective: []WorkspaceMemberDTO{}, Declared: []WorkspaceMemberDTO{}, Detected: []WorkspaceMemberDTO{}}
 	if info, ok := h.projectService.GitInfo(root); ok && info != nil {
-		result.Effective = x.Map(info.Workspaces, func(w workspace.Workspace) WorkspaceMemberDTO {
+		result.Effective = xslices.Map(info.Workspaces, func(w workspace.Workspace) WorkspaceMemberDTO {
 			return WorkspaceMemberDTO(w)
 		})
 	}
 	if cf, ok := cubefile.Load(root); ok {
 		result.DeclaredSet = cf.WorkspacesSet
-		result.Declared = x.Map(cf.Workspaces, func(d cubefile.Declared) WorkspaceMemberDTO {
+		result.Declared = xslices.Map(cf.Workspaces, func(d cubefile.Declared) WorkspaceMemberDTO {
 			return WorkspaceMemberDTO(d)
 		})
 		result.ScanRule = cf.WorkspaceScanRule
 	}
 	// 探测候选独立于 cube.json 是否存在（无声明项目的「导入为候选」入口同样要工作）
-	result.Detected = x.Map(workspace.Detect(root, workspace.EffectiveScanRule(root)), func(w workspace.Workspace) WorkspaceMemberDTO {
+	result.Detected = xslices.Map(workspace.Detect(root, workspace.EffectiveScanRule(root)), func(w workspace.Workspace) WorkspaceMemberDTO {
 		return WorkspaceMemberDTO(w)
 	})
 	return result, nil
@@ -338,7 +339,7 @@ func (h *ProjectHandler) workspaceSave(input WorkspaceSaveInput) (map[string]any
 			return nil, errors.New("path 不支持通配符（glob 是手写 cube.json 的表达，保存接口固化具体成员）: " + m.Path)
 		}
 	}
-	declared := x.Map(input.Body.Workspaces, func(m WorkspaceMemberDTO) cubefile.Declared {
+	declared := xslices.Map(input.Body.Workspaces, func(m WorkspaceMemberDTO) cubefile.Declared {
 		return cubefile.Declared(m)
 	})
 	validated := workspace.ValidateDeclared(root, declared)

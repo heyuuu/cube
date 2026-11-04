@@ -6,9 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/internal/domain/opener"
 	"cube/internal/server"
-	"cube/pkg/x"
 )
 
 // --- dto ---
@@ -76,7 +77,7 @@ func (h *OpenerHandler) Register(r *server.Routes) {
 
 func (h *OpenerHandler) openerList(_ struct{}) (ListResult[*OpenerDTO], error) {
 	openers := h.service.AllOpeners()
-	list := x.Map(openers, toOpenerDTO)
+	list := xslices.Map(openers, toOpenerDTO)
 	return listResult(list), nil
 }
 
@@ -88,7 +89,7 @@ type OpenerIntentDTO struct {
 }
 
 func (h *OpenerHandler) openerIntents(_ struct{}) (ListResult[*OpenerIntentDTO], error) {
-	list := x.Map(h.service.Intents(), func(i opener.IntentInfo) *OpenerIntentDTO {
+	list := xslices.Map(h.service.Intents(), func(i opener.IntentInfo) *OpenerIntentDTO {
 		return &OpenerIntentDTO{
 			Intent:        string(i.Intent),
 			DefaultOpener: i.DefaultOpener,

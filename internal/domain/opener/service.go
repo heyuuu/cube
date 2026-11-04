@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/internal/config"
 	"cube/internal/server"
 	"cube/pkg/fuzzy"
@@ -66,7 +68,7 @@ func (s *Service) AllOpeners() []Opener { return s.openers() }
 
 // RoleOpeners 返回声明了指定 role 的 opener。
 func (s *Service) RoleOpeners(role Role) []Opener {
-	return x.Filter(s.openers(), func(o Opener) bool {
+	return xslices.Filter(s.openers(), func(o Opener) bool {
 		return slices.Contains(o.Roles(), role)
 	})
 }
@@ -126,7 +128,7 @@ func (s *Service) DeleteOpener(name string) error {
 			dirty = true
 		}
 		if slices.Contains(spec.Openers, name) {
-			spec.Openers = x.Filter(spec.Openers, func(n string) bool { return n != name })
+			spec.Openers = xslices.Filter(spec.Openers, func(n string) bool { return n != name })
 			dirty = true
 		}
 		if spec.DefaultOpener == "" && len(spec.Openers) == 0 {

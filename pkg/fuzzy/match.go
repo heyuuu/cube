@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"cube/pkg/x"
+	"github.com/heyuuu/x/xstd/xslices"
 )
 
 // MatchBy 用 scorer 对 targets 模糊匹配并按分数降序返回命中项（scorer 为 nil 用默认计分器）。
@@ -37,7 +37,7 @@ func MatchBy[T any](query string, targets []T, keywordGetter func(T) string, sco
 	})
 
 	// 取顺序取原对象并返回
-	return x.Map(matches, func(m match) T {
+	return xslices.Map(matches, func(m match) T {
 		return targets[m.index]
 	})
 }

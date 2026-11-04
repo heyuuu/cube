@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
@@ -10,7 +11,6 @@ import (
 	"cube/internal/domain/project"
 	"cube/pkg/pathkit"
 	"cube/pkg/tui"
-	"cube/pkg/x"
 )
 
 const (
@@ -100,7 +100,7 @@ func checkCloneRules(service *project.Service) {
 func checkGitDirty(service *project.Service) {
 	projects := service.Projects()
 
-	targets := x.Filter(projects, func(p *project.Project) bool {
+	targets := xslices.Filter(projects, func(p *project.Project) bool {
 		info, ok := service.GitInfo(p.Path())
 		if !ok || len(info.RepoURL) == 0 {
 			return false

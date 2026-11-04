@@ -16,12 +16,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/heyuuu/x/xstd/xslices"
+
+	"github.com/coder/websocket"
+
 	"cube/internal/domain/project"
 	"cube/internal/domain/project/workspace"
 	"cube/pkg/git"
-	"cube/pkg/x"
-
-	"github.com/coder/websocket"
 )
 
 // Service 工作台领域服务。git 读路径无状态（每次调用直接调 git）；
@@ -85,9 +86,9 @@ func (s *Service) Refs(path string) (*Refs, error) {
 	getName := func(r git.Ref) string { return r.Name }
 	return &Refs{
 		Head:    head,
-		Locals:  x.Map(refs.Locals, getName),
-		Remotes: x.Map(refs.Remotes, getName),
-		Tags:    x.Map(refs.Tags, getName),
+		Locals:  xslices.Map(refs.Locals, getName),
+		Remotes: xslices.Map(refs.Remotes, getName),
+		Tags:    xslices.Map(refs.Tags, getName),
 	}, nil
 }
 

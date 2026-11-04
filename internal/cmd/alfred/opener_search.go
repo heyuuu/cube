@@ -4,11 +4,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
 	"cube/internal/domain/opener"
-	"cube/pkg/x"
 )
 
 // cmd `alfred opener-search`
@@ -75,7 +75,7 @@ func sortOpeners(openers []opener.Opener, history []string) []opener.Opener {
 	slices.SortFunc(targets, func(t1, t2 *target) int {
 		return t1.weight - t2.weight
 	})
-	return x.Map(targets, func(t *target) opener.Opener {
+	return xslices.Map(targets, func(t *target) opener.Opener {
 		return openers[t.index]
 	})
 }

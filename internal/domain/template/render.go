@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/pkg/x"
 )
 
@@ -58,7 +60,7 @@ func isBinary(data []byte) bool {
 
 // matchRules 返回 glob 命中 rel 的所有分组的规则，按分组的 glob 字典序拼接。
 func matchRules(rules []ReplaceRule, rel string) []ReplaceRule {
-	return x.Filter(rules, func(r ReplaceRule) bool {
+	return xslices.Filter(rules, func(r ReplaceRule) bool {
 		return r.MatchScope(rel)
 	})
 }

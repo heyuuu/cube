@@ -8,13 +8,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/internal/config"
 	"cube/internal/domain/project/projcache"
 	"cube/pkg/easycache"
 	"cube/pkg/fuzzy"
 	"cube/pkg/git"
 	"cube/pkg/pathkit"
-	"cube/pkg/x"
 )
 
 // Service project 领域服务：scan/clone 规则管理 + 项目列表查询（列表走 easycache 惰性缓存）。
@@ -412,7 +413,7 @@ func (s *Service) refresh() error {
 func (s *Service) Refresh() (total int, collected int, err error) {
 	projects := s.scanCache.Reload()
 
-	paths := x.Map(projects, (*Project).Path)
+	paths := xslices.Map(projects, (*Project).Path)
 	if s.gitCache == nil {
 		return len(paths), 0, errors.New("git 缓存未初始化")
 	}

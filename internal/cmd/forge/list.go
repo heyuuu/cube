@@ -3,13 +3,13 @@ package forge
 import (
 	"fmt"
 
+	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
 	"cube/internal/domain/forge"
 	"cube/pkg/iconkit"
 	"cube/pkg/tui"
-	"cube/pkg/x"
 )
 
 // newListCmd `cube forge list` 命令。
@@ -32,7 +32,7 @@ func runForgeList(a *app.App) error {
 			"Kind",
 			"Icon",
 		},
-		x.Map(forges, func(f forge.Forge) []string {
+		xslices.Map(forges, func(f forge.Forge) []string {
 			return []string{f.Host, f.Kind, iconSummary(f.Icon)}
 		}),
 	)

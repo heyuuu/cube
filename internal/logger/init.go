@@ -78,14 +78,14 @@ func newFileHandler(level slog.Level, dir string) slog.Handler {
 
 func newStdioHandler(level slog.Level) slog.Handler {
 	return tint.NewTextHandler(os.Stderr, &tint.Options{
-		Level:     level,
-		AddSource: true,
-		NoColor:   !isTTY(), // 仅 TTY 模式使用 ANSI 颜色
-		// 修改日志格式
+		Level:      level,
+		AddSource:  true,
+		NoColor:    !isTTY(), // 仅 TTY 模式使用 ANSI 颜色
 		TimeFormat: stdioTimeFormat,
 	})
 }
 
+// 判断 stdin 是否为一个交互式终端（TTY）
 func isTTY() bool {
 	return term.IsTerminal(int(os.Stdin.Fd()))
 }
