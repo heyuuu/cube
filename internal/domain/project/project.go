@@ -23,7 +23,7 @@ func newProject(r ScanRule, path string, tags []string) *Project {
 		path:  path,
 		group: r.Group,
 		name:  projectName(r, path),
-		tags:  tags,
+		tags:  normalizeTags(tags),
 	}
 }
 

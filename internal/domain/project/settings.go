@@ -77,8 +77,8 @@ func saveScanRule(settingsFile string, rule ScanRule) error {
 	if rule.Group == "" {
 		return fmt.Errorf("scan 规则 group 不得为空")
 	}
-	if rule.MaxDepth <= 0 {
-		return fmt.Errorf("scan 规则 maxDepth 必须大于 0: %d", rule.MaxDepth)
+	if rule.MaxDepth < -1 {
+		return fmt.Errorf("scan 规则 maxDepth 不得小于 -1（-1 不限深、0 仅根下一层）: %d", rule.MaxDepth)
 	}
 
 	if !filepath.IsAbs(rule.Path) {

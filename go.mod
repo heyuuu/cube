@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/heyuuu/x/di v0.1.0
 	github.com/heyuuu/x/store v0.1.1
-	github.com/heyuuu/x/xstd v0.1.0
+	github.com/heyuuu/x/xstd v0.1.1
 	github.com/lmittmann/tint v1.2.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10

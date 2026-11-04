@@ -84,19 +84,27 @@ func TestScan_NestedProjects(t *testing.T) {
 	}
 }
 
-// TestScan_MaxDepth 深度剪枝：超 MaxDepth 的项目不被扫到。
+// TestScan_MaxDepth 深度剪枝：根下直接子项为深度 0，-1 不限深。
 func TestScan_MaxDepth(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	root := ws.Mkdir("root")
-	// 浅层项目（root/proj）
-	ws.MakeProjectDir(path.Join("root", "proj"))
-	// 深层项目（root/x/y/deep）—— root 到 deep 跨 3 层目录
-	ws.MakeProjectDir(path.Join("root", "x", "y", "deep"))
+	ws.MakeProjectDir(path.Join("root", "proj"))                       // 深度 0
+	ws.MakeProjectDir(path.Join("root", "x", "y", "deep"))             // 深度 2
+	ws.MakeProjectDir(path.Join("root", "a", "b", "c", "d", "e", "f")) // 深度 5
 
-	// MaxDepth=2：只扫到浅层
-	s := newServiceAt(t, root, "g", 2)
-	if len(s.Projects()) != 1 {
-		t.Fatalf("MaxDepth=2 应只扫到 1 个，实际 %d", len(s.Projects()))
+	for _, c := range []struct {
+		maxDepth int
+		want     int
+	}{
+		{0, 1},  // 仅根下一层：只有 proj
+		{1, 1},  // deep 在深度 2，不可达
+		{2, 2},  // deep 可达，更深的 f 不可达
+		{-1, 3}, // 不限深：全部
+	} {
+		s := newServiceAt(t, root, "g", c.maxDepth)
+		if got := len(s.Projects()); got != c.want {
+			t.Fatalf("MaxDepth=%d 应扫到 %d 个，实际 %d", c.maxDepth, c.want, got)
+		}
 	}
 }
 
@@ -125,6 +133,18 @@ func TestScan_DotUnderscoreDirSkipped(t *testing.T) {
 	s := newServiceAt(t, root, "g", 5)
 	if len(s.Projects()) != 1 {
 		t.Fatalf(". 开头目录应被跳过，实际扫到 %d 个", len(s.Projects()))
+	}
+}
+
+// TestScan_RootNameNotSkipped 规则根本身以 "." / "_" 开头时不跳过（前缀限制只作用于根下子目录）。
+func TestScan_RootNameNotSkipped(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	root := ws.Mkdir(".dotroot")
+	ws.MakeProjectDir(path.Join(".dotroot", "proj"))
+
+	s := newServiceAt(t, root, "g", 5)
+	if len(s.Projects()) != 1 {
+		t.Fatalf("规则根本身不受 ./_ 前缀限制，应扫到 1 个，实际 %d", len(s.Projects()))
 	}
 }
 
@@ -225,13 +245,14 @@ func TestScanRules_Getter(t *testing.T) {
 }
 
 // TestMatchScanRule 判定「git init 后能否被 scan 收录为新项目」（纯函数，表驱动）。
-// 判定语义需与 scanOne 遍历一致：位于规则根下 maxDepth 层级内，
-// 且从规则根到目标路径的各级目录名不以 . / _ 开头。
+// 判定语义需与 scanOne 遍历一致：直接子目录为深度 0（-1 不限深），
+// 且规则根下到目标路径的各级目录名不以 . / _ 开头（规则根本身不受限）。
 func TestMatchScanRule(t *testing.T) {
 	rules := []ScanRule{
 		{Group: "g", Path: "/w/code", MaxDepth: 2},
 		{Group: "go", Path: "/w/code/go", MaxDepth: 3},
 		{Group: "hid", Path: "/w/.hidden", MaxDepth: 3},
+		{Group: "any", Path: "/w/any", MaxDepth: -1},
 	}
 
 	cases := []struct {
@@ -242,11 +263,12 @@ func TestMatchScanRule(t *testing.T) {
 	}{
 		{"规则根直接子目录", "/w/code/proj", true, "g:proj"},
 		{"目标即规则根本身", "/w/code", true, "g:g"},
-		{"深度恰好等于 maxDepth", "/w/code/a/b", true, "g:a/b"},
-		{"深度超出全部规则", "/w/code/a/b/c", false, ""},
+		{"深度恰好等于 maxDepth", "/w/code/a/b/c", true, "g:a/b/c"},
+		{"深度超出全部规则", "/w/code/a/b/c/d", false, ""},
 		{"多规则命中取最内层", "/w/code/go/x", true, "go:x"},
-		{"外层规则超深但内层命中", "/w/code/go/x/y", true, "go:x/y"},
-		{"规则根本身以 . 开头", "/w/.hidden/proj", false, ""},
+		{"外层规则超深但内层命中", "/w/code/go/x/y/z", true, "go:x/y/z"},
+		{"maxDepth=-1 不限深", "/w/any/a/b/c/d/e", true, "any:a/b/c/d/e"},
+		{"规则根本身以 . 开头不跳过", "/w/.hidden/proj", true, "hid:proj"},
 		{"中间目录以 _ 开头", "/w/code/_drafts/proj", false, ""},
 		{"目标目录自身以 . 开头", "/w/code/.config", false, ""},
 		{"不在任何规则目录下", "/w/other/proj", false, ""},

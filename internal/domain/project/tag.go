@@ -2,6 +2,7 @@ package project
 
 import (
 	"os"
+	"strings"
 )
 
 // 扫描附加 tag：标记项目额外特征（git 前提假定满足，不打冗余 git 标签，见 AGENTS.md）。
@@ -30,4 +31,19 @@ func smellTags(projectPath string) []string {
 	}
 
 	return tags
+}
+
+// normalizeTags 清洗标签列表：trim、去空串、按序去重；全空返回 nil。
+func normalizeTags(tags []string) []string {
+	var out []string
+	seen := make(map[string]bool)
+	for _, t := range tags {
+		t = strings.TrimSpace(t)
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		out = append(out, t)
+	}
+	return out
 }

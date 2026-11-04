@@ -41,6 +41,13 @@ func TestSaveScanRule(t *testing.T) {
 	if rules := s.ScanRules(); len(rules) != 1 || rules[0].Group != "g2" {
 		t.Fatalf("同 path 应替换而非追加: %v", rules)
 	}
+
+	// maxDepth 0（仅根下一层）与 -1（不限深）均为合法值
+	for _, d := range []int{0, -1} {
+		if err := s.SaveScanRule(ScanRule{Group: "g2", Path: root, MaxDepth: d}); err != nil {
+			t.Fatalf("maxDepth=%d 应合法: %v", d, err)
+		}
+	}
 }
 
 // TestSaveScanRule_TagsNormalized 保存时清洗 tags（trim/去空/去重），空 tags 落盘后不残留空节。
@@ -81,7 +88,7 @@ func TestSaveScanRule_Validation(t *testing.T) {
 		want string
 	}{
 		{"group 为空", ScanRule{Path: root, MaxDepth: 3}, "group"},
-		{"maxDepth 非正", ScanRule{Group: "g", Path: root, MaxDepth: 0}, "maxDepth"},
+		{"maxDepth 小于 -1", ScanRule{Group: "g", Path: root, MaxDepth: -2}, "maxDepth"},
 		{"路径不存在", ScanRule{Group: "g", Path: "/no/such/dir/xyz", MaxDepth: 3}, "不存在"},
 		{"路径是文件", ScanRule{Group: "g", Path: ws.Join("f.txt"), MaxDepth: 3}, "非目录"},
 		{"相对路径", ScanRule{Group: "g", Path: "relative/dir", MaxDepth: 3}, "绝对路径"},
