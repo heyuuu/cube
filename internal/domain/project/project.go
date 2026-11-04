@@ -2,7 +2,12 @@
 // clone 规则匹配与打开目标（worktree / workspace）枚举。
 package project
 
-import "path/filepath"
+import (
+	"iter"
+	"path/filepath"
+	"slices"
+	"strings"
+)
 
 // Project 扫描识别出的一个项目（数据由 scan-rule 推导，只读快照）。
 type Project struct {
@@ -41,5 +46,11 @@ func (p Project) Group() string { return p.group }
 // Name 返回展示名（{组名}:{组内相对路径}）
 func (p Project) Name() string { return p.name }
 
-// Tags 返回特征 tag 列表。
-func (p Project) Tags() []string { return p.tags }
+// Tags 返回特征 tag 列表
+func (p Project) Tags() iter.Seq[string] { return slices.Values(p.tags) }
+
+// CollectTags 返回特征 tag 列表。
+func (p Project) CollectTags() []string { return slices.Clone(p.tags) }
+
+// TagsStr 返回特征 tag 列表
+func (p Project) TagsStr() string { return strings.Join(p.tags, ",") }

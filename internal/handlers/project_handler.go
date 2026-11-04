@@ -150,7 +150,7 @@ func (h *ProjectHandler) toProjectDTO(entity *project.Project) *ProjectDTO {
 		Name:    entity.Name(),
 		Group:   entity.Group(),
 		Path:    entity.Path(),
-		Tags:    entity.Tags(),
+		Tags:    entity.CollectTags(),
 		GitInfo: info,
 	}
 }

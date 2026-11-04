@@ -59,7 +59,7 @@ query 支持两种搜索模式：
 			printInfoKV("project", infoBoldStyle.Render(proj.Name()))
 			printInfoKV("path", proj.Path())
 			printInfoKV("group", orInfoDash(proj.Group()))
-			printInfoKV("tags", orInfoDash(strings.Join(proj.Tags(), ", ")))
+			printInfoKV("tags", orInfoDash(proj.TagsStr()))
 
 			// 路径 query 命中 worktree 时注明当前所属（1032 归并：项目身份是主仓库，
 			// 但用户在 worktree 目录里执行，需指出实际所在副本）

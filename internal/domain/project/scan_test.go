@@ -139,7 +139,7 @@ func TestScan_GodotTag(t *testing.T) {
 	if len(projs) != 1 {
 		t.Fatalf("应扫到 1 个，实际 %d", len(projs))
 	}
-	tags := projs[0].Tags()
+	tags := projs[0].CollectTags()
 	found := false
 	for _, tg := range tags {
 		if tg == TagGodot {
@@ -170,7 +170,7 @@ func TestScan_RuleTags(t *testing.T) {
 		if path.Base(p.Path()) == "game" {
 			want = []string{"公司", TagGodot}
 		}
-		if got := p.Tags(); !slices.Equal(got, want) {
+		if got := p.CollectTags(); !slices.Equal(got, want) {
 			t.Fatalf("项目 %s tags=%v, want %v", p.Name(), got, want)
 		}
 	}

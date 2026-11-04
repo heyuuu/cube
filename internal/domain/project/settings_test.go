@@ -56,7 +56,7 @@ func TestSaveScanRule_TagsNormalized(t *testing.T) {
 	if len(rules) != 1 || !slices.Equal(rules[0].Tags, []string{"公司", "开源"}) {
 		t.Fatalf("tags 应清洗为 [公司 开源]，实际: %v", rules)
 	}
-	if projs := s.Projects(); len(projs) != 1 || !slices.Equal(projs[0].Tags(), []string{"公司", "开源"}) {
+	if projs := s.Projects(); len(projs) != 1 || !slices.Equal(projs[0].CollectTags(), []string{"公司", "开源"}) {
 		t.Fatalf("项目 tags 应来自规则，实际: %v", projs)
 	}
 
