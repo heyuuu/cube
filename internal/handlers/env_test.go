@@ -44,7 +44,6 @@ type testEnv struct {
 func newTestEnv(t *testing.T) *testEnv {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
-	ws.Cfg.Server = config.ServerConfig{Port: 6101}
 	ws.MakeProjectDir("g1/proj1")
 	ws.MakeProjectDir("g2/proj2", testfixture.WithGodot())
 

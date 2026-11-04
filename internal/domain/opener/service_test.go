@@ -12,12 +12,11 @@ import (
 func newServiceAt(t *testing.T, specs []Spec) (*Service, *fakeExecutor) {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
-	file := ws.Cfg.SettingsFile()
 	if specs != nil {
 		ws.SaveSection(settingsSection, specs)
 	}
 	fake := &fakeExecutor{}
-	return newServiceEx(file, fake, ""), fake
+	return NewServiceWithExecutor(ws.Cfg, fake), fake
 }
 
 func TestServiceDirectRead(t *testing.T) {

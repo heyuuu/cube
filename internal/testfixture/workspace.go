@@ -24,6 +24,7 @@ import (
 )
 
 const testConfigDir = "config"
+const testServerPort = 6677
 
 // Workspace 表示一个测试的专属工作目录。
 // 每个测试获得独立子目录（带时间戳 + 测试名），互不污染，失败后可翻看现场。
@@ -50,6 +51,9 @@ func NewWorkspace(t testing.TB) *Workspace {
 		Dir: dir,
 		Cfg: &config.Config{
 			DataDir: filepath.Join(dir, testConfigDir),
+			Server: config.ServerConfig{
+				Port: testServerPort,
+			},
 		},
 	}
 

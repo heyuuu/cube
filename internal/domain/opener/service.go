@@ -37,13 +37,11 @@ func NewService(cfg *config.Config) *Service {
 // NewServiceWithExecutor 与 NewService 同构，但注入自定义 Executor
 // （跨包测试的 fake 注入口；executor 传 nil 则用默认执行器）。
 func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
-	return newServiceEx(cfg.SettingsFile(), executor, server.BaseURL(cfg.Server))
-}
-
-// newServiceEx 构造 Service。executor 可选（测试传 fake）；baseURL 供 url 动作的
-// 站内路由拼接（来自 config 的 server.port，opener 包不 import config，由装配层传值）。
-func newServiceEx(settingsFile string, executor Executor, baseURL string) *Service {
-	return &Service{settingsFile: settingsFile, executor: executor, baseURL: baseURL}
+	return &Service{
+		settingsFile: cfg.SettingsFile(),
+		executor:     executor,
+		baseURL:      server.BaseURL(cfg.Server),
+	}
 }
 
 // openers 现读 settings.json 的 openers 节并逐条构造。
