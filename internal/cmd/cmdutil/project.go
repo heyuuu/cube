@@ -24,20 +24,18 @@ func IsPathQuery(query string) bool {
 	return prefix == "." || prefix == ".." || prefix == "~" || prefix == ""
 }
 
-// SearchProjects 搜索项目列表
-//
-// query 为搜索关键词，默认为搜索项目名；当可能为路径时(以 IsPathQuery 判断)，当做路径。
+// SearchProjects 搜索项目列表（向下列项目）：query 默认按项目名模糊搜索；
+// 为路径时（IsPathQuery 判断）列出该路径之下的项目。
 // 路径 query 在本层用 ExtendPath 基于 cwd 解析为绝对路径后再传入 domain——
 // cwd 依赖属于出口层职责，domain 只接受绝对路径/~ 前缀。
-// upper 表示是否向上搜索。仅 query 为路径时生效，用于在项目子目录标定当前目录时使用。
-func SearchProjects(service *project.Service, query string, up bool) ([]*project.Project, error) {
+func SearchProjects(service *project.Service, query string) ([]*project.Project, error) {
 	if IsPathQuery(query) {
 		absPath, err := ExtendPath(query)
 		if err != nil {
 			return nil, fmt.Errorf("解析路径 query 失败: query=%s err=%w", query, err)
 		}
 
-		return service.SearchByPath(absPath, up), nil
+		return service.SearchByPath(absPath), nil
 	}
 	return service.SearchByName(query), nil
 }
@@ -48,26 +46,30 @@ func SearchProjects(service *project.Service, query string, up bool) ([]*project
 // --local 模式（p --local 模式）下 query 缺省视作 "."，以 cwd 为起点定位项目；
 // 显式给了 query 则不干预，--local 对其无效果。
 //
-// 路径 query 命中 worktree 目录时归并到主项目（1032：worktree 不再是独立项目，
-// pull / push / info 等在 worktree 内执行等同于操作主仓库根目录）。
+// 路径 query 向上归并到所属项目，统一走 ResolveProject（项目根/子目录/worktree，
+// 1032：pull / push / info 等在 worktree 内执行等同于操作主仓库根目录）。
 func PickProject(service *project.Service, query string, localMode bool) (*project.Project, error) {
 	if localMode && query == "" {
 		query = "."
 	}
-	projects, err := SearchProjects(service, query, true)
-	if err != nil {
-		return nil, err
+
+	// 按路径查找项目
+	if IsPathQuery(query) {
+		absPath, err := ExtendPath(query)
+		if err != nil {
+			return nil, fmt.Errorf("解析路径 query 失败: query=%s err=%w", query, err)
+		}
+
+		if proj := service.ResolveProject(absPath); proj != nil {
+			return proj, nil
+		}
+
+		return nil, fmt.Errorf("未找到匹配的 project: query=`%s`", query)
 	}
 
+	// 按项目名查找
+	projects := service.SearchByName(query)
 	if len(projects) == 0 {
-		// 路径 query 落在 worktree 内：SearchByPath 找不到（worktree 通常在项目目录之外），归并主项目
-		if IsPathQuery(query) {
-			if absPath, err := ExtendPath(query); err == nil {
-				if proj := service.ResolveProject(absPath); proj != nil {
-					return proj, nil
-				}
-			}
-		}
 		return nil, fmt.Errorf("未找到匹配的 project: query=`%s`", query)
 	} else if len(projects) == 1 {
 		return projects[0], nil

@@ -31,7 +31,7 @@ query 支持两种搜索模式：
 			query := xslices.Get(args, 0)
 
 			// 项目列表
-			projects, err := cmdutil.SearchProjects(a.ProjectService(), query, false)
+			projects, err := cmdutil.SearchProjects(a.ProjectService(), query)
 			if err != nil {
 				return err
 			}

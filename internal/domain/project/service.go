@@ -122,13 +122,22 @@ func (s *Service) Projects() []*Project {
 	return s.scanCache.Get()
 }
 
+// cleanAbsPath 路径入参的统一预处理：仅接受绝对路径（相对路径视为调用方传错，
+// 按未找到处理而非报错，与「查无此项目」语义一致），返回清理后的路径。
+// ~ / 相对路径的展开是出口层职责（cmd 用 ExtendPath）。
+func cleanAbsPath(path string) (string, bool) {
+	if !filepath.IsAbs(path) {
+		return "", false
+	}
+	return filepath.Clean(path), true
+}
+
 // FindByPath 按绝对路径查项目，未命中返回 nil（相对路径视为未找到）。
 func (s *Service) FindByPath(path string) *Project {
-	// 仅接受绝对路径，相对路径视为未找到而非报错，与「查无此项目」语义一致
-	if !filepath.IsAbs(path) {
+	path, ok := cleanAbsPath(path)
+	if !ok {
 		return nil
 	}
-	path = filepath.Clean(path)
 
 	for _, proj := range s.Projects() {
 		if proj.Path() == path {
@@ -200,39 +209,27 @@ func (s *Service) OwnsDir(path, dir string) bool {
 	return false
 }
 
-// ResolveProject 把目标目录归并到所属主项目：项目根本身直接命中，否则依次走 worktree
-// 归并（ResolveMainProject）与主根 workspace 成员归并。所有「拿一个实际目录反查项目」
-// 的出口（打开目标 / usage 聚合 / workspace 子目录）统一走这里，不要在调用方手拼
-// FindByPath + ResolveMainProject 的两段式。
-// 项目普通子目录不在此列（那是 SearchByPath 的 up 语义，含多结果交互选择）。
-func (s *Service) ResolveProject(dir string) *Project {
-	if p := s.FindByPath(dir); p != nil {
-		return p
+// ResolveProject 把目标目录归并到所属主项目（「向上找当前项目」，与 SearchByPath 的
+// 「向下列项目」方向相对）：目录是某项目根或其任意子目录直接命中；否则走 worktree
+// 归并（ResolveMainProject）。workspace 成员是主根直系子目录，同样被第一步覆盖。
+// 所有「拿一个实际目录反查项目」的出口（PickProject / alfred project-open /
+// usage 路径归一）统一走这里，不要在调用方手拼 FindByPath + ResolveMainProject 的两段式。
+func (s *Service) ResolveProject(path string) *Project {
+	path, ok := cleanAbsPath(path)
+	if !ok {
+		return nil
 	}
-	if p := s.ResolveMainProject(dir); p != nil {
-		return p
-	}
-	return s.resolveWorkspaceMember(dir)
-}
 
-// resolveWorkspaceMember 把主根直系的 workspace 成员目录归并到所属项目。
-// ResolveMainProject 的向上探测只认 worktree 的 .git 指针文件，主仓库根下的成员命不中
-// （祖先 .git 是目录）；worktree 下的成员无需在此处理，向上探测已覆盖。
-// 只读 projcache 快照（读路径不读 cube.json），且精确匹配成员根本身——成员的子目录
-// 仍是普通子目录，归 SearchByPath 的 up 语义。路径拼接口径与 workspaceTargetsAt 一致。
-func (s *Service) resolveWorkspaceMember(dir string) *Project {
+	// 逐项目查找
 	for _, proj := range s.Projects() {
-		info, _ := s.GitInfo(proj.Path())
-		if info == nil {
-			continue
-		}
-		for _, w := range info.Workspaces {
-			if filepath.Join(proj.Path(), w.Path) == dir {
-				return proj
-			}
+		// 判断要查找的目录是否为项目目录或子目录
+		if pathkit.IsUnder(path, proj.Path()) {
+			return proj
 		}
 	}
-	return nil
+
+	// 尝试按 git worktree 目录反向找主项目
+	return s.ResolveMainProject(path)
 }
 
 // ResolveMainProject 把任意目录归并到主项目（1032 路径归并链路）：
@@ -247,31 +244,18 @@ func (s *Service) ResolveMainProject(dir string) *Project {
 	return s.FindByPath(main)
 }
 
-// SearchByPath 通过路径搜索项目列表
-// up 表示是否向上搜索。用于通过项目子目录标定当前目录时使用。
-// 因为项目子目录不可能是另一个项目的目录或父目录，所以当向上匹配成功时不会出现其他项目
-//
-// path 只接受绝对路径；~ / 相对路径的展开是出口层职责（cmd 用 ExtendPath），
-// 到这里说明调用方传错，按未找到处理。
-func (s *Service) SearchByPath(path string, up bool) []*Project {
-	// 仅接受绝对路径，相对路径视为未找到而非报错，与「查无此项目」语义一致
-	if !filepath.IsAbs(path) {
+// SearchByPath 通过路径搜索项目列表（「向下列项目」，与 ResolveProject 的
+// 「向上找当前项目」方向相对）：返回位于 path 之下（含 path 本身）的项目。
+func (s *Service) SearchByPath(path string) []*Project {
+	path, ok := cleanAbsPath(path)
+	if !ok {
 		return nil
 	}
-	path = filepath.Clean(path)
 
-	// 逐个对比
 	var result []*Project
 	for _, proj := range s.Projects() {
-		// 判断 proj 是否在 realpath 目录及子目录中
 		if pathkit.IsUnder(proj.Path(), path) {
 			result = append(result, proj)
-			continue
-		}
-		// 若向上查找， 判断 proj.Path() 是否在 realpath 父目录
-		if up && pathkit.IsUnder(path, proj.Path()) {
-			result = append(result, proj)
-			continue
 		}
 	}
 	return result

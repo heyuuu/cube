@@ -8,8 +8,9 @@ import (
 	"cube/internal/testfixture"
 )
 
-// TestSearchByPath_SearchByPath 验证 SearchByPath 的入参契约与路径搜索行为。
+// TestSearchByPath_SearchByPath 验证 SearchByPath 的入参契约与向下搜索行为。
 // path 只接受绝对路径；~/ / 相对路径的展开是出口层（cmd）职责，见 cmd 包的 searchProjects 测试。
+// 向上标定（子目录找所属项目）是 ResolveProject 的职责，见 targets_test。
 func TestSearchByPath_SearchByPath(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	root := ws.Mkdir("root")
@@ -17,24 +18,23 @@ func TestSearchByPath_SearchByPath(t *testing.T) {
 
 	s := newServiceAt(t, root, "g1", 5)
 
-	// 绝对路径：命中该目录下的项目
-	projs := s.SearchByPath(repo, false)
+	// 项目根本身 / 父目录：向下命中
+	projs := s.SearchByPath(repo)
 	if len(projs) != 1 || projs[0].Path() != repo {
-		t.Fatalf("SearchByPath(绝对路径) 应命中 %s，实际 %v", repo, projs)
+		t.Fatalf("SearchByPath(项目根) 应命中 %s，实际 %v", repo, projs)
+	}
+	if projs = s.SearchByPath(root); len(projs) != 1 || projs[0].Path() != repo {
+		t.Fatalf("SearchByPath(父目录) 应向下命中 %s，实际 %v", repo, projs)
 	}
 
-	// 绝对路径 + up：在项目子目录向上标定
+	// 项目子目录：不向上命中（向上标定归 ResolveProject）
 	sub := ws.Mkdir(path.Join("root", "proj", "sub"))
-	projs = s.SearchByPath(sub, true)
-	if len(projs) != 1 || projs[0].Path() != repo {
-		t.Fatalf("SearchByPath(子目录, up=true) 应向上命中 %s，实际 %v", repo, projs)
-	}
-	if projs = s.SearchByPath(sub, false); len(projs) != 0 {
-		t.Fatalf("SearchByPath(子目录, up=false) 不应命中，实际 %v", projs)
+	if projs = s.SearchByPath(sub); len(projs) != 0 {
+		t.Fatalf("SearchByPath(子目录) 不应命中，实际 %v", projs)
 	}
 
 	// 相对路径：拒绝（出口层职责，到这里即调用方传错）
-	if projs = s.SearchByPath(".", true); len(projs) != 0 {
+	if projs = s.SearchByPath("."); len(projs) != 0 {
 		t.Fatalf("SearchByPath(\".\") 应按未找到处理，实际 %v", projs)
 	}
 }
@@ -53,10 +53,10 @@ func TestSearchByPath_HomePrefix(t *testing.T) {
 	testfixture.BuildGitRepo(ws.TB, repoDir, testfixture.GitRepoSpec{})
 
 	cfg := newServiceAt(t, home+"/root", "g1", 5)
-	if projs := cfg.SearchByPath(home+"/root", false); len(projs) != 1 {
+	if projs := cfg.SearchByPath(home + "/root"); len(projs) != 1 {
 		t.Fatalf("SearchByPath(绝对路径) 应命中，实际 %v", projs)
 	}
-	if projs := cfg.SearchByPath("~/root", false); len(projs) != 0 {
+	if projs := cfg.SearchByPath("~/root"); len(projs) != 0 {
 		t.Fatalf("SearchByPath(~/root) 应按未找到处理，实际 %v", projs)
 	}
 }

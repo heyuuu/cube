@@ -235,8 +235,8 @@ func TestResolveMainProject(t *testing.T) {
 	}
 }
 
-// TestResolveProject 项目根直接命中；worktree / 主根 workspace 成员归并主项目；
-// 成员子目录与普通目录返回 nil。
+// TestResolveProject 项目根与任意子目录直接命中（向上标定当前项目）；
+// worktree / 主根 workspace 成员归并主项目；项目外目录与相对路径返回 nil。
 func TestResolveProject(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	root := ws.Mkdir("root")
@@ -252,32 +252,30 @@ func TestResolveProject(t *testing.T) {
 		t.Fatalf("worktree 应归并到主项目 %s, got %+v", repo, p)
 	}
 
-	// 主根 workspace 成员归并（alfred project-open 打开成员目录的链路）：
-	// 快照采集后才能命中（读路径只认快照，不现场读 cube.json）
-	for _, sub := range []string{filepath.Join(".cube"), filepath.Join("server"), filepath.Join("misc")} {
+	// 项目普通子目录归并（--local 在子目录标定当前项目的链路）
+	if p := s.ResolveProject(filepath.Join(repo, "misc")); p == nil || p.Path() != repo {
+		t.Fatalf("项目子目录应归并到主项目 %s, got %+v", repo, p)
+	}
+
+	// 主根 workspace 成员及其子目录（成员是主根直系子目录，同被覆盖）
+	for _, sub := range []string{filepath.Join(".cube"), filepath.Join("server"), filepath.Join("server", "sub")} {
 		if err := os.MkdirAll(filepath.Join(repo, sub), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(repo, ".cube", "cube.json"),
-		[]byte(`{"workspaces":[{"name":"服务端","path":"server"}]}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := s.Refresh(); err != nil {
-		t.Fatalf("Refresh 失败: %v", err)
-	}
 	member := filepath.Join(repo, "server")
-	if p := s.ResolveProject(member); p == nil || p.Path() != repo {
-		t.Fatalf("workspace 成员应归并到主项目 %s, got %+v", repo, p)
-	}
-	// 成员的子目录与未声明的普通子目录仍不归并（那是 SearchByPath 的 up 语义）
-	for _, dir := range []string{filepath.Join(member, "sub"), filepath.Join(repo, "misc")} {
-		if p := s.ResolveProject(dir); p != nil {
-			t.Fatalf("普通子目录应返回 nil: %s, got %+v", dir, p)
+	for _, dir := range []string{member, filepath.Join(member, "sub")} {
+		if p := s.ResolveProject(dir); p == nil || p.Path() != repo {
+			t.Fatalf("workspace 成员 %s 应归并到主项目 %s, got %+v", dir, repo, p)
 		}
 	}
+
+	// 项目外目录与相对路径：不归并
 	if p := s.ResolveProject(ws.Join("plain")); p != nil {
 		t.Fatalf("普通目录应返回 nil, got %+v", p)
+	}
+	if p := s.ResolveProject("relative/sub"); p != nil {
+		t.Fatalf("相对路径应按未找到处理, got %+v", p)
 	}
 }
 

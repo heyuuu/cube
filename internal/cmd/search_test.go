@@ -29,8 +29,9 @@ func newCmdServiceAt(t *testing.T, scanRoot, group string, maxDepth int) *projec
 }
 
 // TestSearchProjects_PathQueryCwd 验证路径 query 的 cwd 解析发生在 cmd 层：
-// query="." 基于当前目录解析后命中所属项目（复现 cube info . 的完整链路）。
+// query="." 基于当前目录解析后向下搜索（复现 cube project list . 的完整链路）。
 // domain 的 SearchByPath 已不收相对路径，此测试守住出口层的解析职责不回退。
+// 子目录向上标定是 PickProject 的职责（见 TestPickProject_LocalMode）。
 func TestSearchProjects_PathQueryCwd(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	root := ws.Mkdir("root")
@@ -40,7 +41,7 @@ func TestSearchProjects_PathQueryCwd(t *testing.T) {
 
 	// 项目根：query="." 命中
 	t.Chdir(repo)
-	projs, err := cmdutil.SearchProjects(s, ".", true)
+	projs, err := cmdutil.SearchProjects(s, ".")
 	if err != nil {
 		t.Fatalf("searchProjects(\".\") 出错: %v", err)
 	}
@@ -48,15 +49,15 @@ func TestSearchProjects_PathQueryCwd(t *testing.T) {
 		t.Fatalf("searchProjects(\".\") 应命中 %s，实际 %v", repo, projs)
 	}
 
-	// 项目子目录：query="." 向上标定命中
+	// 项目子目录：query="." 只向下搜索，落空（不向上标定）
 	sub := ws.Mkdir(path.Join("root", "proj", "sub"))
 	t.Chdir(sub)
-	projs, err = cmdutil.SearchProjects(s, ".", true)
+	projs, err = cmdutil.SearchProjects(s, ".")
 	if err != nil {
 		t.Fatalf("searchProjects(\".\") 出错: %v", err)
 	}
-	if len(projs) != 1 || projs[0].Path() != repo {
-		t.Fatalf("searchProjects(\".\") 在子目录应向上命中 %s，实际 %v", repo, projs)
+	if len(projs) != 0 {
+		t.Fatalf("searchProjects(\".\") 在子目录不应向上命中，实际 %v", projs)
 	}
 }
 
@@ -105,7 +106,7 @@ func TestSearchProjects_QueryModes(t *testing.T) {
 	s := newCmdServiceAt(t, root, "g1", 5)
 
 	// name query：不走路径分支
-	projs, err := cmdutil.SearchProjects(s, "proj", false)
+	projs, err := cmdutil.SearchProjects(s, "proj")
 	if err != nil {
 		t.Fatalf("searchProjects(name) 出错: %v", err)
 	}
@@ -114,7 +115,7 @@ func TestSearchProjects_QueryModes(t *testing.T) {
 	}
 
 	// ~user 不满足路径形态：按名字搜索，自然落空为空列表
-	projs, err = cmdutil.SearchProjects(s, "~user/x", false)
+	projs, err = cmdutil.SearchProjects(s, "~user/x")
 	if err != nil {
 		t.Fatalf("searchProjects(~user/x) 出错: %v", err)
 	}
