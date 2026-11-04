@@ -14,8 +14,11 @@ func NewCmd(a *app.App) *cobra.Command {
 		Aliases: []string{"p", "proj"},
 	}
 
-	cmd.AddCommand(newListCmd(a)) // 项目列表
-	cmd.AddCommand(newInfoCmd(a)) // 项目信息
+	cmd.AddCommand(newListCmd(a))  // 项目列表
+	cmd.AddCommand(newInfoCmd(a))  // 项目信息
+	cmd.AddCommand(newOpenCmd(a))  // 打开项目
+	cmd.AddCommand(newPathCmd(a))  // 输出项目路径（供 shell 包装函数 cd）
+	cmd.AddCommand(newCloneCmd(a)) // 使用 RepoURL 初始化项目
 
 	/* <<subcommand inject point>> */
 

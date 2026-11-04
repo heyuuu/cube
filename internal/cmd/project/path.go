@@ -1,4 +1,4 @@
-package cmd
+package project
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"cube/internal/cmd/cmdutil"
 )
 
-// cmd `cube path`
+// newPathCmd `cube project path` 命令。
 func newPathCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "path [query]",

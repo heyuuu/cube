@@ -96,9 +96,6 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 
 	// project 相关
 	cmd.AddCommand(project.NewCmd(a))  // project 相关
-	cmd.AddCommand(newOpenCmd(a))      // 打开项目
-	cmd.AddCommand(newPathCmd(a))      // 输出项目路径（供 shell 包装函数 cd）
-	cmd.AddCommand(newCloneCmd(a))     // 使用 RepoURL 初始化项目
 	cmd.AddCommand(newWorkspaceCmd(a)) // monorepo workspace 声明管理
 
 	// tpl 相关
@@ -122,15 +119,22 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 
 	// 绑定命令别名
 	aliases := map[string]string{
-		"openapi":   "server openapi",
-		"list":      "project list",
-		"info":      "project info",
-		"create":    "tpl create",
+		"openapi": "server openapi",
+		// project
+		"list":  "project list",
+		"info":  "project info",
+		"open":  "project open",
+		"path":  "project path",
+		"clone": "project clone",
+		// tpl
+		"create": "tpl create",
+		// opener
 		"openers":   "opener list",
 		"diff":      "opener diff",
 		"open-path": "opener open",
-		"push":      "git push",
-		"pull":      "git pull",
+		// git
+		"push": "git push",
+		"pull": "git pull",
 	}
 	for name, alias := range aliases {
 		registerAliasCommand(cmd, name, alias)

@@ -1,4 +1,4 @@
-package cmd
+package project
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"cube/pkg/git"
 )
 
-// cmd `cube clone`
+// newCloneCmd `cube project clone` 命令。
 func newCloneCmd(a *app.App) *cobra.Command {
 	var depth int
 	var branch string

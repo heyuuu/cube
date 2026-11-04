@@ -1,4 +1,4 @@
-package cmd
+package project
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ import (
 	"cube/pkg/tui"
 )
 
-// cmd `cube open`
+// newOpenCmd `cube project open` 命令。
 func newOpenCmd(a *app.App) *cobra.Command {
 	var openerName string
 	cmd := &cobra.Command{
