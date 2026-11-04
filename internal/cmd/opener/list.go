@@ -14,7 +14,7 @@ import (
 // newListCmd `cube opener list` 命令。
 func newListCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "openers [query]",
+		Use:   "list [query]",
 		Short: "列出可用 Opener 列表(支持模糊搜索)",
 		Long: `显示可用 opener 列表：名称、执行命令及声明的 roles。
 
