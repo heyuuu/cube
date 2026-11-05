@@ -21,10 +21,14 @@ const (
 // loadScanRules 现读 settings.json 的 scanRule 节并转换为生效规则（直读不缓存，改完即生效）：
 // 展开 ~/ 为绝对路径，校验目录存在（不存在的规则降级跳过、打日志，不阻断其它规则）。
 // store.LoadSection 已把文件级/节级坏数据降级为零值。
+//
+// group 唯一是写侧约束（见 saveScanRule）；手工编辑产生的重复 group 按坏数据
+// 降级跳过后加载的条目——group 是展示身份，重复会让分组合并语义与项目名产生歧义。
 func loadScanRules(settingsFile string) []ScanRule {
 	specs := store.LoadSectionOrZero[[]ScanRule](settingsFile, scanRulesSection)
 
 	rules := make([]ScanRule, 0, len(specs))
+	seenGroups := make(map[string]bool, len(specs))
 	for _, r := range specs {
 		if !filepath.IsAbs(r.Path) {
 			slog.Warn("scan 规则路径配置错误，path 必须为绝对路径", "group", r.Group, "path", r.Path)
@@ -36,7 +40,12 @@ func loadScanRules(settingsFile string) []ScanRule {
 			slog.Warn("scan 规则路径不存在或非目录，跳过", "group", r.Group, "path", path, "err", err)
 			continue
 		}
+		if seenGroups[r.Group] {
+			slog.Warn("scan 规则 group 重复，跳过后加载的规则", "group", r.Group, "path", path)
+			continue
+		}
 		rules = append(rules, ScanRule{Group: r.Group, Path: path, MaxDepth: r.MaxDepth, Icon: r.Icon, Tags: r.Tags})
+		seenGroups[r.Group] = true
 	}
 	return rules
 }
@@ -93,6 +102,13 @@ func saveScanRule(settingsFile string, rule ScanRule) error {
 	rule.Tags = normalizeTags(rule.Tags)
 
 	specs := store.LoadSectionOrZero[[]ScanRule](settingsFile, scanRulesSection)
+	// group 唯一：group 是分组与项目名前缀的展示身份，重复会让分组合并语义与
+	// 项目名（group:相对路径）产生歧义，写侧拒绝（同 path 替换自身除外）
+	for _, cur := range specs {
+		if cur.Group == rule.Group && cur.Path != rule.Path {
+			return fmt.Errorf("scan 规则 group 已被其它规则占用: group=%s 已用于 %s", rule.Group, cur.Path)
+		}
+	}
 	specs = x.UpsertKeyed(specs, func(cur ScanRule) string { return cur.Path }, rule)
 	return store.SaveSection(settingsFile, scanRulesSection, specs)
 }

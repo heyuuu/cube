@@ -168,6 +168,48 @@ func TestReorderScanRules(t *testing.T) {
 	}
 }
 
+// TestSaveScanRule_GroupUnique group 是分组与项目名前缀的展示身份，写侧拒绝与其它规则重复。
+func TestSaveScanRule_GroupUnique(t *testing.T) {
+	s, ws := newWriteService(t)
+	root1, root2 := ws.Mkdir("r1"), ws.Mkdir("r2")
+
+	if err := s.SaveScanRule(ScanRule{Group: "g", Path: root1, MaxDepth: 3}); err != nil {
+		t.Fatalf("保存失败: %v", err)
+	}
+	// 其它 path 用同名 group：拒绝且不落文件
+	err := s.SaveScanRule(ScanRule{Group: "g", Path: root2, MaxDepth: 3})
+	if err == nil || !strings.Contains(err.Error(), "group 已被其它规则占用") {
+		t.Fatalf("重复 group 应报中文错误，实际: %v", err)
+	}
+	// 同 path 替换自身不受影响（改 maxDepth、保留 group）
+	if err := s.SaveScanRule(ScanRule{Group: "g", Path: root1, MaxDepth: 1}); err != nil {
+		t.Fatalf("同 path 替换不应视为占用: %v", err)
+	}
+	if rules := s.ScanRules(); len(rules) != 1 {
+		t.Fatalf("被拒规则不应落文件，实际: %v", rules)
+	}
+}
+
+// TestLoadScanRules_DuplicateGroupSkipped 手工编辑产生的重复 group 按坏数据降级：跳过后加载的规则。
+func TestLoadScanRules_DuplicateGroupSkipped(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	root1, root2 := ws.Mkdir("r1"), ws.Mkdir("r2")
+	ws.MakeProjectDir(path.Join("r1", "a"))
+	ws.MakeProjectDir(path.Join("r2", "b"))
+
+	// 直接落盘两条同 group 规则（绕开写侧校验，模拟手工编辑 settings.json）
+	s := newServiceWithRules(t, ws, []ScanRule{
+		{Group: "g", Path: root1, MaxDepth: 3},
+		{Group: "g", Path: root2, MaxDepth: 3},
+	}, nil)
+	if rules := s.ScanRules(); len(rules) != 1 || rules[0].Path != root1 {
+		t.Fatalf("重复 group 应只保留先加载的规则，实际: %v", rules)
+	}
+	if projs := s.Projects(); len(projs) != 1 || !strings.HasSuffix(projs[0].Path(), path.Join("r1", "a")) {
+		t.Fatalf("项目应只来自先加载的规则，实际: %v", projs)
+	}
+}
+
 // TestSaveCloneRule 新增与按 host+prefix 替换。
 func TestSaveCloneRule(t *testing.T) {
 	s, ws := newWriteService(t)
