@@ -1,7 +1,7 @@
 // ICO 容器解析：favicon.ico 的主流形态，标准库不支持，此处手解。
 // 只支持现代站点实际产出的子集：PNG 内嵌条目 + BI_RGB 未压缩 DIB（24/32bpp）。
 
-package iconkit
+package icons
 
 import (
 	"bytes"

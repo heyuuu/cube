@@ -6,7 +6,6 @@ import (
 
 	"cube/internal/testfixture"
 	"cube/pkg/gitapi"
-	"cube/pkg/iconkit"
 )
 
 func newService(t *testing.T) (*Service, *testfixture.Workspace) {
@@ -159,9 +158,6 @@ func TestFetchAccountPersist(t *testing.T) {
 		t.Fatalf("force 应重拉: lists=%d err=%v", fake.lists, err)
 	}
 }
-
-// iconkit 引用占位（裁剪后的用例中仍被间接使用，防止 import 漂移）。
-var _ = iconkit.ValidateIcon
 
 // TestReorderAccounts 按键重排 accounts 节（顺序即 forge 页展示序）；未知/重复键报错。
 func TestReorderAccounts(t *testing.T) {

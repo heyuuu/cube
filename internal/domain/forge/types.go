@@ -11,15 +11,15 @@ import (
 	"fmt"
 	"strings"
 
+	"cube/internal/domain/icons"
 	"cube/pkg/git"
-	"cube/pkg/iconkit"
 )
 
 // Forge 一条 forge 配置，host 是唯一键。
 type Forge struct {
-	Host string        `json:"host"`           // 域名（可带端口），如 github.com、gitea.example.com:3000
-	Kind string        `json:"kind"`           // API 方言，见 Kind* 常量
-	Icon *iconkit.Icon `json:"icon,omitempty"` // 可选图标（前端按此渲染）
+	Host string      `json:"host"`           // 域名（可带端口），如 github.com、gitea.example.com:3000
+	Kind string      `json:"kind"`           // API 方言，见 Kind* 常量
+	Icon *icons.Icon `json:"icon,omitempty"` // 可选图标（前端按此渲染）
 }
 
 // kind 枚举：决定 1041 account 能否拉取及 API 方言；generic = 无 API 仅展示。

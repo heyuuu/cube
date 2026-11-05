@@ -1,4 +1,4 @@
-package iconkit
+package icons
 
 import "testing"
 

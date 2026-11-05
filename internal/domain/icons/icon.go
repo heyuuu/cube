@@ -1,8 +1,15 @@
-// icon 声明：跨领域共享的「怎么渲染一个图标」语义（opener / scanRules 等数据共用）。
-
-package iconkit
+package icons
 
 import "fmt"
+
+// IconType icon 声明的渲染类型。
+type IconType string
+
+// icon 类型枚举：lucide=按图名渲染 lucide-react，image=base64 PNG 直渲染。
+const (
+	IconTypeImage  IconType = "image"
+	IconTypeLucide IconType = "lucide"
+)
 
 // Icon 图标声明：只判别「前端怎么渲染」，不管图片来源。
 //   - type=lucide：前端按 value 的图名渲染 lucide-react 图标；
@@ -12,15 +19,9 @@ import "fmt"
 // 指针 nil 表示未配置（可选字段）；未配置时的兜底策略（显示默认图 / 显示占位）
 // 归各领域自行决定，本包不预设默认值。
 type Icon struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
+	Type  IconType `json:"type"`
+	Value string   `json:"value"`
 }
-
-// icon 类型枚举。
-const (
-	IconTypeLucide = "lucide"
-	IconTypeImage  = "image"
-)
 
 // ValidateIcon 校验 icon 声明。nil 视为未配置（合法，可选语义）；
 // type 非法或 value 为空报中文错误。

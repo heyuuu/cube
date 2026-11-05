@@ -2,6 +2,10 @@
 // （exec 命令 / url 链接）交给系统执行，配置存 settings.json openers 节。
 package opener
 
+import (
+	"cube/internal/domain/icons"
+)
+
 // Opener 一种「打开方式」的抽象（1016 接口化）。
 // 目前唯一实现是 actionOpener（命令模板，见 exec.go）
 type Opener interface {
@@ -13,7 +17,7 @@ type Opener interface {
 	Roles() []Role
 
 	// Icon 图标声明，零值表示未配置（前端 fallback 默认图标）。
-	Icon() Icon
+	Icon() icons.Icon
 
 	// Summary 展示串（CLI 表格 / alfred 副标题 / Web DTO）：
 	// exec 显示命令模板，web 显示 target。

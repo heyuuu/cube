@@ -6,17 +6,17 @@ import (
 	"slices"
 	"strings"
 
-	"cube/pkg/iconkit"
+	"cube/internal/domain/icons"
 	"cube/pkg/x"
 )
 
 // ScanRule 扫描规则
 type ScanRule struct {
-	Group    string        `json:"group"`          // 扫描出的项目组名
-	Path     string        `json:"path"`           // 扫描的根目录
-	MaxDepth int           `json:"maxDepth"`       // 最大扫描深度（根下直接子项为 0，-1 不限深）
-	Icon     *iconkit.Icon `json:"icon,omitempty"` // 组图标（可选，语义见 pkg/iconkit）
-	Tags     []string      `json:"tags,omitempty"` // 命中该规则的项目统一追加的标签（如 个人/公司/开源，可选）
+	Group    string      `json:"group"`          // 扫描出的项目组名
+	Path     string      `json:"path"`           // 扫描的根目录
+	MaxDepth int         `json:"maxDepth"`       // 最大扫描深度（根下直接子项为 0，-1 不限深）
+	Icon     *icons.Icon `json:"icon,omitempty"` // 组图标（可选，语义见 internal/domain/icons）
+	Tags     []string    `json:"tags,omitempty"` // 命中该规则的项目统一追加的标签（如 个人/公司/开源，可选）
 }
 
 func scan(rules []ScanRule) ([]*Project, error) {

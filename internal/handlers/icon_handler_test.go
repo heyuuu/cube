@@ -87,7 +87,7 @@ func TestIconExtract(t *testing.T) {
 	}
 	decodeIconValue(t, out)
 
-	// .app 目录（icns 容器合法性由 iconkit 测试覆盖，走真实分发）
+	// .app 目录（icns 容器合法性由 icons 测试覆盖，走真实分发）
 	env.ws.Mkdir("Fake.app", "Contents", "Resources")
 	env.ws.WriteFile("Fake.app/Contents/Resources/Fake.icns", buildTestIcns(pngData))
 	out = postRaw(t, env.url("/api/icon/extract"), `{"source":`+quote(env.ws.Join("Fake.app"))+`}`)

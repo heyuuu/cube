@@ -8,7 +8,7 @@ import (
 
 	"cube/internal/app"
 	"cube/internal/domain/forge"
-	"cube/pkg/iconkit"
+	"cube/internal/domain/icons"
 	"cube/pkg/tui"
 )
 
@@ -40,11 +40,11 @@ func runForgeList(a *app.App) error {
 }
 
 // iconSummary CLI 侧 icon 概要：lucide 显图名，image 只显标记（base64 不进表格）。
-func iconSummary(icon *iconkit.Icon) string {
+func iconSummary(icon *icons.Icon) string {
 	if icon == nil {
 		return "-"
 	}
-	if icon.Type == iconkit.IconTypeImage {
+	if icon.Type == icons.IconTypeImage {
 		return "[image]"
 	}
 	return icon.Value

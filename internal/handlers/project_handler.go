@@ -10,6 +10,7 @@ import (
 
 	"github.com/heyuuu/x/xstd/xslices"
 
+	"cube/internal/domain/icons"
 	"cube/internal/domain/opener"
 	"cube/internal/domain/project"
 	"cube/internal/domain/project/cubefile"
@@ -17,7 +18,6 @@ import (
 	"cube/internal/domain/project/workspace"
 	"cube/internal/domain/usage"
 	"cube/internal/server"
-	"cube/pkg/iconkit"
 )
 
 // --- dto ---
@@ -170,18 +170,18 @@ func (h *ProjectHandler) cloneRules(_ struct{}) (ListResult[project.CloneRule], 
 // ScanRuleSaveInput scan-rule/save 接口入参（字段与 project.ScanRule 对齐，path 是唯一键）。
 type ScanRuleSaveInput struct {
 	Body struct {
-		Group    string   `json:"group" doc:"扫描出的项目组名"`
-		Path     string   `json:"path" doc:"扫描根目录（绝对路径或 ~/ 前缀，规则唯一键）"`
-		MaxDepth int      `json:"maxDepth" doc:"扫描最大深度"`
-		Icon     *IconDTO `json:"icon,omitempty" doc:"组图标（可选：lucide 图名或 base64 PNG）"`
-		Tags     []string `json:"tags,omitempty" doc:"命中该规则的项目统一追加的标签（如 个人/公司/开源，可选）"`
+		Group    string      `json:"group" doc:"扫描出的项目组名"`
+		Path     string      `json:"path" doc:"扫描根目录（绝对路径或 ~/ 前缀，规则唯一键）"`
+		MaxDepth int         `json:"maxDepth" doc:"扫描最大深度"`
+		Icon     *icons.Icon `json:"icon,omitempty" doc:"组图标（可选：lucide 图名或 base64 PNG）"`
+		Tags     []string    `json:"tags,omitempty" doc:"命中该规则的项目统一追加的标签（如 个人/公司/开源，可选）"`
 	}
 }
 
 func (h *ProjectHandler) scanRuleSave(input ScanRuleSaveInput) (map[string]any, error) {
 	rule := project.ScanRule{Group: input.Body.Group, Path: input.Body.Path, MaxDepth: input.Body.MaxDepth, Tags: input.Body.Tags}
 	if input.Body.Icon != nil {
-		rule.Icon = &iconkit.Icon{Type: input.Body.Icon.Type, Value: input.Body.Icon.Value}
+		rule.Icon = input.Body.Icon
 	}
 	if err := h.projectService.SaveScanRule(rule); err != nil {
 		return nil, err

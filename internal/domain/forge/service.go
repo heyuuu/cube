@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"cube/internal/config"
+	"cube/internal/domain/icons"
 	"cube/pkg/gitapi"
-	"cube/pkg/iconkit"
 	"cube/pkg/x"
 
 	"github.com/heyuuu/x/store"
@@ -55,7 +55,7 @@ func (s *Service) Forges() []Forge {
 			slog.Warn("forge 配置条目非法，跳过", "host", f.Host, "kind", f.Kind)
 			continue
 		}
-		if err := iconkit.ValidateIcon(f.Icon); err != nil {
+		if err := icons.ValidateIcon(f.Icon); err != nil {
 			slog.Warn("forge 配置 icon 非法，跳过该条目", "host", f.Host, "err", err)
 			continue
 		}
@@ -74,7 +74,7 @@ func (s *Service) SaveForge(f Forge) error {
 	if !ValidKind(f.Kind) {
 		return fmt.Errorf("forge kind 未知: %q（合法值：%s）", f.Kind, strings.Join(Kinds(), " / "))
 	}
-	if err := iconkit.ValidateIcon(f.Icon); err != nil {
+	if err := icons.ValidateIcon(f.Icon); err != nil {
 		return fmt.Errorf("forge icon 配置错误: %s", err)
 	}
 

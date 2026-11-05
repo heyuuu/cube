@@ -8,6 +8,7 @@ import (
 
 	"github.com/heyuuu/x/xstd/xslices"
 
+	"cube/internal/domain/icons"
 	"cube/internal/domain/opener"
 	"cube/internal/server"
 )
@@ -20,13 +21,7 @@ type OpenerDTO struct {
 	Title   string            `json:"title"`   // 展示文案（如「打开所在目录」），缺省由 name 生成
 	Summary string            `json:"summary"` // 动作串展示串（"role:动作串" 拼接）
 	Actions map[string]string `json:"actions"` // role → 动作串原文（`<kind>:<模板>`，编辑表单回显用）；键集合即声明的 roles
-	Icon    IconDTO           `json:"icon"`    // 恒有值（未配置时后端按主 role 填默认 lucide 图）
-}
-
-// IconDTO icon 声明的 API 形态（opener / scanRule 等共用，语义见 pkg/iconkit）。
-type IconDTO struct {
-	Type  string `json:"type"`  // lucide | image
-	Value string `json:"value"` // lucide 图名 或 base64 PNG
+	Icon    icons.Icon        `json:"icon"`    // 恒有值（未配置时后端按主 role 填默认 lucide 图）
 }
 
 func toOpenerDTO(entity opener.Opener) *OpenerDTO {
@@ -44,7 +39,7 @@ func toOpenerDTO(entity opener.Opener) *OpenerDTO {
 		Title:   entity.Title(),
 		Summary: entity.Summary(),
 		Actions: dtoActions,
-		Icon:    IconDTO{Type: entity.Icon().Type, Value: entity.Icon().Value},
+		Icon:    entity.Icon(),
 	}
 }
 
@@ -192,7 +187,7 @@ type OpenerSaveInput struct {
 		Name    string            `json:"name" doc:"opener 名称（唯一标识）"`
 		Title   string            `json:"title,omitempty" doc:"展示文案（如「打开所在目录」），缺省由 name 生成"`
 		Actions map[string]string `json:"actions" doc:"role → 动作串，exec: 命令 / url: 链接，$0/$1 占位路径槽位"`
-		Icon    *IconDTO          `json:"icon,omitempty" doc:"图标声明"`
+		Icon    *icons.Icon       `json:"icon,omitempty" doc:"图标声明"`
 	}
 }
 
@@ -207,7 +202,7 @@ func (h *OpenerHandler) openerSave(input OpenerSaveInput) (map[string]any, error
 		Actions: actions,
 	}
 	if input.Body.Icon != nil {
-		spec.Icon = &opener.Icon{Type: input.Body.Icon.Type, Value: input.Body.Icon.Value}
+		spec.Icon = input.Body.Icon
 	}
 	// 校验在 Service 写侧（领域构造函数），坏数据返回中文错误、不落文件
 	if err := h.service.SaveOpener(spec); err != nil {

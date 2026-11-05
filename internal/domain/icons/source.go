@@ -1,7 +1,7 @@
 // 从任意源（本地路径 / URL）提取图标：IconField「提取」入口的领域分发 + 图片字节解码。
-// 与 iconkit.go 的 .app/icns 提取同处一个包，输出口径一致（≤64px PNG）。
+// 与 appicon.go 的 .app/icns 提取同处一个包，输出口径一致（≤64px PNG）。
 
-package iconkit
+package icons
 
 import (
 	"bytes"
@@ -17,8 +17,14 @@ import (
 	"time"
 )
 
+// maxSize 提取结果的最长边（px）。图标展示场景 64px 足够，更大的只浪费存储。
+const maxSize = 64
+
 // maxFetchSize URL 拉取的字节上限：favicon/小图场景 4MB 远超所需，防误填大文件链接拖内存。
 const maxFetchSize = 4 << 20
+
+// pngMagic PNG 文件头。
+var pngMagic = []byte{0x89, 'P', 'N', 'G'}
 
 // ExtractFromSource 从路径或 URL 提取图标，返回缩放到 ≤64px 的 PNG 字节：
 //   - http(s):// URL → 拉取字节后按图片解码（favicon.ico / png / jpg / gif）；

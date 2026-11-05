@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"cube/internal/domain/icons"
 )
 
 // ActionKind 动作类型：动作串 `<kind>:<模板>` 的前缀（首个冒号前，前后空格可选）。
@@ -182,7 +184,7 @@ type actionOpener struct {
 	title    string              // 展示文案，构造时已解析默认值
 	actions  map[Role]actionSpec // role → 动作模板；声明了哪些 role 即键集合
 	baseURL  string              // 站内路由的基地址（如 http://127.0.0.1:6001），装配注入
-	icon     Icon                // 图标声明，零值未配置
+	icon     icons.Icon          // 图标声明，零值未配置
 	executor Executor            // 启动子进程的执行器（测试可注入 fake）
 }
 
@@ -260,9 +262,9 @@ func InitActionOpener(spec Spec, executor Executor, baseURL string) (Opener, err
 	}, nil
 }
 
-func (o *actionOpener) Name() string  { return o.name }
-func (o *actionOpener) Title() string { return o.title }
-func (o *actionOpener) Icon() Icon    { return o.icon }
+func (o *actionOpener) Name() string     { return o.name }
+func (o *actionOpener) Title() string    { return o.title }
+func (o *actionOpener) Icon() icons.Icon { return o.icon }
 
 // Roles 声明的 role 列表（按枚举固定序），= actions 的键集合。
 func (o *actionOpener) Roles() []Role {

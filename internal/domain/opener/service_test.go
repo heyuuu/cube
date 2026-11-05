@@ -3,6 +3,7 @@ package opener
 import (
 	"testing"
 
+	"cube/internal/domain/icons"
 	"cube/internal/testfixture"
 
 	"github.com/heyuuu/x/store"
@@ -103,7 +104,7 @@ func TestServiceDirectRead(t *testing.T) {
 func TestServiceIconEndToEnd(t *testing.T) {
 	// icon 随 Spec 存进 settings.json，读出后透传到 Opener 接口
 	s, _ := newServiceAt(t, []Spec{
-		{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}, Icon: &Icon{Type: IconTypeLucide, Value: "app-window"}},
+		{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}, Icon: &icons.Icon{Type: IconTypeLucide, Value: "app-window"}},
 		{Name: "plain", Actions: map[Role]string{"open-dir": `exec: plain`}},
 	})
 	o := s.FindByName("code")

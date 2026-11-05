@@ -1,17 +1,21 @@
 package opener
 
-import "testing"
+import (
+	"testing"
+
+	"cube/internal/domain/icons"
+)
 
 func TestInitIcon(t *testing.T) {
 	cases := []struct {
 		name    string
-		icon    *Icon
+		icon    *icons.Icon
 		wantErr bool
 	}{
-		{"lucide 合法", &Icon{Type: IconTypeLucide, Value: "folder-open"}, false},
-		{"image 合法", &Icon{Type: IconTypeImage, Value: "aGVsbG8="}, false},
-		{"未知 type 报错", &Icon{Type: "svg", Value: "x"}, true},
-		{"value 为空报错", &Icon{Type: IconTypeLucide, Value: ""}, true},
+		{"lucide 合法", &icons.Icon{Type: IconTypeLucide, Value: "folder-open"}, false},
+		{"image 合法", &icons.Icon{Type: IconTypeImage, Value: "aGVsbG8="}, false},
+		{"未知 type 报错", &icons.Icon{Type: "svg", Value: "x"}, true},
+		{"value 为空报错", &icons.Icon{Type: IconTypeLucide, Value: ""}, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -36,7 +40,7 @@ func TestSpecIconThroughExec(t *testing.T) {
 	t.Run("Spec 带 icon 透传到 Opener", func(t *testing.T) {
 		o, err := InitActionOpener(Spec{
 			Name: "code", Actions: map[Role]string{"open-dir": `exec: code`},
-			Icon: &Icon{Type: IconTypeLucide, Value: "app-window"},
+			Icon: &icons.Icon{Type: IconTypeLucide, Value: "app-window"},
 		}, nil, "")
 		if err != nil {
 			t.Fatalf("构造失败: %v", err)
@@ -59,7 +63,7 @@ func TestSpecIconThroughExec(t *testing.T) {
 	t.Run("坏 icon 构造报错（条目级降级由 Service 跳过）", func(t *testing.T) {
 		if _, err := InitActionOpener(Spec{
 			Name: "code", Actions: map[Role]string{"open-dir": `exec: code`},
-			Icon: &Icon{Type: "bad"},
+			Icon: &icons.Icon{Type: "bad"},
 		}, nil, ""); err == nil {
 			t.Fatal("坏 icon 应报错")
 		}

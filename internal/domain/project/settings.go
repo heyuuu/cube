@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"cube/pkg/iconkit"
+	"cube/internal/domain/icons"
 	"cube/pkg/x"
 
 	"github.com/heyuuu/x/store"
@@ -87,7 +87,7 @@ func saveScanRule(settingsFile string, rule ScanRule) error {
 	if info, err := os.Stat(rule.Path); err != nil || !info.IsDir() {
 		return fmt.Errorf("scan 规则路径不存在或非目录: %s", rule.Path)
 	}
-	if err := iconkit.ValidateIcon(rule.Icon); err != nil {
+	if err := icons.ValidateIcon(rule.Icon); err != nil {
 		return fmt.Errorf("scan 规则 %s", err)
 	}
 	rule.Tags = normalizeTags(rule.Tags)

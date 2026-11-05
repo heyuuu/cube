@@ -3,11 +3,11 @@ package handlers
 import (
 	"encoding/base64"
 
+	"cube/internal/domain/icons"
 	"cube/internal/server"
-	"cube/pkg/iconkit"
 )
 
-// IconHandler icon 声明的通用辅助出口（提取图标）。icon 语义属 pkg/iconkit
+// IconHandler icon 声明的通用辅助出口（提取图标）。icon 语义属 internal/domain/icons
 // 跨域共享（opener / scanRules / forge 的 IconField 共用此端点），不挂任何单一 domain。
 type IconHandler struct{}
 
@@ -35,7 +35,7 @@ type IconExtractResult struct {
 }
 
 func (h *IconHandler) iconExtract(input IconExtractInput) (IconExtractResult, error) {
-	pngData, err := iconkit.ExtractFromSource(input.Body.Source)
+	pngData, err := icons.ExtractFromSource(input.Body.Source)
 	if err != nil {
 		return IconExtractResult{}, err
 	}

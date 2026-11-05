@@ -17,9 +17,9 @@
 
 ```
 基础设施  internal/config / internal/logger / internal/version                 所有层共享
-独立工具  pkg(git / gitapi / fuzzy / easycache / pathkit / slicekit / iconkit / oskit / tui)  通用动作, 不含业务实体, 只依赖标准库/第三方（文件存储原语在外部包 github.com/heyuuu/x/store）
+独立工具  pkg(git / gitapi / fuzzy / easycache / pathkit / slicekit / oskit / tui)  通用动作, 不含业务实体, 只依赖标准库/第三方（文件存储原语在外部包 github.com/heyuuu/x/store）
 能力      internal/server                                        服务端框架, 不含业务实体
-领域      internal/domain: project (含 projcache / scan / clone / cubefile / workspace) / usage / workbench / forge / opener / template   业务 domain, 含实体和规则
+领域      internal/domain: project (含 projcache / scan / clone / cubefile / workspace) / usage / workbench / forge / opener / template / icons   业务 domain, 含实体和规则
 出口      internal/cmd / internal/handlers / web                 把领域包成 CLI/Web（handlers=业务 HTTP handler 层；web 包只剩前端构建产物 go:embed 容器 embed.go）
 装配      internal/app / cmd/cube/main                           接线（cmd/devtool 是脚手架工具的独立入口）
 ```

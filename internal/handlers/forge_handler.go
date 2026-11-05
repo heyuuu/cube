@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"cube/internal/domain/forge"
+	"cube/internal/domain/icons"
 	"cube/internal/domain/project"
 	"cube/internal/server"
-	"cube/pkg/iconkit"
 )
 
 // ForgeHandler forge 配置管理的 HTTP 出口（1040 forge / 1041 account / 1042 forge 页）。
@@ -42,16 +42,16 @@ func (h *ForgeHandler) forgeList(_ struct{}) (ListResult[forge.Forge], error) {
 // ForgeSaveInput forge/save 接口入参（host 归一化后是唯一键）。
 type ForgeSaveInput struct {
 	Body struct {
-		Host string   `json:"host" doc:"域名（可带端口），如 github.com"`
-		Kind string   `json:"kind" doc:"API 方言：github / gitea / gitee / generic"`
-		Icon *IconDTO `json:"icon,omitempty" doc:"平台图标（可选：lucide 图名或 base64 PNG）"`
+		Host string      `json:"host" doc:"域名（可带端口），如 github.com"`
+		Kind string      `json:"kind" doc:"API 方言：github / gitea / gitee / generic"`
+		Icon *icons.Icon `json:"icon,omitempty" doc:"平台图标（可选：lucide 图名或 base64 PNG）"`
 	}
 }
 
 func (h *ForgeHandler) forgeSave(input ForgeSaveInput) (map[string]any, error) {
 	f := forge.Forge{Host: input.Body.Host, Kind: input.Body.Kind}
 	if input.Body.Icon != nil {
-		f.Icon = &iconkit.Icon{Type: input.Body.Icon.Type, Value: input.Body.Icon.Value}
+		f.Icon = input.Body.Icon
 	}
 	if err := h.forgeService.SaveForge(f); err != nil {
 		return nil, err
