@@ -46,7 +46,7 @@ func ValidateAccount(a Account, forges []Forge) error {
 
 // loadAccounts 读全部 account（坏条目跳过不阻断）。
 func loadAccounts(file string) []Account {
-	specs := store.LoadSection[[]Account](file, accountsSection)
+	specs := store.LoadSectionOrZero[[]Account](file, accountsSection)
 
 	accounts := make([]Account, 0, len(specs))
 	for _, a := range specs {

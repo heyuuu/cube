@@ -48,7 +48,7 @@ func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
 // store.LoadSection 已把文件级/节级坏数据降级为空；这里处理条目级：坏条目跳过不阻断
 // （配置错误不应让 list 等命令不可用），与旧 config 时代行为一致。
 func (s *Service) openers() []Opener {
-	specs := store.LoadSection[[]Spec](s.settingsFile, settingsSection)
+	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
 
 	list := make([]Opener, 0, len(specs))
 	for _, spec := range specs {
@@ -102,14 +102,14 @@ func (s *Service) SaveOpener(spec Spec) error {
 		return err
 	}
 
-	specs := store.LoadSection[[]Spec](s.settingsFile, settingsSection)
+	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
 	specs = x.UpsertKeyed(specs, func(cur Spec) string { return cur.Name }, spec)
 	return store.SaveSection(s.settingsFile, settingsSection, specs)
 }
 
 // DeleteOpener 按名删除一条 opener；不存在时返回中文错误。
 func (s *Service) DeleteOpener(name string) error {
-	specs := store.LoadSection[[]Spec](s.settingsFile, settingsSection)
+	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
 	rest, removed := x.RemoveKeyed(specs, func(cur Spec) string { return cur.Name }, name)
 	if !removed {
 		return fmt.Errorf("未找到指定 opener: %s", name)
@@ -145,7 +145,7 @@ func (s *Service) DeleteOpener(name string) error {
 // 均按此序），前端拖拽排序落库走这里。未列名的条目（含坏条目，list 本就不可见）保持
 // 原相对顺序排在末尾，不丢数据；出现未知名或重复名返回中文错误。
 func (s *Service) ReorderOpeners(names []string) error {
-	specs := store.LoadSection[[]Spec](s.settingsFile, settingsSection)
+	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
 	ordered, err := x.ReorderKeyed(specs, func(cur Spec) string { return cur.Name }, names, "opener", func(k string) string { return k })
 	if err != nil {
 		return err
@@ -156,7 +156,7 @@ func (s *Service) ReorderOpeners(names []string) error {
 // loadIntents 现读 openerIntents 节为 map[Intent]IntentSpec。
 // 读侧校验（坏条目跳过 + slog.Warn）：未知 intent 键跳过。
 func (s *Service) loadIntents() map[Intent]IntentSpec {
-	raw := store.LoadSection[map[string]IntentSpec](s.settingsFile, intentsSection)
+	raw := store.LoadSectionOrZero[map[string]IntentSpec](s.settingsFile, intentsSection)
 
 	out := make(map[Intent]IntentSpec, len(raw))
 	for key, spec := range raw {

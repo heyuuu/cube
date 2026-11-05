@@ -8,12 +8,13 @@ package usage
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/heyuuu/x/store"
+	"github.com/heyuuu/x/jsonl"
 
 	"cube/internal/config"
 )
@@ -46,7 +47,7 @@ func (s *Service) RecordOpen(project string, opener string, dir string) error {
 		dir = ""
 	}
 	rec := Record{Time: time.Now(), Project: project, Opener: opener, Dir: dir}
-	if err := store.AppendJsonl(s.usageFilePath, rec); err != nil {
+	if err := jsonl.Append(s.usageFilePath, rec); err != nil {
 		return fmt.Errorf("写入 usage 记录失败: %w", err)
 	}
 	return nil
@@ -114,14 +115,18 @@ func (s *Service) RecentPaths(limit int) []PathUsage {
 	return paths
 }
 
-// load 全量读取记录。文件缺失视为空（新环境/首次启动），坏行由 store 层跳过。
+// load 全量读取记录。文件缺失视为空（新环境/首次启动，不记日志）；坏行产出 ErrParse
+// 错误且不中断迭代，这里记日志后跳过。
 func (s *Service) load() []Record {
-	recs, err := store.LoadJsonl[Record](s.usageFilePath)
-	if err != nil {
-		if !errors.Is(err, store.ErrFileMissing) {
-			slog.Warn("读取 usage 记录失败", "path", s.usageFilePath, "err", err)
+	var recs []Record
+	for rec, err := range jsonl.Each[Record](s.usageFilePath) {
+		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				slog.Warn("读取 usage 记录失败", "path", s.usageFilePath, "err", err)
+			}
+			continue
 		}
-		return nil
+		recs = append(recs, rec)
 	}
 	return recs
 }
@@ -162,7 +167,12 @@ func (s *Service) compact() (int, error) {
 		return 0, nil
 	}
 
-	if err := store.WriteJsonl(s.usageFilePath, kept); err != nil {
+	// jsonl.Write 按参数逐行序列化，kept 是切片须展开成逐条传参（整切片传参会写成一行 JSON array）
+	vals := make([]any, len(kept))
+	for i, rec := range kept {
+		vals[i] = rec
+	}
+	if err := jsonl.Write(s.usageFilePath, vals...); err != nil {
 		return 0, fmt.Errorf("重写 usage 记录失败: %w", err)
 	}
 	return len(recs) - len(kept), nil

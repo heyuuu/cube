@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/heyuuu/x/store"
+	"github.com/heyuuu/x/jsonl"
 
 	"cube/internal/testfixture"
 )
@@ -90,7 +90,7 @@ func TestCompact(t *testing.T) {
 	if removed != 2 {
 		t.Fatalf("应删除 2 条（old 组合旧记录 + recent 组合旧记录），实际 %d", removed)
 	}
-	recs, _ := store.LoadJsonl[Record](s.usageFilePath)
+	recs := readRecords(t, s.usageFilePath)
 	if len(recs) != 4 {
 		t.Fatalf("compaction 后应剩 4 条，实际 %v", recs)
 	}
@@ -116,9 +116,21 @@ func TestCompact_NothingToDo(t *testing.T) {
 
 func writeRecord(t *testing.T, path string, rec Record) {
 	t.Helper()
-	if err := store.AppendJsonl(path, rec); err != nil {
+	if err := jsonl.Append(path, rec); err != nil {
 		t.Fatalf("写入测试记录失败: %v", err)
 	}
+}
+
+func readRecords(t *testing.T, path string) []Record {
+	t.Helper()
+	var recs []Record
+	for rec, err := range jsonl.Each[Record](path) {
+		if err != nil {
+			t.Fatalf("读取测试记录失败: %v", err)
+		}
+		recs = append(recs, rec)
+	}
+	return recs
 }
 
 // dir 字段：主项目根打开省略；worktree/workspace 目标记绝对路径；compaction 组合键含 dir
@@ -146,7 +158,7 @@ func TestRecordOpen_Dir(t *testing.T) {
 	if removed, err := s.compact(); err != nil || removed != 2 {
 		t.Fatalf("compact 应删除 2 条超期旧记录，实际 removed=%d err=%v", removed, err)
 	}
-	recs, _ := store.LoadJsonl[Record](s.usageFilePath)
+	recs := readRecords(t, s.usageFilePath)
 	if len(recs) != 5 {
 		t.Fatalf("compaction 后应剩 5 条（4 条新记录 + 超期组合最新 1 条），实际 %v", recs)
 	}
@@ -169,10 +181,7 @@ func TestRecordOpen_DirEqualsProjectNormalizedToEmpty(t *testing.T) {
 	}
 	s.RecordOpen("/p/proj", "code", "/p/proj/.worktrees/wt")
 
-	recs, err := store.LoadJsonl[Record](s.usageFilePath)
-	if err != nil {
-		t.Fatalf("读取记录失败: %v", err)
-	}
+	recs := readRecords(t, s.usageFilePath)
 	if len(recs) != 2 || recs[0].Dir != "" || recs[1].Dir != "/p/proj/.worktrees/wt" {
 		t.Fatalf("dir 归一异常: %+v", recs)
 	}

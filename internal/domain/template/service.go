@@ -47,7 +47,7 @@ func (s *Service) Create(sourceRef string, tplName string, targetPath string, cl
 
 // TplSources 读全部模板源（直读不缓存）。坏条目（name/repoUrl 非法）跳过不阻断。
 func (s *Service) TplSources() []TplSource {
-	specs := store.LoadSection[[]TplSource](s.settingsFile, tplSourcesSection)
+	specs := store.LoadSectionOrZero[[]TplSource](s.settingsFile, tplSourcesSection)
 
 	sources := make([]TplSource, 0, len(specs))
 	for _, src := range specs {

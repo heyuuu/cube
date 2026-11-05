@@ -46,7 +46,7 @@ func NewService(cfg *config.Config) *Service {
 
 // Forges 读全部 forge（直读不缓存）。坏条目（host 空 / kind 未知 / icon 非法）跳过不阻断。
 func (s *Service) Forges() []Forge {
-	specs := store.LoadSection[[]Forge](s.settingsFile, forgesSection)
+	specs := store.LoadSectionOrZero[[]Forge](s.settingsFile, forgesSection)
 
 	forges := make([]Forge, 0, len(specs))
 	for _, f := range specs {

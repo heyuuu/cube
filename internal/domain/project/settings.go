@@ -22,7 +22,7 @@ const (
 // 展开 ~/ 为绝对路径，校验目录存在（不存在的规则降级跳过、打日志，不阻断其它规则）。
 // store.LoadSection 已把文件级/节级坏数据降级为零值。
 func loadScanRules(settingsFile string) []ScanRule {
-	specs := store.LoadSection[[]ScanRule](settingsFile, scanRulesSection)
+	specs := store.LoadSectionOrZero[[]ScanRule](settingsFile, scanRulesSection)
 
 	rules := make([]ScanRule, 0, len(specs))
 	for _, r := range specs {
@@ -44,7 +44,7 @@ func loadScanRules(settingsFile string) []ScanRule {
 // loadCloneRules 现读 settings.json 的 cloneRule 节并转换为生效规则（直读不缓存，改完即生效）：
 // 展开 localPath 的 ~/ 为绝对路径（不校验存在——clone 时会自动创建）；相对路径是配置错误，跳过。
 func loadCloneRules(settingsFile string) []CloneRule {
-	specs := store.LoadSection[[]CloneRule](settingsFile, cloneRulesSection)
+	specs := store.LoadSectionOrZero[[]CloneRule](settingsFile, cloneRulesSection)
 
 	var rules []CloneRule
 	for _, r := range specs {
@@ -92,14 +92,14 @@ func saveScanRule(settingsFile string, rule ScanRule) error {
 	}
 	rule.Tags = normalizeTags(rule.Tags)
 
-	specs := store.LoadSection[[]ScanRule](settingsFile, scanRulesSection)
+	specs := store.LoadSectionOrZero[[]ScanRule](settingsFile, scanRulesSection)
 	specs = x.UpsertKeyed(specs, func(cur ScanRule) string { return cur.Path }, rule)
 	return store.SaveSection(settingsFile, scanRulesSection, specs)
 }
 
 // deleteScanRule 按 path 删除一条 scan 规则；不存在时返回中文错误。
 func deleteScanRule(settingsFile, path string) error {
-	specs := store.LoadSection[[]ScanRule](settingsFile, scanRulesSection)
+	specs := store.LoadSectionOrZero[[]ScanRule](settingsFile, scanRulesSection)
 	rest, removed := x.RemoveKeyed(specs, func(cur ScanRule) string { return cur.Path }, path)
 	if !removed {
 		return fmt.Errorf("未找到指定 scan 规则: %s", path)
@@ -110,7 +110,7 @@ func deleteScanRule(settingsFile, path string) error {
 // reorderScanRules 按 paths 顺序重排 scanRule 节（顺序即项目列表展示序）。
 // 未列出的条目保持原相对顺序排在末尾，不丢数据；未知或重复路径返回中文错误。
 func reorderScanRules(settingsFile string, paths []string) error {
-	specs := store.LoadSection[[]ScanRule](settingsFile, scanRulesSection)
+	specs := store.LoadSectionOrZero[[]ScanRule](settingsFile, scanRulesSection)
 	ordered, err := x.ReorderKeyed(specs, func(cur ScanRule) string { return cur.Path }, paths, "scan 规则", func(k string) string { return k })
 	if err != nil {
 		return err
@@ -130,14 +130,14 @@ func saveCloneRule(settingsFile string, rule CloneRule) error {
 		return fmt.Errorf("clone 规则 localPath 不合法（须绝对路径）: %s", rule.LocalPath)
 	}
 
-	specs := store.LoadSection[[]CloneRule](settingsFile, cloneRulesSection)
+	specs := store.LoadSectionOrZero[[]CloneRule](settingsFile, cloneRulesSection)
 	specs = x.UpsertKeyed(specs, cloneRuleKey, rule)
 	return store.SaveSection(settingsFile, cloneRulesSection, specs)
 }
 
 // deleteCloneRule 按 host+prefix 删除一条 clone 规则；不存在时返回中文错误。
 func deleteCloneRule(settingsFile string, key CloneRuleKey) error {
-	specs := store.LoadSection[[]CloneRule](settingsFile, cloneRulesSection)
+	specs := store.LoadSectionOrZero[[]CloneRule](settingsFile, cloneRulesSection)
 	rest, removed := x.RemoveKeyed(specs, cloneRuleKey, key)
 	if !removed {
 		return fmt.Errorf("未找到指定 clone 规则: %s%s", key.RepoHost, key.RepoPrefix)
@@ -148,7 +148,7 @@ func deleteCloneRule(settingsFile string, key CloneRuleKey) error {
 // reorderCloneRules 按键顺序重排 cloneRule 节（顺序即展示序；匹配语义按 prefix
 // 最长优先，顺序不影响路由结果）。语义约束同 reorderScanRules。
 func reorderCloneRules(settingsFile string, keys []CloneRuleKey) error {
-	specs := store.LoadSection[[]CloneRule](settingsFile, cloneRulesSection)
+	specs := store.LoadSectionOrZero[[]CloneRule](settingsFile, cloneRulesSection)
 	ordered, err := x.ReorderKeyed(specs, cloneRuleKey, keys, "clone 规则", formatCloneRuleKey)
 	if err != nil {
 		return err

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -27,7 +26,7 @@ func Load(path string) (*Config, error) {
 	}
 
 	cfg, err := store.LoadJSON[Config](path)
-	if errors.Is(err, store.ErrFileMissing) {
+	if store.IsStoreMissing(err) {
 		cfg = Config{} // 文件不存在 → 降级为默认值，不报错
 	} else if err != nil {
 		return nil, err // 读失败/解析失败（store 已包装中文错误）
