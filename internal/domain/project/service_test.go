@@ -12,7 +12,7 @@ import (
 // 以 scanUpdatedAt 是否保持零值（未被 refresh 触碰）作为「未刷新」的判据。
 func TestStartRefreshTicker_FreshCacheSkippedStartupRefresh(t *testing.T) {
 	s := newServiceAt(t, testfixture.NewWorkspace(t).Dir, "g1", 1)
-	if err := s.gitCache.Save(); err != nil { // 预写一份「刚落盘」的新鲜缓存
+	if err := s.projCache.Save(); err != nil { // 预写一份「刚落盘」的新鲜缓存
 		t.Fatalf("预写缓存失败: %v", err)
 	}
 	s.StartRefreshTicker()

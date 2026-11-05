@@ -24,23 +24,23 @@ type Service struct {
 	settingsFile string // settings.json 路径，scan/clone 规则每次现读（直读不缓存，改完即生效）
 	// scan
 	scanCache *easycache.Item[[]*Project] // 项目扫描的缓存（新鲜度时间戳由缓存自身维护，见 UpdatedAt）
-	// git info cache
-	gitCache *projcache.Cache // git 信息缓存（项目 branch/dirty/repoURL 等）
+	// 项目状态快照（projcache：git/worktree/workspace，落盘 cache/git.json）
+	projCache *projcache.Cache
 	// 定时刷新（仅常驻 server 启用，CLI 不启用）
 	stopCh chan struct{} // nil = 未启用；非 nil = 定时器在跑
 }
 
 // NewService 构造 Service：加载 git 缓存（失败降级空缓存）并挂载项目扫描缓存。
 func NewService(cfg *config.Config) *Service {
-	// 加载 git 信息缓存（降级优先：失败返回空缓存，不报错）
-	gitCache, err := projcache.Load(cfg.CacheDir())
+	// 加载项目状态快照（降级优先：失败返回空缓存，不报错）
+	projCache, err := projcache.Load(cfg.CacheDir())
 	if err != nil {
 		log.Printf("加载 git 缓存失败: %v", err)
 	}
 
 	s := &Service{
 		settingsFile: cfg.SettingsFile(),
-		gitCache:     gitCache,
+		projCache:    projCache,
 	}
 	// 扫描时现读规则（规则直读 settings.json，外部修改后 Reload 即可反映）
 	s.scanCache = easycache.NewItem(func() []*Project {
@@ -276,41 +276,41 @@ func (s *Service) MatchCloneRule(repoURL string) (rule CloneRule, localPath stri
 // GitInfo 读取项目的 git 信息缓存条目；未命中返回 (nil, false)。
 // 不阻塞、不触发采集 —— 调用方读取的是当前缓存快照（可能 stale）。
 func (s *Service) GitInfo(path string) (*projcache.Entry, bool) {
-	if s.gitCache == nil {
+	if s.projCache == nil {
 		return nil, false
 	}
-	return s.gitCache.Get(path)
+	return s.projCache.Get(path)
 }
 
 // RefreshGitInfo 定向刷新单个项目的 git 快照并落盘（workbench 写操作后即时可见，
 // 提案 1031）。经 app 装配点以方法值注入 workbench，避免 workbench 反向依赖 project。
 func (s *Service) RefreshGitInfo(path string) error {
-	if s.gitCache == nil {
+	if s.projCache == nil {
 		return nil
 	}
-	return s.gitCache.RefreshOne(path)
+	return s.projCache.RefreshOne(path)
 }
 
 // ScanUpdatedAt 返回项目列表最近一次扫描完成时间；从未扫描过返回零值。
-// 委托缓存的计算时间戳——数据与新鲜度由 scanCache 单点维护（对称：GitUpdatedAt 委托 gitCache）。
+// 委托缓存的计算时间戳——数据与新鲜度由 scanCache 单点维护（对称：GitUpdatedAt 委托 projCache）。
 func (s *Service) ScanUpdatedAt() time.Time { return s.scanCache.UpdatedAt() }
 
 // GitUpdatedAt 返回 git 缓存最近一次落盘时间；无缓存返回零值。
 // 区别于单项目的 CollectedAt：这是整个 cache 文件的刷新时间。
 func (s *Service) GitUpdatedAt() time.Time {
-	if s.gitCache == nil {
+	if s.projCache == nil {
 		return time.Time{}
 	}
-	return s.gitCache.UpdatedAt()
+	return s.projCache.UpdatedAt()
 }
 
-// maxExpireTime 缓存可容忍的最大过期时间：任一时间戳（scanCache / gitCache 的
+// maxExpireTime 缓存可容忍的最大过期时间：任一时间戳（scanCache / projCache 的
 // UpdatedAt）距今超过它就触发刷新。定性约束「数据最多旧 5 分钟」，取代固定周期。
 const maxExpireTime = 5 * time.Minute
 
 // StartRefreshTicker 启动后台刷新 goroutine（仅常驻 server 调用）。重复调用安全：已在跑则直接返回。
 //
-// 刷新节奏由数据新旧决定：每轮取两类时间戳（scanCache / gitCache 的 UpdatedAt）
+// 刷新节奏由数据新旧决定：每轮取两类时间戳（scanCache / projCache 的 UpdatedAt）
 // 中更过期者计算下次时机，保证距今不超过 maxExpireTime——
 //   - 冷启动（从未扫描/采集）：时间戳零值，立即刷新一次，避免空窗；
 //   - 热重载（两时间戳均新鲜，如 air 重启进程）：自然算出整周期等待，不重复全量重采；
@@ -321,7 +321,7 @@ const maxExpireTime = 5 * time.Minute
 //
 // CLI 不调用此方法（CLI 短命，只读启动时 Load 的快照）。
 func (s *Service) StartRefreshTicker() {
-	if s.gitCache == nil || s.stopCh != nil {
+	if s.projCache == nil || s.stopCh != nil {
 		return // 无缓存或已在跑
 	}
 
@@ -338,7 +338,7 @@ func (s *Service) StartRefreshTicker() {
 		failed := false // 上轮刷新是否失败（失败退避整周期）
 		for {
 			now := time.Now()
-			staleness := max(now.Sub(s.scanCache.UpdatedAt()), now.Sub(s.gitCache.UpdatedAt()))
+			staleness := max(now.Sub(s.scanCache.UpdatedAt()), now.Sub(s.projCache.UpdatedAt()))
 			delay := max(maxExpireTime-staleness, 0)
 			if failed {
 				delay = maxExpireTime
@@ -393,11 +393,11 @@ func (s *Service) Refresh() (total int, collected int, err error) {
 	projects := s.scanCache.Reload()
 
 	paths := xslices.Map(projects, (*Project).Path)
-	if s.gitCache == nil {
+	if s.projCache == nil {
 		return len(paths), 0, errors.New("git 缓存未初始化")
 	}
-	if err := s.gitCache.Refresh(paths); err != nil {
+	if err := s.projCache.Refresh(paths); err != nil {
 		return len(paths), 0, err
 	}
-	return len(paths), s.gitCache.Size(), nil
+	return len(paths), s.projCache.Size(), nil
 }
