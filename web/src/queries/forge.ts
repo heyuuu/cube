@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiGet, apiPost } from '@/api/client';
+import type { ForgeAccountItem, ForgeItem } from '@/api/client';
 
 const FORGE_KEYS = ['forge'] as const;
 
@@ -10,29 +11,30 @@ export function useForges() {
   return useQuery({ queryKey: [...FORGE_KEYS], queryFn: () => apiGet('/api/forge/list') });
 }
 
+// 写后全量重拉：['forge'] 前缀覆盖 list / accounts / overview（删 forge 级联删 account）；
+// 返回 promise 让 mutation 在重拉完成后才 settle
 export function useForgeSave() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Parameters<typeof apiPost<'/api/forge/save'>>[1]) => apiPost('/api/forge/save', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
+    mutationFn: (input: ForgeItem) => apiPost('/api/forge/save', input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
   });
 }
 
 export function useForgeDelete() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { host: string }) => apiPost('/api/forge/delete', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
+    mutationFn: (input: ForgeItem) => apiPost('/api/forge/delete', input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
   });
 }
 
-// 拖拽排序：提交按目标顺序排列的全量名单（乐观更新在调用方，失败时 invalidate 回滚）
-export function useForgeReorder() {
+// 整节覆盖（拖拽排序落库）：提交清单即落盘结果；失败也重拉，回落服务端顺序
+export function useForgeSaveAll() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Parameters<typeof apiPost<'/api/forge/reorder'>>[1]) => apiPost('/api/forge/reorder', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
-    onError: () => void qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
+    mutationFn: (items: ForgeItem[]) => apiPost('/api/forge/save-all', { items }),
+    onSettled: () => qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
   });
 }
 
@@ -45,28 +47,26 @@ export function useForgeAccounts() {
 export function useForgeAccountSave() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Parameters<typeof apiPost<'/api/forge/account/save'>>[1]) =>
-      apiPost('/api/forge/account/save', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
+    mutationFn: (input: ForgeAccountItem) => apiPost('/api/forge/account/save', input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
   });
 }
 
+// 提交 list 回显行即可（token 为掩码值，按唯一键定位，不参与匹配）
 export function useForgeAccountDelete() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { forgeHost: string; username: string }) => apiPost('/api/forge/account/delete', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
+    mutationFn: (input: ForgeAccountItem) => apiPost('/api/forge/account/delete', input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
   });
 }
 
-// 拖拽排序：提交按目标顺序排列的全量键名单（host/username）
-export function useForgeAccountReorder() {
+// 整节覆盖（拖拽排序落库）：list 回显的掩码 token 原样提交，后端按唯一键沿用旧值
+export function useForgeAccountSaveAll() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Parameters<typeof apiPost<'/api/forge/account/reorder'>>[1]) =>
-      apiPost('/api/forge/account/reorder', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
-    onError: () => void qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
+    mutationFn: (items: ForgeAccountItem[]) => apiPost('/api/forge/account/save-all', { items }),
+    onSettled: () => qc.invalidateQueries({ queryKey: [...FORGE_KEYS] }),
   });
 }
 

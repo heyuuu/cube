@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"slices"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -93,7 +92,7 @@ func TestProjectCloneRules(t *testing.T) {
 	}
 }
 
-// TestScanRuleWrite scan-rule 的 save/delete/reorder 出口契约（含坏数据中文错误）。
+// TestScanRuleWrite scan-rule 的 save/delete/save-all 出口契约（含坏数据中文错误）。
 func TestScanRuleWrite(t *testing.T) {
 	env := newTestEnv(t)
 	root := env.ws.Mkdir("g3")
@@ -131,24 +130,32 @@ func TestScanRuleWrite(t *testing.T) {
 		}
 	}
 
-	// reorder：把 g3 提到最前
-	paths := make([]string, 0, len(got.List))
+	// save-all：list 行原样回交，g3 提到最前
+	items := []project.ScanRule{}
 	for _, r := range got.List {
-		paths = append(paths, r.Path)
+		if r.Group == "g3" {
+			items = append([]project.ScanRule{r}, items...)
+		} else {
+			items = append(items, r)
+		}
 	}
-	sort.Strings(paths)
-	ordered := append([]string{root}, paths[0:len(paths)-1]...)
-	body, _ := json.Marshal(map[string]any{"paths": ordered})
-	if r := postJSON(t, env.url("/api/project/scan-rule/reorder"), string(body)); !r.Ok {
-		t.Fatalf("reorder 应成功, message=%q", r.Message)
+	body, _ := json.Marshal(map[string]any{"items": items})
+	if r := postJSON(t, env.url("/api/project/scan-rule/save-all"), string(body)); !r.Ok {
+		t.Fatalf("save-all 应成功, message=%q", r.Message)
 	}
 	decodeData(t, getJSON(t, env.url("/api/project/scan-rules")), &got)
-	if got.List[0].Group != "g3" {
-		t.Fatalf("reorder 后 g3 应在最前: %+v", got.List)
+	if len(got.List) != 3 || got.List[0].Group != "g3" {
+		t.Fatalf("save-all 后 g3 应在最前: %+v", got.List)
+	}
+	// save-all group 重复：中文错误
+	dupBody, _ := json.Marshal(map[string]any{"items": []project.ScanRule{items[0], {Group: "g3", Path: items[1].Path, MaxDepth: 1}}})
+	if r := postJSON(t, env.url("/api/project/scan-rule/save-all"), string(dupBody)); r.Ok || !strings.Contains(r.Message, "group") {
+		t.Fatalf("group 重复应报中文错误, message=%q", r.Message)
 	}
 
-	// delete
-	if r := postJSON(t, env.url("/api/project/scan-rule/delete"), fmt.Sprintf(`{"path":%q}`, root)); !r.Ok {
+	// delete：提交完整单项（按 path 定位）
+	delBody, _ := json.Marshal(got.List[0])
+	if r := postJSON(t, env.url("/api/project/scan-rule/delete"), string(delBody)); !r.Ok {
 		t.Fatalf("delete 应成功, message=%q", r.Message)
 	}
 	decodeData(t, getJSON(t, env.url("/api/project/scan-rules")), &got)
@@ -156,13 +163,13 @@ func TestScanRuleWrite(t *testing.T) {
 		t.Fatalf("删除后应剩 2 条, got %d", len(got.List))
 	}
 	// delete 不存在：中文错误
-	r2 := postJSON(t, env.url("/api/project/scan-rule/delete"), `{"path":"/no/such"}`)
+	r2 := postJSON(t, env.url("/api/project/scan-rule/delete"), `{"group":"x","path":"/no/such","maxDepth":1}`)
 	if r2.Ok || !strings.Contains(r2.Message, "未找到") {
 		t.Fatalf("删除不存在应报中文错误, message=%q", r2.Message)
 	}
 }
 
-// TestCloneRuleWrite clone-rule 的 save/delete/reorder 出口契约。
+// TestCloneRuleWrite clone-rule 的 save/delete/save-all 出口契约。
 func TestCloneRuleWrite(t *testing.T) {
 	env := newTestEnv(t)
 
@@ -184,17 +191,18 @@ func TestCloneRuleWrite(t *testing.T) {
 		t.Fatalf("应返回 2 条规则, got %d: %+v", len(got.List), got.List)
 	}
 
-	// reorder：gitee 提前
-	if r := postJSON(t, env.url("/api/project/clone-rule/reorder"), `{"rules":[{"repoHost":"gitee.com","repoPrefix":"/heyuuu"},{"repoHost":"github.com","repoPrefix":""}]}`); !r.Ok {
-		t.Fatalf("reorder 应成功, message=%q", r.Message)
+	// save-all：list 行原样回交，gitee 提前
+	body, _ := json.Marshal(map[string]any{"items": []project.CloneRule{got.List[1], got.List[0]}})
+	if r := postJSON(t, env.url("/api/project/clone-rule/save-all"), string(body)); !r.Ok {
+		t.Fatalf("save-all 应成功, message=%q", r.Message)
 	}
 	decodeData(t, getJSON(t, env.url("/api/project/clone-rules")), &got)
-	if got.List[0].RepoHost != "gitee.com" {
-		t.Fatalf("reorder 后 gitee 应在最前: %+v", got.List)
+	if len(got.List) != 2 || got.List[0].RepoHost != "gitee.com" {
+		t.Fatalf("save-all 后 gitee 应在最前: %+v", got.List)
 	}
 
-	// delete
-	if r := postJSON(t, env.url("/api/project/clone-rule/delete"), `{"repoHost":"gitee.com","repoPrefix":"/heyuuu"}`); !r.Ok {
+	// delete：提交完整单项（按 host+prefix 定位）
+	if r := postJSON(t, env.url("/api/project/clone-rule/delete"), fmt.Sprintf(`{"repoHost":"gitee.com","repoPrefix":"/heyuuu","localPath":%q}`, env.ws.Dir)); !r.Ok {
 		t.Fatalf("delete 应成功, message=%q", r.Message)
 	}
 	decodeData(t, getJSON(t, env.url("/api/project/clone-rules")), &got)
@@ -202,7 +210,7 @@ func TestCloneRuleWrite(t *testing.T) {
 		t.Fatalf("删除后应剩 1 条, got %d", len(got.List))
 	}
 	// delete 不存在
-	r2 := postJSON(t, env.url("/api/project/clone-rule/delete"), `{"repoHost":"nope.com","repoPrefix":""}`)
+	r2 := postJSON(t, env.url("/api/project/clone-rule/delete"), `{"repoHost":"nope.com","repoPrefix":"","localPath":"/x"}`)
 	if r2.Ok || !strings.Contains(r2.Message, "未找到") {
 		t.Fatalf("删除不存在应报中文错误, message=%q", r2.Message)
 	}

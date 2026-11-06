@@ -30,7 +30,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 按 forgeHost+username 删除 account */
+    /** 删除 account（提交完整单项，按 forgeHost+username 定位） */
     post: operations['forge.accountDelete'];
     delete?: never;
     options?: never;
@@ -72,23 +72,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/forge/account/reorder': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** 按键（host/username）重排 account 顺序 */
-    post: operations['forge.accountReorder'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/api/forge/account/save': {
     parameters: {
       query?: never;
@@ -106,6 +89,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/forge/account/save-all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 整节覆盖 account（提交即落盘，含顺序；掩码 token 沿用旧值） */
+    post: operations['forge.accountSaveAll'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/forge/delete': {
     parameters: {
       query?: never;
@@ -115,7 +115,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 按 host 删除 forge */
+    /** 删除 forge（提交完整单项，按 host 定位，级联删其 account） */
     post: operations['forge.delete'];
     delete?: never;
     options?: never;
@@ -157,23 +157,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/forge/reorder': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** 按 host 重排 forge 顺序 */
-    post: operations['forge.reorder'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/api/forge/save': {
     parameters: {
       query?: never;
@@ -185,6 +168,23 @@ export interface paths {
     put?: never;
     /** 新增或按 host 替换 forge */
     post: operations['forge.save'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/forge/save-all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 整节覆盖 forge（提交即落盘，含顺序；被移除 forge 的 account 级联删除） */
+    post: operations['forge.saveAll'];
     delete?: never;
     options?: never;
     head?: never;
@@ -251,7 +251,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 按名删除 opener */
+    /** 删除 opener（提交完整单项，按 name 定位） */
     post: operations['opener.delete'];
     delete?: never;
     options?: never;
@@ -361,23 +361,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/opener/reorder': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** 按名重排 opener 顺序 */
-    post: operations['opener.reorder'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/api/opener/save': {
     parameters: {
       query?: never;
@@ -395,6 +378,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/opener/save-all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 整节覆盖 opener（提交即落盘，含顺序） */
+    post: operations['opener.saveAll'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/project/clone-rule/delete': {
     parameters: {
       query?: never;
@@ -404,25 +404,8 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 按 host+prefix 删除 clone 规则 */
+    /** 删除 clone 规则（提交完整单项，按 host+prefix 定位） */
     post: operations['project.cloneRuleDelete'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/project/clone-rule/reorder': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** 按键重排 clone 规则顺序 */
-    post: operations['project.cloneRuleReorder'];
     delete?: never;
     options?: never;
     head?: never;
@@ -440,6 +423,23 @@ export interface paths {
     put?: never;
     /** 新增或按 host+prefix 替换 clone 规则 */
     post: operations['project.cloneRuleSave'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/project/clone-rule/save-all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 整节覆盖 clone 规则（提交即落盘，含顺序） */
+    post: operations['project.cloneRuleSaveAll'];
     delete?: never;
     options?: never;
     head?: never;
@@ -506,25 +506,8 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 按 path 删除扫描规则 */
+    /** 删除扫描规则（提交完整单项，按 path 定位） */
     post: operations['project.scanRuleDelete'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/project/scan-rule/reorder': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** 按 path 重排扫描规则顺序 */
-    post: operations['project.scanRuleReorder'];
     delete?: never;
     options?: never;
     head?: never;
@@ -542,6 +525,23 @@ export interface paths {
     put?: never;
     /** 新增或按 path 替换扫描规则 */
     post: operations['project.scanRuleSave'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/project/scan-rule/save-all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 整节覆盖扫描规则（提交即落盘，含顺序；成功后立即重扫） */
+    post: operations['project.scanRuleSaveAll'];
     delete?: never;
     options?: never;
     head?: never;
@@ -625,7 +625,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 按 name 删除模板源 */
+    /** 删除模板源（提交完整单项，按 name 定位） */
     post: operations['template.sourceDelete'];
     delete?: never;
     options?: never;
@@ -650,23 +650,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/template/source/reorder': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** 按 name 重排模板源顺序 */
-    post: operations['template.sourceReorder'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/api/template/source/save': {
     parameters: {
       query?: never;
@@ -678,6 +661,23 @@ export interface paths {
     put?: never;
     /** 新增或按 name 替换模板源 */
     post: operations['template.sourceSave'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/template/source/save-all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 整节覆盖模板源（提交即落盘，含顺序） */
+    post: operations['template.sourceSaveAll'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1050,16 +1050,6 @@ export interface components {
       token: string;
       username: string;
     };
-    AccountDeleteInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/AccountDeleteInputBody.json
-       */
-      readonly $schema?: string;
-      forgeHost: string;
-      username: string;
-    };
     AccountFetchInputBody: {
       /**
        * Format: uri
@@ -1072,21 +1062,11 @@ export interface components {
       forgeHost: string;
       username: string;
     };
-    AccountReorderInputBody: {
+    AccountItem: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/AccountReorderInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 按目标顺序排列的 account 键名单（host/username） */
-      keys: string[] | null;
-    };
-    AccountSaveInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/AccountSaveInputBody.json
+       * @example https://example.com/schemas/AccountItem.json
        */
       readonly $schema?: string;
       /** @description 所属 forge host（唯一键之一） */
@@ -1095,6 +1075,16 @@ export interface components {
       token?: string;
       /** @description 平台用户名（唯一键之一） */
       username: string;
+    };
+    AccountSaveAllInputBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/AccountSaveAllInputBody.json
+       */
+      readonly $schema?: string;
+      /** @description 按目标顺序排列的全部 account */
+      items: components['schemas']['AccountItem'][] | null;
     };
     AcctMeta: {
       /** Format: date-time */
@@ -1131,45 +1121,29 @@ export interface components {
       repoHost: string;
       repoPrefix: string;
     };
-    CloneRuleDeleteInputBody: {
+    CloneRuleItem: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/CloneRuleDeleteInputBody.json
+       * @example https://example.com/schemas/CloneRuleItem.json
        */
       readonly $schema?: string;
-      /** @description 规则键：源域名 */
-      repoHost: string;
-      /** @description 规则键：uri 前缀 */
-      repoPrefix: string;
-    };
-    CloneRuleKey: {
-      repoHost: string;
-      repoPrefix: string;
-    };
-    CloneRuleReorderInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/CloneRuleReorderInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 按目标顺序排列的 host+prefix 名单 */
-      rules: components['schemas']['CloneRuleKey'][] | null;
-    };
-    CloneRuleSaveInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/CloneRuleSaveInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 对应本地目录（绝对路径或 ~/ 前缀） */
+      /** @description 对应本地目录（绝对路径） */
       localPath: string;
       /** @description 源域名，无协议，如 github.com */
       repoHost: string;
       /** @description uri 前缀，须以 / 开头或为空，如 /heyuuu */
       repoPrefix?: string;
+    };
+    CloneRuleSaveAllInputBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/CloneRuleSaveAllInputBody.json
+       */
+      readonly $schema?: string;
+      /** @description 按目标顺序排列的全部 clone 规则 */
+      items: components['schemas']['CloneRuleItem'][] | null;
     };
     CommitDetail: {
       author: string;
@@ -1636,39 +1610,29 @@ export interface components {
       icon?: components['schemas']['Icon'];
       kind: string;
     };
-    ForgeDeleteInputBody: {
+    ForgeItem: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ForgeDeleteInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 规则唯一键 */
-      host: string;
-    };
-    ForgeReorderInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ForgeReorderInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 按目标顺序排列的 host 名单 */
-      hosts: string[] | null;
-    };
-    ForgeSaveInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ForgeSaveInputBody.json
+       * @example https://example.com/schemas/ForgeItem.json
        */
       readonly $schema?: string;
       /** @description 域名（可带端口），如 github.com */
       host: string;
       /** @description 平台图标（可选：lucide 图名或 base64 PNG） */
-      icon?: components['schemas']['IconDTO'];
+      icon?: components['schemas']['Icon'];
       /** @description API 方言：github / gitea / gitee / generic */
       kind: string;
+    };
+    ForgeSaveAllInputBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/ForgeSaveAllInputBody.json
+       */
+      readonly $schema?: string;
+      /** @description 按目标顺序排列的全部 forge */
+      items: components['schemas']['ForgeItem'][] | null;
     };
     Hunk: {
       lines: components['schemas']['DiffLine'][] | null;
@@ -1682,10 +1646,6 @@ export interface components {
       oldStart: number;
     };
     Icon: {
-      type: string;
-      value: string;
-    };
-    IconDTO: {
       type: string;
       value: string;
     };
@@ -1771,20 +1731,10 @@ export interface components {
       actions: {
         [key: string]: string;
       };
-      icon: components['schemas']['IconDTO'];
+      icon: components['schemas']['Icon'];
       name: string;
       summary: string;
       title: string;
-    };
-    OpenerDeleteInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/OpenerDeleteInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description opener 名称 */
-      name: string;
     };
     OpenerDiffOpenInputBody: {
       /**
@@ -1805,6 +1755,24 @@ export interface components {
       intent: string;
       openers: string[] | null;
     };
+    OpenerItem: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/OpenerItem.json
+       */
+      readonly $schema?: string;
+      /** @description role → 动作串，exec: 命令 / url: 链接，$0/$1 占位路径槽位 */
+      actions: {
+        [key: string]: string;
+      };
+      /** @description 图标声明 */
+      icon?: components['schemas']['Icon'];
+      /** @description opener 名称（唯一标识） */
+      name: string;
+      /** @description 展示文案（如「打开所在目录」），缺省由 name 生成 */
+      title?: string;
+    };
     OpenerOpenInputBody: {
       /**
        * Format: uri
@@ -1817,33 +1785,15 @@ export interface components {
       /** @description 文件或目录绝对路径 */
       path: string;
     };
-    OpenerReorderInputBody: {
+    OpenerSaveAllInputBody: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/OpenerReorderInputBody.json
+       * @example https://example.com/schemas/OpenerSaveAllInputBody.json
        */
       readonly $schema?: string;
-      /** @description 按目标顺序排列的 opener 名单 */
-      names: string[] | null;
-    };
-    OpenerSaveInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/OpenerSaveInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description role → 动作串，exec: 命令 / url: 链接，$0/$1 占位路径槽位 */
-      actions: {
-        [key: string]: string;
-      };
-      /** @description 图标声明 */
-      icon?: components['schemas']['IconDTO'];
-      /** @description opener 名称（唯一标识） */
-      name: string;
-      /** @description 展示文案（如「打开所在目录」），缺省由 name 生成 */
-      title?: string;
+      /** @description 按目标顺序排列的全部 opener */
+      items: components['schemas']['OpenerItem'][] | null;
     };
     Overview: {
       accounts: components['schemas']['AcctMeta'][] | null;
@@ -1922,46 +1872,36 @@ export interface components {
       path: string;
       tags?: string[] | null;
     };
-    ScanRuleDeleteInputBody: {
+    ScanRuleItem: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ScanRuleDeleteInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 规则唯一键 */
-      path: string;
-    };
-    ScanRuleReorderInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ScanRuleReorderInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 按目标顺序排列的规则路径名单 */
-      paths: string[] | null;
-    };
-    ScanRuleSaveInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ScanRuleSaveInputBody.json
+       * @example https://example.com/schemas/ScanRuleItem.json
        */
       readonly $schema?: string;
       /** @description 扫描出的项目组名 */
       group: string;
       /** @description 组图标（可选：lucide 图名或 base64 PNG） */
-      icon?: components['schemas']['IconDTO'];
+      icon?: components['schemas']['Icon'];
       /**
        * Format: int64
        * @description 扫描最大深度
        */
       maxDepth: number;
-      /** @description 扫描根目录（绝对路径或 ~/ 前缀，规则唯一键） */
+      /** @description 扫描根目录（绝对路径，规则唯一键） */
       path: string;
       /** @description 命中该规则的项目统一追加的标签（如 个人/公司/开源，可选） */
       tags?: string[] | null;
+    };
+    ScanRuleSaveAllInputBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/ScanRuleSaveAllInputBody.json
+       */
+      readonly $schema?: string;
+      /** @description 按目标顺序排列的全部扫描规则 */
+      items: components['schemas']['ScanRuleItem'][] | null;
     };
     ServerConfig: {
       host: string;
@@ -1977,41 +1917,31 @@ export interface components {
       name: string;
       repoUrl: string;
     };
-    TplSourceDeleteInputBody: {
+    TplSourceItem: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/TplSourceDeleteInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description source 名（唯一键） */
-      name: string;
-    };
-    TplSourceListResult: {
-      defaultSource: string;
-      list: components['schemas']['TplSource'][] | null;
-    };
-    TplSourceReorderInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/TplSourceReorderInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 按目标顺序排列的 source 名名单 */
-      names: string[] | null;
-    };
-    TplSourceSaveInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/TplSourceSaveInputBody.json
+       * @example https://example.com/schemas/TplSourceItem.json
        */
       readonly $schema?: string;
       /** @description source 名（cube create 的引用短名，如 core） */
       name: string;
       /** @description git 仓库地址（git@host:path / https://host/path / 本地绝对路径） */
       repoUrl: string;
+    };
+    TplSourceListResult: {
+      defaultSource: string;
+      list: components['schemas']['TplSource'][] | null;
+    };
+    TplSourceSaveAllInputBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/TplSourceSaveAllInputBody.json
+       */
+      readonly $schema?: string;
+      /** @description 按目标顺序排列的全部模板源 */
+      items: components['schemas']['TplSourceItem'][] | null;
     };
     TreeListResult: {
       list: string[] | null;
@@ -2181,7 +2111,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AccountDeleteInputBody'];
+        'application/json': components['schemas']['AccountItem'];
       };
     };
     responses: {
@@ -2267,7 +2197,7 @@ export interface operations {
       };
     };
   };
-  'forge.accountReorder': {
+  'forge.accountSave': {
     parameters: {
       query?: never;
       header?: never;
@@ -2276,7 +2206,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AccountReorderInputBody'];
+        'application/json': components['schemas']['AccountItem'];
       };
     };
     responses: {
@@ -2300,7 +2230,7 @@ export interface operations {
       };
     };
   };
-  'forge.accountSave': {
+  'forge.accountSaveAll': {
     parameters: {
       query?: never;
       header?: never;
@@ -2309,7 +2239,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AccountSaveInputBody'];
+        'application/json': components['schemas']['AccountSaveAllInputBody'];
       };
     };
     responses: {
@@ -2342,7 +2272,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ForgeDeleteInputBody'];
+        'application/json': components['schemas']['ForgeItem'];
       };
     };
     responses: {
@@ -2424,7 +2354,7 @@ export interface operations {
       };
     };
   };
-  'forge.reorder': {
+  'forge.save': {
     parameters: {
       query?: never;
       header?: never;
@@ -2433,7 +2363,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ForgeReorderInputBody'];
+        'application/json': components['schemas']['ForgeItem'];
       };
     };
     responses: {
@@ -2457,7 +2387,7 @@ export interface operations {
       };
     };
   };
-  'forge.save': {
+  'forge.saveAll': {
     parameters: {
       query?: never;
       header?: never;
@@ -2466,7 +2396,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ForgeSaveInputBody'];
+        'application/json': components['schemas']['ForgeSaveAllInputBody'];
       };
     };
     responses: {
@@ -2594,7 +2524,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['OpenerDeleteInputBody'];
+        'application/json': components['schemas']['OpenerItem'];
       };
     };
     responses: {
@@ -2808,7 +2738,7 @@ export interface operations {
       };
     };
   };
-  'opener.reorder': {
+  'opener.save': {
     parameters: {
       query?: never;
       header?: never;
@@ -2817,7 +2747,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['OpenerReorderInputBody'];
+        'application/json': components['schemas']['OpenerItem'];
       };
     };
     responses: {
@@ -2841,7 +2771,7 @@ export interface operations {
       };
     };
   };
-  'opener.save': {
+  'opener.saveAll': {
     parameters: {
       query?: never;
       header?: never;
@@ -2850,7 +2780,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['OpenerSaveInputBody'];
+        'application/json': components['schemas']['OpenerSaveAllInputBody'];
       };
     };
     responses: {
@@ -2883,40 +2813,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CloneRuleDeleteInputBody'];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
-        };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ErrorModel'];
-        };
-      };
-    };
-  };
-  'project.cloneRuleReorder': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CloneRuleReorderInputBody'];
+        'application/json': components['schemas']['CloneRuleItem'];
       };
     };
     responses: {
@@ -2949,7 +2846,40 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CloneRuleSaveInputBody'];
+        'application/json': components['schemas']['CloneRuleItem'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel'];
+        };
+      };
+    };
+  };
+  'project.cloneRuleSaveAll': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CloneRuleSaveAllInputBody'];
       };
     };
     responses: {
@@ -3073,40 +3003,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ScanRuleDeleteInputBody'];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
-        };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ErrorModel'];
-        };
-      };
-    };
-  };
-  'project.scanRuleReorder': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ScanRuleReorderInputBody'];
+        'application/json': components['schemas']['ScanRuleItem'];
       };
     };
     responses: {
@@ -3139,7 +3036,40 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ScanRuleSaveInputBody'];
+        'application/json': components['schemas']['ScanRuleItem'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel'];
+        };
+      };
+    };
+  };
+  'project.scanRuleSaveAll': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ScanRuleSaveAllInputBody'];
       };
     };
     responses: {
@@ -3294,7 +3224,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['TplSourceDeleteInputBody'];
+        'application/json': components['schemas']['TplSourceItem'];
       };
     };
     responses: {
@@ -3347,7 +3277,7 @@ export interface operations {
       };
     };
   };
-  'template.sourceReorder': {
+  'template.sourceSave': {
     parameters: {
       query?: never;
       header?: never;
@@ -3356,7 +3286,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['TplSourceReorderInputBody'];
+        'application/json': components['schemas']['TplSourceItem'];
       };
     };
     responses: {
@@ -3380,7 +3310,7 @@ export interface operations {
       };
     };
   };
-  'template.sourceSave': {
+  'template.sourceSaveAll': {
     parameters: {
       query?: never;
       header?: never;
@@ -3389,7 +3319,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['TplSourceSaveInputBody'];
+        'application/json': components['schemas']['TplSourceSaveAllInputBody'];
       };
     };
     responses: {

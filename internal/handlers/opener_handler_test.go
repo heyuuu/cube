@@ -137,8 +137,8 @@ func TestOpenerSaveAndDelete(t *testing.T) {
 		t.Fatalf("坏数据应报模板为空错误, got ok=%v message=%q", env2.Ok, env2.Message)
 	}
 
-	// 删除
-	delResp, err := http.Post(env.url("/api/opener/delete"), "application/json", bytes.NewReader([]byte(`{"name":"code"}`)))
+	// 删除：提交完整单项（按 name 定位）
+	delResp, err := http.Post(env.url("/api/opener/delete"), "application/json", bytes.NewReader([]byte(`{"name":"code","actions":{"open-dir":"exec: code $0"}}`)))
 	if err != nil {
 		t.Fatalf("POST opener/delete 失败: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestOpenerSaveAndDelete(t *testing.T) {
 	}
 }
 
-func TestOpenerReorder(t *testing.T) {
+func TestOpenerSaveAll(t *testing.T) {
 	env := newTestEnv(t)
 	postJSON := func(path, body string) envelope {
 		resp, err := http.Post(env.url(path), "application/json", bytes.NewReader([]byte(body)))
@@ -179,30 +179,36 @@ func TestOpenerReorder(t *testing.T) {
 		}
 		return out
 	}
-
-	// fixture 预置 finder；再存一条 code，reorder 后 list 顺序应随之变化
-	postJSON("/api/opener/save", `{"name":"code","actions":{"open-dir": "exec: code $0"}}`)
-	postJSON("/api/opener/reorder", `{"names":["code","finder"]}`)
-
-	list := getJSON(t, env.url("/api/opener/list"))
 	var got struct {
 		List []struct {
 			Name string `json:"name"`
 		} `json:"list"`
 	}
-	decodeData(t, list, &got)
+
+	// fixture 预置 finder；save-all 提交 [code, finder] 后 list 即为该顺序
+	r := postJSON("/api/opener/save-all", `{"items":[{"name":"code","actions":{"open-dir":"exec: code $0"}},{"name":"finder","actions":{"open-dir":"exec: /usr/bin/open $0"}}]}`)
+	if !r.Ok {
+		t.Fatalf("save-all 应成功, message=%q", r.Message)
+	}
+	decodeData(t, getJSON(t, env.url("/api/opener/list")), &got)
 	if len(got.List) != 2 || got.List[0].Name != "code" || got.List[1].Name != "finder" {
-		t.Fatalf("reorder 后顺序不符: %+v", got.List)
+		t.Fatalf("save-all 后顺序不符: %+v", got.List)
 	}
 
-	// 未知名返回中文错误、顺序不变
-	bad := postJSON("/api/opener/reorder", `{"names":["finder","nope"]}`)
-	if bad.Ok || !strings.Contains(bad.Message, "nope") {
-		t.Fatalf("未知名应报错, ok=%v message=%q", bad.Ok, bad.Message)
+	// 重复名返回中文错误、数据不变
+	bad := postJSON("/api/opener/save-all", `{"items":[{"name":"finder","actions":{"open-dir":"exec: a"}},{"name":"finder","actions":{"open-dir":"exec: b"}}]}`)
+	if bad.Ok || !strings.Contains(bad.Message, "重复") {
+		t.Fatalf("重复名应报错, ok=%v message=%q", bad.Ok, bad.Message)
 	}
-	list2 := getJSON(t, env.url("/api/opener/list"))
-	decodeData(t, list2, &got)
-	if got.List[0].Name != "code" {
-		t.Fatalf("失败 reorder 不应改动顺序: %+v", got.List)
+	decodeData(t, getJSON(t, env.url("/api/opener/list")), &got)
+	if len(got.List) != 2 || got.List[0].Name != "code" {
+		t.Fatalf("失败 save-all 不应改动数据: %+v", got.List)
+	}
+
+	// 提交子集 = 删除未提交项
+	postJSON("/api/opener/save-all", `{"items":[{"name":"finder","actions":{"open-dir":"exec: /usr/bin/open $0"}}]}`)
+	decodeData(t, getJSON(t, env.url("/api/opener/list")), &got)
+	if len(got.List) != 1 || got.List[0].Name != "finder" {
+		t.Fatalf("未提交的 opener 应被删除: %+v", got.List)
 	}
 }

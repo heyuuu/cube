@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/internal/domain/template"
 	"cube/internal/server"
 )
@@ -19,8 +21,8 @@ func NewTemplateHandler(templateService *template.Service) *TemplateHandler {
 func (h *TemplateHandler) Register(r *server.Routes) {
 	r.Get("/api/template/source/list", "获取模板源列表（含默认源名）", server.JSONHandler(h.sourceList))
 	r.Post("/api/template/source/save", "新增或按 name 替换模板源", server.JSONHandler(h.sourceSave))
-	r.Post("/api/template/source/delete", "按 name 删除模板源", server.JSONHandler(h.sourceDelete))
-	r.Post("/api/template/source/reorder", "按 name 重排模板源顺序", server.JSONHandler(h.sourceReorder))
+	r.Post("/api/template/source/delete", "删除模板源（提交完整单项，按 name 定位）", server.JSONHandler(h.sourceDelete))
+	r.Post("/api/template/source/save-all", "整节覆盖模板源（提交即落盘，含顺序）", server.JSONHandler(h.sourceSaveAll))
 }
 
 // TplSourceListResult template/source/list 出参：列表 + 默认源名（前端标注「默认」用，
@@ -37,45 +39,49 @@ func (h *TemplateHandler) sourceList(_ struct{}) (TplSourceListResult, error) {
 	}, nil
 }
 
+// TplSourceItem 模板源单项（save / delete / save-all 共用，字段与 template.TplSource 对齐）。
+type TplSourceItem struct {
+	Name    string `json:"name" doc:"source 名（cube create 的引用短名，如 core）"`
+	RepoURL string `json:"repoUrl" doc:"git 仓库地址（git@host:path / https://host/path / 本地绝对路径）"`
+}
+
+func (it TplSourceItem) toTplSource() template.TplSource {
+	return template.TplSource{Name: it.Name, RepoURL: it.RepoURL}
+}
+
 // TplSourceSaveInput template/source/save 接口入参（name 是唯一键）。
 type TplSourceSaveInput struct {
-	Body struct {
-		Name    string `json:"name" doc:"source 名（cube create 的引用短名，如 core）"`
-		RepoURL string `json:"repoUrl" doc:"git 仓库地址（git@host:path / https://host/path / 本地绝对路径）"`
-	}
+	Body TplSourceItem
 }
 
 func (h *TemplateHandler) sourceSave(input TplSourceSaveInput) (map[string]any, error) {
-	src := template.TplSource{Name: input.Body.Name, RepoURL: input.Body.RepoURL}
-	if err := h.templateService.SaveTplSource(src); err != nil {
+	if err := h.templateService.SaveTplSource(input.Body.toTplSource()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// TplSourceDeleteInput template/source/delete 接口入参。
+// TplSourceDeleteInput template/source/delete 接口入参（完整单项，唯一键由 domain 计算）。
 type TplSourceDeleteInput struct {
-	Body struct {
-		Name string `json:"name" doc:"source 名（唯一键）"`
-	}
+	Body TplSourceItem
 }
 
 func (h *TemplateHandler) sourceDelete(input TplSourceDeleteInput) (map[string]any, error) {
-	if err := h.templateService.DeleteTplSource(input.Body.Name); err != nil {
+	if err := h.templateService.DeleteTplSource(input.Body.toTplSource()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// TplSourceReorderInput template/source/reorder 接口入参（整表按目标顺序提交 name 名单）。
-type TplSourceReorderInput struct {
+// TplSourceSaveAllInput template/source/save-all 接口入参（提交清单即落盘结果，含顺序）。
+type TplSourceSaveAllInput struct {
 	Body struct {
-		Names []string `json:"names" doc:"按目标顺序排列的 source 名名单"`
+		Items []TplSourceItem `json:"items" doc:"按目标顺序排列的全部模板源"`
 	}
 }
 
-func (h *TemplateHandler) sourceReorder(input TplSourceReorderInput) (map[string]any, error) {
-	if err := h.templateService.ReorderTplSources(input.Body.Names); err != nil {
+func (h *TemplateHandler) sourceSaveAll(input TplSourceSaveAllInput) (map[string]any, error) {
+	if err := h.templateService.SaveAllTplSources(xslices.Map(input.Body.Items, TplSourceItem.toTplSource)); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil

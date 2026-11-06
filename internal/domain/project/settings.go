@@ -70,104 +70,145 @@ func loadCloneRules(settingsFile string) []CloneRule {
 
 // --- 写侧（校验收敛在读写边界：加载即校验、校验后才保存，坏数据返回中文错误、落不了文件） ---
 
-// CloneRuleKey clone 规则的唯一键（host + prefix 唯一标识一条规则）。
-type CloneRuleKey struct {
-	RepoHost   string `json:"repoHost"`
-	RepoPrefix string `json:"repoPrefix"`
+// scanRuleKey / cloneRuleKey 规则在节内的唯一键（domain 私有，不出 API）：
+// scan 规则键 = path 原串（编辑 path 等价删旧存新），clone 规则键 = host + prefix。
+func scanRuleKey(r ScanRule) string { return r.Path }
+
+type cloneRuleID struct{ repoHost, repoPrefix string }
+
+func cloneRuleKey(r CloneRule) cloneRuleID { return cloneRuleID{r.RepoHost, r.RepoPrefix} }
+
+// normalizeScanRule 校验并归一化一条待写入的 scan 规则（save / save-all 共用）。
+func normalizeScanRule(rule ScanRule) (ScanRule, error) {
+	if rule.Group == "" {
+		return rule, fmt.Errorf("scan 规则 group 不得为空")
+	}
+	if rule.MaxDepth < -1 {
+		return rule, fmt.Errorf("scan 规则 maxDepth 不得小于 -1（-1 不限深、0 仅根下一层）: %d", rule.MaxDepth)
+	}
+	if !filepath.IsAbs(rule.Path) {
+		return rule, fmt.Errorf("scan 规则路径必须为绝对路径: path=%s", rule.Path)
+	}
+	if info, err := os.Stat(rule.Path); err != nil || !info.IsDir() {
+		return rule, fmt.Errorf("scan 规则路径不存在或非目录: %s", rule.Path)
+	}
+	if err := icons.ValidateIcon(rule.Icon); err != nil {
+		return rule, fmt.Errorf("scan 规则 %s", err)
+	}
+	rule.Tags = normalizeTags(rule.Tags)
+	return rule, nil
 }
 
-// cloneRuleKey / formatCloneRuleKey clone 规则的节内操作键（settings 三原语用）与错误文案渲染。
-func cloneRuleKey(r CloneRule) CloneRuleKey    { return CloneRuleKey{r.RepoHost, r.RepoPrefix} }
-func formatCloneRuleKey(k CloneRuleKey) string { return k.RepoHost + k.RepoPrefix }
+// checkScanRulesUnique 整节写入的唯一约束：path 唯一；group 唯一——group 是分组与项目名前缀的
+// 展示身份，重复会让分组合并语义与项目名（group:相对路径）产生歧义，写侧拒绝。
+func checkScanRulesUnique(rules []ScanRule) error {
+	if dup, ok := x.DuplicateKeyed(rules, scanRuleKey); ok {
+		return fmt.Errorf("scan 规则 path 重复: %s", dup)
+	}
+	owner := make(map[string]string, len(rules))
+	for _, r := range rules {
+		if path, ok := owner[r.Group]; ok {
+			return fmt.Errorf("scan 规则 group 已被其它规则占用: group=%s 已用于 %s", r.Group, path)
+		}
+		owner[r.Group] = r.Path
+	}
+	return nil
+}
 
 // saveScanRule 新增或按 path 替换一条 scan 规则（path 原串是规则唯一键——
 // 编辑 path 等价于删旧存新，前端按此语义提交）。
 func saveScanRule(settingsFile string, rule ScanRule) error {
-	if rule.Group == "" {
-		return fmt.Errorf("scan 规则 group 不得为空")
+	rule, err := normalizeScanRule(rule)
+	if err != nil {
+		return err
 	}
-	if rule.MaxDepth < -1 {
-		return fmt.Errorf("scan 规则 maxDepth 不得小于 -1（-1 不限深、0 仅根下一层）: %d", rule.MaxDepth)
-	}
-
-	if !filepath.IsAbs(rule.Path) {
-		return fmt.Errorf("scan 规则路径必须为绝对路径: path=%s", rule.Path)
-	}
-	if info, err := os.Stat(rule.Path); err != nil || !info.IsDir() {
-		return fmt.Errorf("scan 规则路径不存在或非目录: %s", rule.Path)
-	}
-	if err := icons.ValidateIcon(rule.Icon); err != nil {
-		return fmt.Errorf("scan 规则 %s", err)
-	}
-	rule.Tags = normalizeTags(rule.Tags)
-
 	specs := store.LoadSectionOrZero[[]ScanRule](settingsFile, scanRulesSection)
-	// group 唯一：group 是分组与项目名前缀的展示身份，重复会让分组合并语义与
-	// 项目名（group:相对路径）产生歧义，写侧拒绝（同 path 替换自身除外）
+	// 单条保存只拦与本条冲突的 group（同 path 替换自身除外）：手工编辑遗留的他人间重复
+	// 已由读侧降级，不阻断无关规则的保存
 	for _, cur := range specs {
 		if cur.Group == rule.Group && cur.Path != rule.Path {
 			return fmt.Errorf("scan 规则 group 已被其它规则占用: group=%s 已用于 %s", rule.Group, cur.Path)
 		}
 	}
-	specs = x.UpsertKeyed(specs, func(cur ScanRule) string { return cur.Path }, rule)
+	specs = x.UpsertKeyed(specs, scanRuleKey, rule)
 	return store.SaveSection(settingsFile, scanRulesSection, specs)
 }
 
-// deleteScanRule 按 path 删除一条 scan 规则；不存在时返回中文错误。
-func deleteScanRule(settingsFile, path string) error {
+// saveAllScanRules 以提交清单整节覆盖 scanRule 节（顺序即项目列表展示序）。
+// 逐项校验 + 节级唯一约束，任一失败整体不落盘。
+func saveAllScanRules(settingsFile string, rules []ScanRule) error {
+	normalized := make([]ScanRule, len(rules))
+	for i, r := range rules {
+		n, err := normalizeScanRule(r)
+		if err != nil {
+			return err
+		}
+		normalized[i] = n
+	}
+	if err := checkScanRulesUnique(normalized); err != nil {
+		return err
+	}
+	return store.SaveSection(settingsFile, scanRulesSection, normalized)
+}
+
+// deleteScanRule 按唯一键（path）删除一条 scan 规则；不存在时返回中文错误。
+func deleteScanRule(settingsFile string, rule ScanRule) error {
 	specs := store.LoadSectionOrZero[[]ScanRule](settingsFile, scanRulesSection)
-	rest, removed := x.RemoveKeyed(specs, func(cur ScanRule) string { return cur.Path }, path)
+	rest, removed := x.RemoveKeyed(specs, scanRuleKey, scanRuleKey(rule))
 	if !removed {
-		return fmt.Errorf("未找到指定 scan 规则: %s", path)
+		return fmt.Errorf("未找到指定 scan 规则: %s", rule.Path)
 	}
 	return store.SaveSection(settingsFile, scanRulesSection, rest)
 }
 
-// reorderScanRules 按 paths 顺序重排 scanRule 节（顺序即项目列表展示序）。
-// 未列出的条目保持原相对顺序排在末尾，不丢数据；未知或重复路径返回中文错误。
-func reorderScanRules(settingsFile string, paths []string) error {
-	specs := store.LoadSectionOrZero[[]ScanRule](settingsFile, scanRulesSection)
-	ordered, err := x.ReorderKeyed(specs, func(cur ScanRule) string { return cur.Path }, paths, "scan 规则", func(k string) string { return k })
-	if err != nil {
-		return err
+// normalizeCloneRule 校验一条待写入的 clone 规则（save / save-all 共用）。
+func normalizeCloneRule(rule CloneRule) (CloneRule, error) {
+	if rule.RepoHost == "" {
+		return rule, fmt.Errorf("clone 规则 repoHost 不得为空")
 	}
-	return store.SaveSection(settingsFile, scanRulesSection, ordered)
+	if rule.RepoPrefix != "" && rule.RepoPrefix[0] != '/' {
+		return rule, fmt.Errorf("clone 规则 repoPrefix 须以 / 开头或为空: %s", rule.RepoPrefix)
+	}
+	if !filepath.IsAbs(rule.LocalPath) {
+		return rule, fmt.Errorf("clone 规则 localPath 不合法（须绝对路径）: %s", rule.LocalPath)
+	}
+	return rule, nil
 }
 
 // saveCloneRule 新增或按 host+prefix 替换一条 clone 规则（二者组合是规则唯一键）。
 func saveCloneRule(settingsFile string, rule CloneRule) error {
-	if rule.RepoHost == "" {
-		return fmt.Errorf("clone 规则 repoHost 不得为空")
+	rule, err := normalizeCloneRule(rule)
+	if err != nil {
+		return err
 	}
-	if rule.RepoPrefix != "" && rule.RepoPrefix[0] != '/' {
-		return fmt.Errorf("clone 规则 repoPrefix 须以 / 开头或为空: %s", rule.RepoPrefix)
-	}
-	if !filepath.IsAbs(rule.LocalPath) {
-		return fmt.Errorf("clone 规则 localPath 不合法（须绝对路径）: %s", rule.LocalPath)
-	}
-
 	specs := store.LoadSectionOrZero[[]CloneRule](settingsFile, cloneRulesSection)
 	specs = x.UpsertKeyed(specs, cloneRuleKey, rule)
 	return store.SaveSection(settingsFile, cloneRulesSection, specs)
 }
 
-// deleteCloneRule 按 host+prefix 删除一条 clone 规则；不存在时返回中文错误。
-func deleteCloneRule(settingsFile string, key CloneRuleKey) error {
-	specs := store.LoadSectionOrZero[[]CloneRule](settingsFile, cloneRulesSection)
-	rest, removed := x.RemoveKeyed(specs, cloneRuleKey, key)
-	if !removed {
-		return fmt.Errorf("未找到指定 clone 规则: %s%s", key.RepoHost, key.RepoPrefix)
+// saveAllCloneRules 以提交清单整节覆盖 cloneRule 节（顺序即展示序；匹配语义按 prefix
+// 最长优先，顺序不影响路由结果）。逐项校验 + host+prefix 查重，任一失败整体不落盘。
+func saveAllCloneRules(settingsFile string, rules []CloneRule) error {
+	normalized := make([]CloneRule, len(rules))
+	for i, r := range rules {
+		n, err := normalizeCloneRule(r)
+		if err != nil {
+			return err
+		}
+		normalized[i] = n
 	}
-	return store.SaveSection(settingsFile, cloneRulesSection, rest)
+	if dup, ok := x.DuplicateKeyed(normalized, cloneRuleKey); ok {
+		return fmt.Errorf("clone 规则重复: %s%s", dup.repoHost, dup.repoPrefix)
+	}
+	return store.SaveSection(settingsFile, cloneRulesSection, normalized)
 }
 
-// reorderCloneRules 按键顺序重排 cloneRule 节（顺序即展示序；匹配语义按 prefix
-// 最长优先，顺序不影响路由结果）。语义约束同 reorderScanRules。
-func reorderCloneRules(settingsFile string, keys []CloneRuleKey) error {
+// deleteCloneRule 按唯一键（host+prefix）删除一条 clone 规则；不存在时返回中文错误。
+func deleteCloneRule(settingsFile string, rule CloneRule) error {
 	specs := store.LoadSectionOrZero[[]CloneRule](settingsFile, cloneRulesSection)
-	ordered, err := x.ReorderKeyed(specs, cloneRuleKey, keys, "clone 规则", formatCloneRuleKey)
-	if err != nil {
-		return err
+	rest, removed := x.RemoveKeyed(specs, cloneRuleKey, cloneRuleKey(rule))
+	if !removed {
+		return fmt.Errorf("未找到指定 clone 规则: %s%s", rule.RepoHost, rule.RepoPrefix)
 	}
-	return store.SaveSection(settingsFile, cloneRulesSection, ordered)
+	return store.SaveSection(settingsFile, cloneRulesSection, rest)
 }

@@ -19,7 +19,7 @@ func TestTplSourceListEmpty(t *testing.T) {
 	}
 }
 
-// TestTplSourceWrite save/delete/reorder 出口契约（含坏数据中文错误不落文件）。
+// TestTplSourceWrite save/delete/save-all 出口契约（含坏数据中文错误不落文件）。
 func TestTplSourceWrite(t *testing.T) {
 	env := newTestEnv(t)
 	list := func() TplSourceListResult {
@@ -65,25 +65,25 @@ func TestTplSourceWrite(t *testing.T) {
 		t.Fatalf("坏数据不应落文件, got %+v", out.List)
 	}
 
-	// reorder：work 提前，未列出条目殿后
-	if r := postJSON(t, env.url("/api/template/source/reorder"), `{"names":["work"]}`); !r.Ok {
-		t.Fatalf("reorder 应成功, message=%q", r.Message)
+	// save-all：提交清单即落盘结果（顺序 + 内容）
+	if r := postJSON(t, env.url("/api/template/source/save-all"), `{"items":[{"name":"work","repoUrl":"https://github.com/a/tpl.git"},{"name":"core","repoUrl":"git@github.com:heyuuu/cube-templates-v2.git"}]}`); !r.Ok {
+		t.Fatalf("save-all 应成功, message=%q", r.Message)
 	}
 	out = list()
 	if len(out.List) != 2 || out.List[0].Name != "work" || out.List[1].Name != "core" {
-		t.Fatalf("reorder 顺序不符: %+v", out.List)
+		t.Fatalf("save-all 顺序不符: %+v", out.List)
 	}
-	// reorder 未知名中文错误
-	r2 := postJSON(t, env.url("/api/template/source/reorder"), `{"names":["nope"]}`)
-	if r2.Ok || !strings.Contains(r2.Message, "未找到指定") {
-		t.Fatalf("reorder 未知名应报中文错误, message=%q", r2.Message)
+	// save-all 单项非法中文错误
+	r2 := postJSON(t, env.url("/api/template/source/save-all"), `{"items":[{"name":"a/b","repoUrl":"git@github.com:a/b.git"}]}`)
+	if r2.Ok || !strings.Contains(r2.Message, "source 名非法") {
+		t.Fatalf("save-all 坏数据应报中文错误, message=%q", r2.Message)
 	}
 
-	// delete 按 name；再删报中文错误
-	if r := postJSON(t, env.url("/api/template/source/delete"), `{"name":"core"}`); !r.Ok {
+	// delete 提交完整单项（按 name 定位）；再删报中文错误
+	if r := postJSON(t, env.url("/api/template/source/delete"), `{"name":"core","repoUrl":"git@github.com:heyuuu/cube-templates-v2.git"}`); !r.Ok {
 		t.Fatalf("delete 应成功, message=%q", r.Message)
 	}
-	r3 := postJSON(t, env.url("/api/template/source/delete"), `{"name":"core"}`)
+	r3 := postJSON(t, env.url("/api/template/source/delete"), `{"name":"core","repoUrl":"git@github.com:heyuuu/cube-templates-v2.git"}`)
 	if r3.Ok || !strings.Contains(r3.Message, "未找到指定模板源") {
 		t.Fatalf("删不存在应报中文错误, message=%q", r3.Message)
 	}

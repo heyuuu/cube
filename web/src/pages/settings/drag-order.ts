@@ -13,9 +13,11 @@ export const STICKY_RIGHT =
   'sticky right-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[inset_1px_0_0_var(--border)]';
 
 // armed 记录「按住 grip 的行」——只有手柄能发起拖拽（整行 draggable 会干扰按钮点击
-// 与文本选择）；order 是乐观顺序，与服务端列表长度不一致（增删后）即失效回落。
+// 与文本选择）；order 是乐观顺序，只在提交期间生效：onReorder 返回的 promise settle
+// （save-all 成功/失败均已重拉）后清空，回落服务端列表——服务端是唯一事实源，
+// 本地顺序不得掩盖重拉回来的结果（如他端改过顺序）。与列表长度不一致（增删后）同样失效回落。
 // onReorder 直接回传排好序的行，调用方自行映射提交。
-export function useDragOrder<T>(keyOf: (item: T) => string, list: T[], onReorder: (rows: T[]) => void) {
+export function useDragOrder<T>(keyOf: (item: T) => string, list: T[], onReorder: (rows: T[]) => Promise<unknown>) {
   const [order, setOrder] = useState<string[] | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -48,7 +50,10 @@ export function useDragOrder<T>(keyOf: (item: T) => string, list: T[], onReorder
     const [moved] = next.splice(dragIdx, 1);
     next.splice(insertAt, 0, moved);
     setOrder(next.map(keyOf));
-    onReorder(next);
+    // 失败由调用方的 mutation 状态展示，这里只负责 settle 后回落
+    void onReorder(next)
+      .catch(() => undefined)
+      .finally(() => setOrder(null));
   };
 
   const reset = () => {

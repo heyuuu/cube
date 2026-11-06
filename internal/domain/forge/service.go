@@ -67,43 +67,39 @@ func (s *Service) Forges() []Forge {
 // SaveForge 新增或按 host 替换一条 forge（host 归一化后是唯一键——
 // 编辑 host 等价于删旧存新，前端按此语义提交）。校验收敛在写侧，坏数据中文错误不落文件。
 func (s *Service) SaveForge(f Forge) error {
-	f.Host = NormalizeHost(f.Host)
-	if err := ValidateHost(f.Host); err != nil {
-		return err
-	}
-	if !ValidKind(f.Kind) {
-		return fmt.Errorf("forge kind 未知: %q（合法值：%s）", f.Kind, strings.Join(Kinds(), " / "))
-	}
-	if err := icons.ValidateIcon(f.Icon); err != nil {
-		return fmt.Errorf("forge icon 配置错误: %s", err)
-	}
-
-	specs := s.Forges()
-	specs = x.UpsertKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, f)
-	return store.SaveSection(s.settingsFile, forgesSection, specs)
-}
-
-// ReorderForges 按 hosts 顺序重排 forges 节（顺序即展示序，1042 forge 页沿用）。
-// 未列出的条目保持原相对顺序排在末尾，不丢数据；未知或重复 host 返回中文错误。
-func (s *Service) ReorderForges(hosts []string) error {
-	specs := s.Forges()
-	keys := make([]string, len(hosts))
-	for i, raw := range hosts {
-		keys[i] = NormalizeHost(raw)
-	}
-	ordered, err := x.ReorderKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, keys, "forge", func(k string) string { return k })
+	f, err := normalizeForge(f)
 	if err != nil {
 		return err
 	}
-	return store.SaveSection(s.settingsFile, forgesSection, ordered)
+	specs := x.UpsertKeyed(s.Forges(), forgeKey, f)
+	return store.SaveSection(s.settingsFile, forgesSection, specs)
 }
 
-// DeleteForge 按 host 删除一条 forge，并级联清理该 host 下的 account
+// SaveAllForges 以提交清单整节覆盖 forges 节（顺序即展示序，1042 forge 页沿用）。
+// 逐项校验 + host 查重，任一失败整体不落盘；被移除 forge 下的 account 级联清理（同 DeleteForge）。
+func (s *Service) SaveAllForges(forges []Forge) error {
+	normalized := make([]Forge, len(forges))
+	for i, f := range forges {
+		n, err := normalizeForge(f)
+		if err != nil {
+			return err
+		}
+		normalized[i] = n
+	}
+	if dup, ok := x.DuplicateKeyed(normalized, forgeKey); ok {
+		return fmt.Errorf("forge host 重复: %s", dup)
+	}
+	if err := store.SaveSection(s.settingsFile, forgesSection, normalized); err != nil {
+		return err
+	}
+	return s.retainAccounts(func(a Account) bool { return MatchHost(normalized, a.ForgeHost) != nil })
+}
+
+// DeleteForge 按唯一键（归一化 host）删除一条 forge，并级联清理该 host 下的 account
 // （孤挂配置对任何功能都不可见，留了就是脏数据）；不存在时返回中文错误。
-func (s *Service) DeleteForge(host string) error {
-	host = NormalizeHost(host)
-	specs := s.Forges()
-	rest, removed := x.RemoveKeyed(specs, func(cur Forge) string { return NormalizeHost(cur.Host) }, host)
+func (s *Service) DeleteForge(f Forge) error {
+	host := forgeKey(f)
+	rest, removed := x.RemoveKeyed(s.Forges(), forgeKey, host)
 	if !removed {
 		return fmt.Errorf("未找到指定 forge: %s", host)
 	}
@@ -121,46 +117,39 @@ func (s *Service) Accounts() []Account { return loadAccounts(s.settingsFile) }
 // SaveAccount 新增或按 forgeHost+username 替换一条 account。
 // token 提交掩码值（TokenMasked）视为「未修改」沿用旧值——前端表单掩码展示的配套语义。
 func (s *Service) SaveAccount(a Account) error {
-	a.ForgeHost = NormalizeHost(a.ForgeHost)
-	a.Username = NormalizeUsername(a.Username)
-	if a.Token == TokenMasked {
-		existing := findAccount(loadAccounts(s.settingsFile), a.ForgeHost, a.Username)
-		if existing == nil {
-			return fmt.Errorf("account %s@%s 不存在，token 不能提交掩码占位值", a.Username, a.ForgeHost)
-		}
-		a.Token = existing.Token
-	}
-	if err := ValidateAccount(a, s.Forges()); err != nil {
-		return err
-	}
 	accounts := loadAccounts(s.settingsFile)
-	accounts = x.UpsertKeyed(accounts, accountKey, a)
-	return saveAccounts(s.settingsFile, accounts)
-}
-
-// ReorderAccounts 按键（host/username）顺序重排 accounts 节（顺序即 forge 页展示序）。
-// 未列出的条目保持原相对顺序排在末尾，不丢数据；未知或重复键返回中文错误。
-func (s *Service) ReorderAccounts(keys []string) error {
-	accounts := loadAccounts(s.settingsFile)
-	normalized := make([]string, len(keys))
-	for i, raw := range keys {
-		h, u := key2acct(raw)
-		normalized[i] = acctCacheKey(NormalizeHost(h), NormalizeUsername(u))
-	}
-	ordered, err := x.ReorderKeyed(accounts, accountKey, normalized, "account", formatAccountKey)
+	a, err := normalizeAccount(a, accounts, s.Forges())
 	if err != nil {
 		return err
 	}
-	return saveAccounts(s.settingsFile, ordered)
+	return saveAccounts(s.settingsFile, x.UpsertKeyed(accounts, accountKey, a))
 }
 
-// DeleteAccount 按 forgeHost+username 删除一条 account；不存在时返回中文错误。
-func (s *Service) DeleteAccount(forgeHost, username string) error {
-	forgeHost, username = NormalizeHost(forgeHost), NormalizeUsername(username)
-	accounts := loadAccounts(s.settingsFile)
-	rest, removed := x.RemoveKeyed(accounts, accountKey, acctCacheKey(forgeHost, username))
+// SaveAllAccounts 以提交清单整节覆盖 accounts 节（顺序即 forge 页展示序）。
+// 逐项校验（含掩码 token 按唯一键回填旧值）+ 唯一键查重，任一失败整体不落盘。
+func (s *Service) SaveAllAccounts(accounts []Account) error {
+	existing := loadAccounts(s.settingsFile)
+	forges := s.Forges()
+	normalized := make([]Account, len(accounts))
+	for i, a := range accounts {
+		n, err := normalizeAccount(a, existing, forges)
+		if err != nil {
+			return err
+		}
+		normalized[i] = n
+	}
+	if dup, ok := x.DuplicateKeyed(normalized, accountKey); ok {
+		return fmt.Errorf("account 重复: %s", formatAccountKey(dup))
+	}
+	return saveAccounts(s.settingsFile, normalized)
+}
+
+// DeleteAccount 按唯一键（forgeHost+username）删除一条 account；不存在时返回中文错误。
+func (s *Service) DeleteAccount(a Account) error {
+	key := accountKey(a)
+	rest, removed := x.RemoveKeyed(loadAccounts(s.settingsFile), accountKey, key)
 	if !removed {
-		return fmt.Errorf("未找到指定 account: %s@%s", username, forgeHost)
+		return fmt.Errorf("未找到指定 account: %s", formatAccountKey(key))
 	}
 	return saveAccounts(s.settingsFile, rest)
 }
@@ -199,7 +188,7 @@ func (s *Service) Overview(local []LocalRepo) *Overview {
 
 // --- 私有辅助 ---
 
-// retainAccounts 按谓词保留 account（DeleteForge 级联清理用）。
+// retainAccounts 按谓词保留 account（forge 删除/整节覆盖的级联清理用）。
 func (s *Service) retainAccounts(keep func(Account) bool) error {
 	accounts := loadAccounts(s.settingsFile)
 	rest := make([]Account, 0, len(accounts))
@@ -296,6 +285,6 @@ func key2acct(key string) (string, string) {
 	return h, u
 }
 
-// accountKey / formatAccountKey account 的节内操作键（settings 三原语用）与错误文案渲染。
+// accountKey / formatAccountKey account 的节内唯一键与错误文案渲染。
 func accountKey(a Account) string      { return acctCacheKey(a.ForgeHost, a.Username) }
 func formatAccountKey(k string) string { h, u := key2acct(k); return u + "@" + h }

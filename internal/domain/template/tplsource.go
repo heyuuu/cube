@@ -34,6 +34,16 @@ func ValidateTplSource(src TplSource) error {
 	return nil
 }
 
+// normalizeTplSource 归一化（去首尾空白）并校验一条待写入的模板源（save / save-all 共用）。
+func normalizeTplSource(src TplSource) (TplSource, error) {
+	src.Name = strings.TrimSpace(src.Name)
+	src.RepoURL = strings.TrimSpace(src.RepoURL)
+	return src, ValidateTplSource(src)
+}
+
+// tplSourceName 模板源在节内的唯一键（归一化 name）。
+func tplSourceName(src TplSource) string { return strings.TrimSpace(src.Name) }
+
 // validateTplSourceURL 校验 repoURL 是可 clone 的 git 地址：git@host:path / https://host:path /
 // 本地绝对路径（模板仓库放本地盘也是正当用法，git 原生支持 clone 本地路径）。
 // ParseRepoURL 对裸路径/裸 host 也解析成功（scheme/host 为空），这里按形态收紧。

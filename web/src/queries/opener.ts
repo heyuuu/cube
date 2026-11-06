@@ -48,30 +48,31 @@ export function useIntentDefaultOpener() {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiGet, apiPost } from '@/api/client';
-import type { Opener } from '@/api/client';
+import type { Opener, OpenerItem } from '@/api/client';
 
+// 写后全量重拉：opener 清单变化会波及 intents（候选读侧合成、删除连带清引用），
+// 刷整个 ['opener'] 前缀；返回 promise 让 mutation 在重拉完成后才 settle
 export function useOpenerSave() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Parameters<typeof apiPost<'/api/opener/save'>>[1]) => apiPost('/api/opener/save', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['opener', 'list'] }),
+    mutationFn: (input: OpenerItem) => apiPost('/api/opener/save', input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['opener'] }),
   });
 }
 
 export function useOpenerDelete() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string }) => apiPost('/api/opener/delete', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['opener', 'list'] }),
+    mutationFn: (input: OpenerItem) => apiPost('/api/opener/delete', input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['opener'] }),
   });
 }
 
-// 拖拽排序：提交按目标顺序排列的全量名单（乐观更新在调用方，失败时 invalidate 回滚）
-export function useOpenerReorder() {
+// 整节覆盖（拖拽排序落库）：提交清单即落盘结果；失败也重拉，回落服务端顺序
+export function useOpenerSaveAll() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Parameters<typeof apiPost<'/api/opener/reorder'>>[1]) => apiPost('/api/opener/reorder', input),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['opener', 'list'] }),
-    onError: () => void qc.invalidateQueries({ queryKey: ['opener', 'list'] }),
+    mutationFn: (items: OpenerItem[]) => apiPost('/api/opener/save-all', { items }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['opener'] }),
   });
 }

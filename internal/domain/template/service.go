@@ -3,7 +3,6 @@ package template
 import (
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"cube/internal/config"
 	"cube/pkg/x"
@@ -63,36 +62,37 @@ func (s *Service) TplSources() []TplSource {
 // SaveTplSource 新增或按 name 替换一条模板源（name 是唯一键——编辑 name 等价于删旧存新）。
 // 校验收敛在写侧，坏数据中文错误不落文件。
 func (s *Service) SaveTplSource(src TplSource) error {
-	src.Name = strings.TrimSpace(src.Name)
-	src.RepoURL = strings.TrimSpace(src.RepoURL)
-	if err := ValidateTplSource(src); err != nil {
+	src, err := normalizeTplSource(src)
+	if err != nil {
 		return err
 	}
-
-	specs := s.TplSources()
-	specs = x.UpsertKeyed(specs, func(cur TplSource) string { return cur.Name }, src)
+	specs := x.UpsertKeyed(s.TplSources(), tplSourceName, src)
 	return store.SaveSection(s.settingsFile, tplSourcesSection, specs)
 }
 
-// DeleteTplSource 按 name 删除一条模板源；不存在时返回中文错误。
-func (s *Service) DeleteTplSource(name string) error {
-	name = strings.TrimSpace(name)
-	rest, removed := x.RemoveKeyed(s.TplSources(), func(cur TplSource) string { return cur.Name }, name)
+// SaveAllTplSources 以提交清单整节覆盖模板源节（顺序即 create 交互选择序）。
+// 逐项校验 + name 查重，任一失败整体不落盘。
+func (s *Service) SaveAllTplSources(sources []TplSource) error {
+	normalized := make([]TplSource, len(sources))
+	for i, src := range sources {
+		n, err := normalizeTplSource(src)
+		if err != nil {
+			return err
+		}
+		normalized[i] = n
+	}
+	if dup, ok := x.DuplicateKeyed(normalized, tplSourceName); ok {
+		return fmt.Errorf("模板源 name 重复: %s", dup)
+	}
+	return store.SaveSection(s.settingsFile, tplSourcesSection, normalized)
+}
+
+// DeleteTplSource 按唯一键（name）删除一条模板源；不存在时返回中文错误。
+func (s *Service) DeleteTplSource(src TplSource) error {
+	name := tplSourceName(src)
+	rest, removed := x.RemoveKeyed(s.TplSources(), tplSourceName, name)
 	if !removed {
 		return fmt.Errorf("未找到指定模板源: %s", name)
 	}
 	return store.SaveSection(s.settingsFile, tplSourcesSection, rest)
-}
-
-// ReorderTplSources 按 names 顺序重排模板源节（顺序即 create 交互选择序）。
-// 未列出的条目保持原相对顺序排在末尾，不丢数据；未知或重复 name 返回中文错误。
-func (s *Service) ReorderTplSources(names []string) error {
-	ordered, err := x.ReorderKeyed(
-		s.TplSources(), func(cur TplSource) string { return cur.Name }, names,
-		"模板源", func(k string) string { return k },
-	)
-	if err != nil {
-		return err
-	}
-	return store.SaveSection(s.settingsFile, tplSourcesSection, ordered)
 }

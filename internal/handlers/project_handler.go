@@ -66,11 +66,11 @@ func (h *ProjectHandler) Register(r *server.Routes) {
 	r.Get("/api/project/scan-rules", "获取扫描规则", server.JSONHandler(h.scanRules))
 	r.Get("/api/project/clone-rules", "获取 clone 规则", server.JSONHandler(h.cloneRules))
 	r.Post("/api/project/scan-rule/save", "新增或按 path 替换扫描规则", server.JSONHandler(h.scanRuleSave))
-	r.Post("/api/project/scan-rule/delete", "按 path 删除扫描规则", server.JSONHandler(h.scanRuleDelete))
-	r.Post("/api/project/scan-rule/reorder", "按 path 重排扫描规则顺序", server.JSONHandler(h.scanRuleReorder))
+	r.Post("/api/project/scan-rule/delete", "删除扫描规则（提交完整单项，按 path 定位）", server.JSONHandler(h.scanRuleDelete))
+	r.Post("/api/project/scan-rule/save-all", "整节覆盖扫描规则（提交即落盘，含顺序；成功后立即重扫）", server.JSONHandler(h.scanRuleSaveAll))
 	r.Post("/api/project/clone-rule/save", "新增或按 host+prefix 替换 clone 规则", server.JSONHandler(h.cloneRuleSave))
-	r.Post("/api/project/clone-rule/delete", "按 host+prefix 删除 clone 规则", server.JSONHandler(h.cloneRuleDelete))
-	r.Post("/api/project/clone-rule/reorder", "按键重排 clone 规则顺序", server.JSONHandler(h.cloneRuleReorder))
+	r.Post("/api/project/clone-rule/delete", "删除 clone 规则（提交完整单项，按 host+prefix 定位）", server.JSONHandler(h.cloneRuleDelete))
+	r.Post("/api/project/clone-rule/save-all", "整节覆盖 clone 规则（提交即落盘，含顺序）", server.JSONHandler(h.cloneRuleSaveAll))
 }
 
 func (h *ProjectHandler) projectList(_ struct{}) (ProjectListResult, error) {
@@ -167,102 +167,101 @@ func (h *ProjectHandler) cloneRules(_ struct{}) (ListResult[project.CloneRule], 
 
 // --- 规则写侧（校验在 Service 写侧，坏数据返回中文错误、不落文件） ---
 
-// ScanRuleSaveInput scan-rule/save 接口入参（字段与 project.ScanRule 对齐，path 是唯一键）。
+// ScanRuleItem scan 规则单项（save / delete / save-all 共用，字段与 project.ScanRule 对齐，path 是唯一键）。
+type ScanRuleItem struct {
+	Group    string      `json:"group" doc:"扫描出的项目组名"`
+	Path     string      `json:"path" doc:"扫描根目录（绝对路径，规则唯一键）"`
+	MaxDepth int         `json:"maxDepth" doc:"扫描最大深度"`
+	Icon     *icons.Icon `json:"icon,omitempty" doc:"组图标（可选：lucide 图名或 base64 PNG）"`
+	Tags     []string    `json:"tags,omitempty" doc:"命中该规则的项目统一追加的标签（如 个人/公司/开源，可选）"`
+}
+
+func (it ScanRuleItem) toScanRule() project.ScanRule {
+	return project.ScanRule{Group: it.Group, Path: it.Path, MaxDepth: it.MaxDepth, Icon: it.Icon, Tags: it.Tags}
+}
+
+// ScanRuleSaveInput scan-rule/save 接口入参。
 type ScanRuleSaveInput struct {
-	Body struct {
-		Group    string      `json:"group" doc:"扫描出的项目组名"`
-		Path     string      `json:"path" doc:"扫描根目录（绝对路径或 ~/ 前缀，规则唯一键）"`
-		MaxDepth int         `json:"maxDepth" doc:"扫描最大深度"`
-		Icon     *icons.Icon `json:"icon,omitempty" doc:"组图标（可选：lucide 图名或 base64 PNG）"`
-		Tags     []string    `json:"tags,omitempty" doc:"命中该规则的项目统一追加的标签（如 个人/公司/开源，可选）"`
-	}
+	Body ScanRuleItem
 }
 
 func (h *ProjectHandler) scanRuleSave(input ScanRuleSaveInput) (map[string]any, error) {
-	rule := project.ScanRule{Group: input.Body.Group, Path: input.Body.Path, MaxDepth: input.Body.MaxDepth, Tags: input.Body.Tags}
-	if input.Body.Icon != nil {
-		rule.Icon = input.Body.Icon
-	}
-	if err := h.projectService.SaveScanRule(rule); err != nil {
+	if err := h.projectService.SaveScanRule(input.Body.toScanRule()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// ScanRuleDeleteInput scan-rule/delete 接口入参。
+// ScanRuleDeleteInput scan-rule/delete 接口入参（完整单项，唯一键由 domain 计算）。
 type ScanRuleDeleteInput struct {
-	Body struct {
-		Path string `json:"path" doc:"规则唯一键"`
-	}
+	Body ScanRuleItem
 }
 
 func (h *ProjectHandler) scanRuleDelete(input ScanRuleDeleteInput) (map[string]any, error) {
-	if err := h.projectService.DeleteScanRule(input.Body.Path); err != nil {
+	if err := h.projectService.DeleteScanRule(input.Body.toScanRule()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// ScanRuleReorderInput scan-rule/reorder 接口入参（整表按目标顺序提交路径名单）。
-type ScanRuleReorderInput struct {
+// ScanRuleSaveAllInput scan-rule/save-all 接口入参（提交清单即落盘结果，含顺序）。
+type ScanRuleSaveAllInput struct {
 	Body struct {
-		Paths []string `json:"paths" doc:"按目标顺序排列的规则路径名单"`
+		Items []ScanRuleItem `json:"items" doc:"按目标顺序排列的全部扫描规则"`
 	}
 }
 
-func (h *ProjectHandler) scanRuleReorder(input ScanRuleReorderInput) (map[string]any, error) {
-	if err := h.projectService.ReorderScanRules(input.Body.Paths); err != nil {
+func (h *ProjectHandler) scanRuleSaveAll(input ScanRuleSaveAllInput) (map[string]any, error) {
+	if err := h.projectService.SaveAllScanRules(xslices.Map(input.Body.Items, ScanRuleItem.toScanRule)); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// CloneRuleSaveInput clone-rule/save 接口入参（host+prefix 是唯一键）。
+// CloneRuleItem clone 规则单项（save / delete / save-all 共用，host+prefix 是唯一键）。
+type CloneRuleItem struct {
+	RepoHost   string `json:"repoHost" doc:"源域名，无协议，如 github.com"`
+	RepoPrefix string `json:"repoPrefix,omitempty" doc:"uri 前缀，须以 / 开头或为空，如 /heyuuu"`
+	LocalPath  string `json:"localPath" doc:"对应本地目录（绝对路径）"`
+}
+
+func (it CloneRuleItem) toCloneRule() project.CloneRule {
+	return project.CloneRule{RepoHost: it.RepoHost, RepoPrefix: it.RepoPrefix, LocalPath: it.LocalPath}
+}
+
+// CloneRuleSaveInput clone-rule/save 接口入参。
 type CloneRuleSaveInput struct {
-	Body struct {
-		RepoHost   string `json:"repoHost" doc:"源域名，无协议，如 github.com"`
-		RepoPrefix string `json:"repoPrefix,omitempty" doc:"uri 前缀，须以 / 开头或为空，如 /heyuuu"`
-		LocalPath  string `json:"localPath" doc:"对应本地目录（绝对路径或 ~/ 前缀）"`
-	}
+	Body CloneRuleItem
 }
 
 func (h *ProjectHandler) cloneRuleSave(input CloneRuleSaveInput) (map[string]any, error) {
-	rule := project.CloneRule{
-		RepoHost:   input.Body.RepoHost,
-		RepoPrefix: input.Body.RepoPrefix,
-		LocalPath:  input.Body.LocalPath,
-	}
-	if err := h.projectService.SaveCloneRule(rule); err != nil {
+	if err := h.projectService.SaveCloneRule(input.Body.toCloneRule()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// CloneRuleDeleteInput clone-rule/delete 接口入参。
+// CloneRuleDeleteInput clone-rule/delete 接口入参（完整单项，唯一键由 domain 计算）。
 type CloneRuleDeleteInput struct {
-	Body struct {
-		RepoHost   string `json:"repoHost" doc:"规则键：源域名"`
-		RepoPrefix string `json:"repoPrefix" doc:"规则键：uri 前缀"`
-	}
+	Body CloneRuleItem
 }
 
 func (h *ProjectHandler) cloneRuleDelete(input CloneRuleDeleteInput) (map[string]any, error) {
-	key := project.CloneRuleKey{RepoHost: input.Body.RepoHost, RepoPrefix: input.Body.RepoPrefix}
-	if err := h.projectService.DeleteCloneRule(key); err != nil {
+	if err := h.projectService.DeleteCloneRule(input.Body.toCloneRule()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// CloneRuleReorderInput clone-rule/reorder 接口入参（整表按目标顺序提交键名单）。
-type CloneRuleReorderInput struct {
+// CloneRuleSaveAllInput clone-rule/save-all 接口入参（提交清单即落盘结果，含顺序）。
+type CloneRuleSaveAllInput struct {
 	Body struct {
-		Rules []project.CloneRuleKey `json:"rules" doc:"按目标顺序排列的 host+prefix 名单"`
+		Items []CloneRuleItem `json:"items" doc:"按目标顺序排列的全部 clone 规则"`
 	}
 }
 
-func (h *ProjectHandler) cloneRuleReorder(input CloneRuleReorderInput) (map[string]any, error) {
-	if err := h.projectService.ReorderCloneRules(input.Body.Rules); err != nil {
+func (h *ProjectHandler) cloneRuleSaveAll(input CloneRuleSaveAllInput) (map[string]any, error) {
+	if err := h.projectService.SaveAllCloneRules(xslices.Map(input.Body.Items, CloneRuleItem.toCloneRule)); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil

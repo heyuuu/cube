@@ -1,7 +1,6 @@
 package x
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -38,26 +37,18 @@ func TestRemoveKeyed(t *testing.T) {
 	}
 }
 
-func TestReorderKeyed(t *testing.T) {
-	type item struct{ k string }
-	keyOf := func(x item) string { return x.k }
-	list := []item{{"a"}, {"b"}, {"c"}, {"d"}}
+func TestDuplicateKeyed(t *testing.T) {
+	type item struct{ a, b string }
+	keyOf := func(x item) [2]string { return [2]string{x.a, x.b} }
 
-	got, err := ReorderKeyed(list, keyOf, []string{"c", "a"}, "项", func(k string) string { return k })
-	if err != nil {
-		t.Fatalf("合法重排不应报错: %v", err)
+	if _, ok := DuplicateKeyed([]item{{"h", "/x"}, {"h", "/y"}, {"g", "/x"}}, keyOf); ok {
+		t.Fatal("无重复键不应报告重复")
 	}
-	if len(got) != 4 || got[0].k != "c" || got[1].k != "a" || got[2].k != "b" || got[3].k != "d" {
-		t.Fatalf("未列出条目应原序殿后: %+v", got)
+	if _, ok := DuplicateKeyed([]item(nil), keyOf); ok {
+		t.Fatal("空清单不应报告重复")
 	}
-
-	if _, err = ReorderKeyed(list, keyOf, []string{"zz"}, "项", func(k string) string { return k }); err == nil || !strings.Contains(err.Error(), "未找到指定") {
-		t.Fatalf("未知键应报中文错误, got %v", err)
-	}
-	if _, err = ReorderKeyed(list, keyOf, []string{"a", "a"}, "项", func(k string) string { return k }); err == nil || !strings.Contains(err.Error(), "重复") {
-		t.Fatalf("重复键应报中文错误, got %v", err)
-	}
-	if _, err = ReorderKeyed([]item{{"a"}, {"a"}}, keyOf, []string{"a"}, "项", func(k string) string { return k }); err == nil || !strings.Contains(err.Error(), "重复键") {
-		t.Fatalf("存储清单键重复应报中文错误, got %v", err)
+	dup, ok := DuplicateKeyed([]item{{"h", "/x"}, {"g", "/y"}, {"g", "/y"}, {"h", "/x"}}, keyOf)
+	if !ok || dup != [2]string{"g", "/y"} {
+		t.Fatalf("应返回首个重复键, got %v %v", dup, ok)
 	}
 }

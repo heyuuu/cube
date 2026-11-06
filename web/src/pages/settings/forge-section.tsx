@@ -14,8 +14,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { renderIcon } from '@/lib/icon';
 import { cn } from '@/lib/utils';
-import { useForgeDelete, useForgeReorder, useForges, useForgeSave } from '@/queries/forge';
-import type { Forge } from '@/api/client';
+import { useForgeDelete, useForges, useForgeSave, useForgeSaveAll } from '@/queries/forge';
+import type { Forge, ForgeItem } from '@/api/client';
 import type { IconDecl } from '@/lib/icon';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
@@ -27,6 +27,13 @@ interface ForgeDraft {
 }
 
 const EMPTY_FORGE_DRAFT: ForgeDraft = { host: '', kind: 'github' };
+
+// 草稿 → 提交单项（save / 改 host 后删旧共用）
+const toForgeItem = (f: ForgeDraft): ForgeItem => ({
+  host: f.host.trim(),
+  kind: f.kind,
+  icon: f.icon && f.icon.value ? { type: f.icon.type, value: f.icon.value } : undefined,
+});
 
 // kind 固定四值：决定 API 方言与 1041 account 拉取能力（generic = 无 API 仅展示）
 const KINDS: { value: string; label: string; hint: string }[] = [
@@ -45,23 +52,16 @@ function ForgeForm({ draft, onClose }: { draft: ForgeDraft; onClose: () => void 
   const isEdit = draft.host !== '';
 
   const submit = () => {
-    const newHost = form.host.trim();
-    save.mutate(
-      {
-        host: newHost,
-        kind: form.kind,
-        icon: form.icon && form.icon.value ? { type: form.icon.type, value: form.icon.value } : undefined,
+    const item = toForgeItem(form);
+    save.mutate(item, {
+      onSuccess: () => {
+        // host 是唯一键：编辑改了 host 等价于删旧存新，补一步删旧（提交原始单项）
+        if (isEdit && item.host !== draft.host) {
+          del.mutate(toForgeItem(draft));
+        }
+        onClose();
       },
-      {
-        onSuccess: () => {
-          // host 是唯一键：编辑改了 host 等价于删旧存新，补一步删旧
-          if (isEdit && newHost !== draft.host) {
-            del.mutate({ host: draft.host });
-          }
-          onClose();
-        },
-      },
-    );
+    });
   };
 
   return (
@@ -128,15 +128,16 @@ function ForgeForm({ draft, onClose }: { draft: ForgeDraft; onClose: () => void 
 export function ForgeSection() {
   const forges = useForges();
   const del = useForgeDelete();
-  const reorder = useForgeReorder();
+  const saveAll = useForgeSaveAll();
   const [editing, setEditing] = useState<ForgeDraft | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<Forge | null>(null);
 
   const list = forges.data?.list ?? [];
+  // 拖拽排序 = 按新顺序整节提交（list 行与提交单项同构，原样回交）
   const d = useDragOrder(
     (f: Forge) => f.host,
     list,
-    (rows) => reorder.mutate({ hosts: rows.map((r) => r.host) }),
+    (rows) => saveAll.mutateAsync(rows),
   );
 
   return (
@@ -153,7 +154,7 @@ export function ForgeSection() {
       </div>
       {forges.error && <ErrorBanner message={`加载失败：${forges.error.message}`} />}
       {del.error && <ErrorBanner message={`删除失败：${del.error.message}`} />}
-      {reorder.error && <ErrorBanner message={`排序失败：${reorder.error.message}`} />}
+      {saveAll.error && <ErrorBanner message={`排序失败：${saveAll.error.message}`} />}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -199,7 +200,7 @@ export function ForgeSection() {
                   >
                     编辑
                   </Button>
-                  <Button size="sm" variant="ghost" disabled={del.isPending} onClick={() => setDeleting(f.host)}>
+                  <Button size="sm" variant="ghost" disabled={del.isPending} onClick={() => setDeleting(f)}>
                     删除
                   </Button>
                 </TableCell>
@@ -211,12 +212,12 @@ export function ForgeSection() {
       <ConfirmDialog
         open={deleting !== null}
         title="删除 forge"
-        message={`确定删除「${deleting}」吗？项目列表将不再展示该平台图标，操作立即生效。`}
+        message={`确定删除「${deleting?.host}」吗？项目列表将不再展示该平台图标，操作立即生效。`}
         confirmText="删除"
         danger
         onConfirm={() => {
           if (deleting) {
-            del.mutate({ host: deleting });
+            del.mutate(deleting);
           }
           setDeleting(null);
         }}

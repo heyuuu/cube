@@ -64,8 +64,8 @@ func (h *OpenerHandler) Register(r *server.Routes) {
 	r.Post("/api/opener/open", "用指定 opener 打开任意文件或目录", server.JSONHandler(h.openerOpen))
 	r.Post("/api/opener/diff-open", "用指定 opener 对比两个路径（diff-dir/diff-file）", server.JSONHandler(h.openerDiffOpen))
 	r.Post("/api/opener/save", "新增或更新 opener（按 name 替换）", server.JSONHandler(h.openerSave))
-	r.Post("/api/opener/delete", "按名删除 opener", server.JSONHandler(h.openerDelete))
-	r.Post("/api/opener/reorder", "按名重排 opener 顺序", server.JSONHandler(h.openerReorder))
+	r.Post("/api/opener/delete", "删除 opener（提交完整单项，按 name 定位）", server.JSONHandler(h.openerDelete))
+	r.Post("/api/opener/save-all", "整节覆盖 opener（提交即落盘，含顺序）", server.JSONHandler(h.openerSaveAll))
 	r.Post("/api/opener/intent-default/save", "设置某 intent 的默认 opener", server.JSONHandler(h.intentDefaultSave))
 	r.Post("/api/opener/intent-default/delete", "清除某 intent 的默认 opener", server.JSONHandler(h.intentDefaultDelete))
 }
@@ -181,59 +181,56 @@ func isDirPath(p string) (bool, error) {
 	return info.IsDir(), nil
 }
 
-// OpenerSaveInput save 接口入参（字段与 opener.Spec 对齐）。
-type OpenerSaveInput struct {
-	Body struct {
-		Name    string            `json:"name" doc:"opener 名称（唯一标识）"`
-		Title   string            `json:"title,omitempty" doc:"展示文案（如「打开所在目录」），缺省由 name 生成"`
-		Actions map[string]string `json:"actions" doc:"role → 动作串，exec: 命令 / url: 链接，$0/$1 占位路径槽位"`
-		Icon    *icons.Icon       `json:"icon,omitempty" doc:"图标声明"`
+// OpenerItem opener 单项（save / delete / save-all 共用，字段与 opener.Spec 对齐）。
+type OpenerItem struct {
+	Name    string            `json:"name" doc:"opener 名称（唯一标识）"`
+	Title   string            `json:"title,omitempty" doc:"展示文案（如「打开所在目录」），缺省由 name 生成"`
+	Actions map[string]string `json:"actions" doc:"role → 动作串，exec: 命令 / url: 链接，$0/$1 占位路径槽位"`
+	Icon    *icons.Icon       `json:"icon,omitempty" doc:"图标声明"`
+}
+
+func (it OpenerItem) toSpec() opener.Spec {
+	actions := make(map[opener.Role]string, len(it.Actions))
+	for r, raw := range it.Actions {
+		actions[opener.Role(r)] = raw
 	}
+	return opener.Spec{Name: it.Name, Title: it.Title, Actions: actions, Icon: it.Icon}
+}
+
+// OpenerSaveInput save 接口入参。
+type OpenerSaveInput struct {
+	Body OpenerItem
 }
 
 func (h *OpenerHandler) openerSave(input OpenerSaveInput) (map[string]any, error) {
-	actions := make(map[opener.Role]string, len(input.Body.Actions))
-	for r, raw := range input.Body.Actions {
-		actions[opener.Role(r)] = raw
-	}
-	spec := opener.Spec{
-		Name:    input.Body.Name,
-		Title:   input.Body.Title,
-		Actions: actions,
-	}
-	if input.Body.Icon != nil {
-		spec.Icon = input.Body.Icon
-	}
 	// 校验在 Service 写侧（领域构造函数），坏数据返回中文错误、不落文件
-	if err := h.service.SaveOpener(spec); err != nil {
+	if err := h.service.SaveOpener(input.Body.toSpec()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// OpenerDeleteInput delete 接口入参。
+// OpenerDeleteInput delete 接口入参（完整单项，唯一键由 domain 计算）。
 type OpenerDeleteInput struct {
-	Body struct {
-		Name string `json:"name" doc:"opener 名称"`
-	}
+	Body OpenerItem
 }
 
 func (h *OpenerHandler) openerDelete(input OpenerDeleteInput) (map[string]any, error) {
-	if err := h.service.DeleteOpener(input.Body.Name); err != nil {
+	if err := h.service.DeleteOpener(input.Body.toSpec()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// OpenerReorderInput reorder 接口入参（整表按目标顺序提交名单）。
-type OpenerReorderInput struct {
+// OpenerSaveAllInput save-all 接口入参（提交清单即落盘结果，含顺序）。
+type OpenerSaveAllInput struct {
 	Body struct {
-		Names []string `json:"names" doc:"按目标顺序排列的 opener 名单"`
+		Items []OpenerItem `json:"items" doc:"按目标顺序排列的全部 opener"`
 	}
 }
 
-func (h *OpenerHandler) openerReorder(input OpenerReorderInput) (map[string]any, error) {
-	if err := h.service.ReorderOpeners(input.Body.Names); err != nil {
+func (h *OpenerHandler) openerSaveAll(input OpenerSaveAllInput) (map[string]any, error) {
+	if err := h.service.SaveAllOpeners(xslices.Map(input.Body.Items, OpenerItem.toSpec)); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil

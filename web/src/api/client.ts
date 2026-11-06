@@ -16,6 +16,13 @@ export type Forge = components['schemas']['Forge'];
 export type ForgeAccount = components['schemas']['Account'];
 export type ForgeOverview = components['schemas']['Overview'];
 export type TplSource = components['schemas']['TplSource'];
+// settings 清单写入单项（save / delete / save-all 共用入参，1046）
+export type OpenerItem = components['schemas']['OpenerItem'];
+export type ForgeItem = components['schemas']['ForgeItem'];
+export type ForgeAccountItem = components['schemas']['AccountItem'];
+export type ScanRuleItem = components['schemas']['ScanRuleItem'];
+export type CloneRuleItem = components['schemas']['CloneRuleItem'];
+export type TplSourceItem = components['schemas']['TplSourceItem'];
 export type OpenerIntent = components['schemas']['OpenerIntentDTO'];
 export type ProjectListResult = components['schemas']['ProjectListResult'];
 

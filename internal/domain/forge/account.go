@@ -44,6 +44,25 @@ func ValidateAccount(a Account, forges []Forge) error {
 	return nil
 }
 
+// normalizeAccount 归一化并校验一条待写入的 account（save / save-all 共用）。
+// token 提交掩码值（TokenMasked）视为「未修改」，按唯一键从 existing 回填旧值——
+// 前端表单与列表的掩码展示的配套语义；existing 中无此 account 时掩码值不可用。
+func normalizeAccount(a Account, existing []Account, forges []Forge) (Account, error) {
+	a.ForgeHost = NormalizeHost(a.ForgeHost)
+	a.Username = NormalizeUsername(a.Username)
+	if a.Token == TokenMasked {
+		old := findAccount(existing, a.ForgeHost, a.Username)
+		if old == nil {
+			return a, fmt.Errorf("account %s@%s 不存在，token 不能提交掩码占位值", a.Username, a.ForgeHost)
+		}
+		a.Token = old.Token
+	}
+	if err := ValidateAccount(a, forges); err != nil {
+		return a, err
+	}
+	return a, nil
+}
+
 // loadAccounts 读全部 account（坏条目跳过不阻断）。
 func loadAccounts(file string) []Account {
 	specs := store.LoadSectionOrZero[[]Account](file, accountsSection)

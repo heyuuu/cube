@@ -14,7 +14,7 @@ import (
 type LocalRepo struct {
 	Name    string `json:"name"`    // 项目名
 	Path    string `json:"path"`    // 项目绝对路径
-	RepoURL string `json:"repoURL"` // origin remote URL
+	RepoURL string `json:"repoUrl"` // origin remote URL
 	Dirty   bool   `json:"dirty"`   // 工作区有改动
 	Ahead   int    `json:"ahead"`   // 领先远端 commit 数
 	Behind  int    `json:"behind"`  // 落后远端 commit 数

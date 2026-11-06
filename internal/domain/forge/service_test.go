@@ -77,10 +77,11 @@ func TestAccountCrud(t *testing.T) {
 		t.Fatal("新账号提交掩码值应报错")
 	}
 
-	if err := s.DeleteAccount("github.com", "ghost"); err == nil {
+	if err := s.DeleteAccount(Account{ForgeHost: "github.com", Username: "ghost"}); err == nil {
 		t.Fatal("删除不存在的 account 应报错")
 	}
-	if err := s.DeleteAccount("github.com", "heyuuu"); err != nil {
+	// 整项删除只按唯一键（归一化后）匹配，token 等其他字段不参与
+	if err := s.DeleteAccount(Account{ForgeHost: " GitHub.com ", Username: "heyuuu", Token: TokenMasked}); err != nil {
 		t.Fatalf("删除失败: %v", err)
 	}
 	if len(s.Accounts()) != 0 {
@@ -104,7 +105,7 @@ func TestDeleteForgeCascade(t *testing.T) {
 		}
 	}
 
-	if err := s.DeleteForge("github.com"); err != nil {
+	if err := s.DeleteForge(Forge{Host: "GitHub.com", Kind: KindGitea}); err != nil {
 		t.Fatalf("删 forge 失败: %v", err)
 	}
 	if len(s.Accounts()) != 1 || s.Accounts()[0].ForgeHost != "gitea.example.com" {
@@ -159,8 +160,9 @@ func TestFetchAccountPersist(t *testing.T) {
 	}
 }
 
-// TestReorderAccounts 按键重排 accounts 节（顺序即 forge 页展示序）；未知/重复键报错。
-func TestReorderAccounts(t *testing.T) {
+// TestSaveAllForges 整节覆盖：顺序即落盘序、未提交即删除（级联删 account）、
+// 归一化后重复 / 单项非法整体拒绝不落盘、空清单清空。
+func TestSaveAllForges(t *testing.T) {
 	s, _ := newService(t)
 	seedForge(t, s)
 	if err := s.SaveForge(Forge{Host: "gitee.com", Kind: KindGitee}); err != nil {
@@ -168,7 +170,6 @@ func TestReorderAccounts(t *testing.T) {
 	}
 	for _, a := range []Account{
 		{ForgeHost: "github.com", Username: "a1", Token: "t"},
-		{ForgeHost: "github.com", Username: "a2", Token: "t"},
 		{ForgeHost: "gitee.com", Username: "b1", Token: "t"},
 	} {
 		if err := s.SaveAccount(a); err != nil {
@@ -176,17 +177,74 @@ func TestReorderAccounts(t *testing.T) {
 		}
 	}
 
-	if err := s.ReorderAccounts([]string{"github.com/a2", "gitee.com/b1", "github.com/a1"}); err != nil {
-		t.Fatalf("重排失败: %v", err)
+	if err := s.SaveAllForges([]Forge{{Host: "gitee.com", Kind: KindGitee}, {Host: "new.example.com", Kind: KindGeneric}}); err != nil {
+		t.Fatalf("save-all 失败: %v", err)
+	}
+	got := s.Forges()
+	if len(got) != 2 || got[0].Host != "gitee.com" || got[1].Host != "new.example.com" {
+		t.Fatalf("save-all 后 forge 不符: %+v", got)
+	}
+	if accounts := s.Accounts(); len(accounts) != 1 || accounts[0].ForgeHost != "gitee.com" {
+		t.Fatalf("被移除 forge 的 account 应级联删除: %+v", accounts)
+	}
+
+	if err := s.SaveAllForges([]Forge{{Host: "a.com", Kind: KindGithub}, {Host: "A.com", Kind: KindGitea}}); err == nil {
+		t.Fatal("归一化后重复 host 应报错")
+	}
+	if err := s.SaveAllForges([]Forge{{Host: "a.com", Kind: KindGithub}, {Host: "b.com", Kind: "bad"}}); err == nil {
+		t.Fatal("单项非法应整体报错")
+	}
+	if got := s.Forges(); len(got) != 2 || got[0].Host != "gitee.com" {
+		t.Fatalf("失败的 save-all 不应改动数据: %+v", got)
+	}
+
+	if err := s.SaveAllForges(nil); err != nil {
+		t.Fatalf("空清单 save-all 失败: %v", err)
+	}
+	if len(s.Forges()) != 0 || len(s.Accounts()) != 0 {
+		t.Fatalf("空清单应清空 forge 并级联清空 account: %+v %+v", s.Forges(), s.Accounts())
+	}
+}
+
+// TestSaveAllAccounts 整节覆盖：顺序即落盘序、掩码 token 按唯一键沿用旧值、
+// 新条目掩码 / forge 未配置 / 重复键整体拒绝。
+func TestSaveAllAccounts(t *testing.T) {
+	s, _ := newService(t)
+	seedForge(t, s)
+	if err := s.SaveForge(Forge{Host: "gitee.com", Kind: KindGitee}); err != nil {
+		t.Fatalf("seed 失败: %v", err)
+	}
+	for _, a := range []Account{
+		{ForgeHost: "github.com", Username: "a1", Token: "t1"},
+		{ForgeHost: "github.com", Username: "a2", Token: "t2"},
+		{ForgeHost: "gitee.com", Username: "b1", Token: "t3"},
+	} {
+		if err := s.SaveAccount(a); err != nil {
+			t.Fatalf("保存 account 失败: %v", err)
+		}
+	}
+
+	if err := s.SaveAllAccounts([]Account{
+		{ForgeHost: "gitee.com", Username: "b1", Token: TokenMasked},
+		{ForgeHost: "GitHub.com", Username: "a1", Token: TokenMasked},
+	}); err != nil {
+		t.Fatalf("save-all 失败: %v", err)
 	}
 	got := s.Accounts()
-	if got[0].Username != "a2" || got[1].Username != "b1" || got[2].Username != "a1" {
-		t.Fatalf("重排后顺序不符: %+v", got)
+	if len(got) != 2 || got[0].Username != "b1" || got[0].Token != "t3" || got[1].Username != "a1" || got[1].Token != "t1" || got[1].ForgeHost != "github.com" {
+		t.Fatalf("save-all 后 account 不符（掩码应沿用旧 token、未提交的 a2 应删除）: %+v", got)
 	}
-	if err := s.ReorderAccounts([]string{"github.com/ghost"}); err == nil {
-		t.Fatal("未知键应报错")
+
+	for name, items := range map[string][]Account{
+		"新条目掩码":     {{ForgeHost: "github.com", Username: "new", Token: TokenMasked}},
+		"forge 未配置": {{ForgeHost: "nope.com", Username: "x", Token: "t"}},
+		"重复键":       {{ForgeHost: "github.com", Username: "a1", Token: "t"}, {ForgeHost: "GITHUB.com", Username: "a1", Token: "t"}},
+	} {
+		if err := s.SaveAllAccounts(items); err == nil {
+			t.Fatalf("%s 应报错", name)
+		}
 	}
-	if err := s.ReorderAccounts([]string{"github.com/a1", "github.com/a1"}); err == nil {
-		t.Fatal("重复键应报错")
+	if len(s.Accounts()) != 2 {
+		t.Fatalf("失败的 save-all 不应改动数据: %+v", s.Accounts())
 	}
 }

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useCloneRuleDelete, useCloneRuleReorder, useCloneRules, useCloneRuleSave } from '@/queries/scan-rule';
+import { useCloneRuleDelete, useCloneRules, useCloneRuleSave, useCloneRuleSaveAll } from '@/queries/scan-rule';
 import type { CloneRule } from '@/api/client';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
@@ -23,7 +23,7 @@ interface CloneDraft {
 
 const EMPTY_CLONE_DRAFT: CloneDraft = { repoHost: '', repoPrefix: '', localPath: '' };
 
-// host|prefix 作拖拽键（host 不含 |，可无损拼接）；对用户展示的键是 host+prefix 串
+// host|prefix 作行标识（React key / 拖拽排序，纯 UI 用途，不出 API）；对用户展示的是 host+prefix 串
 const dragKeyOf = (r: CloneRule) => `${r.repoHost}|${r.repoPrefix ?? ''}`;
 const displayKeyOf = (r: CloneRule) => `${r.repoHost}${r.repoPrefix ?? ''}`;
 
@@ -100,14 +100,13 @@ function CloneRuleForm({ draft, onClose }: { draft: CloneDraft; onClose: () => v
 export function CloneSection() {
   const rules = useCloneRules();
   const del = useCloneRuleDelete();
-  const reorder = useCloneRuleReorder();
+  const saveAll = useCloneRuleSaveAll();
   const [editing, setEditing] = useState<CloneDraft | null>(null);
   const [deleting, setDeleting] = useState<CloneRule | null>(null);
 
   const list = rules.data?.list ?? [];
-  const d = useDragOrder(dragKeyOf, list, (rows) =>
-    reorder.mutate({ rules: rows.map((r) => ({ repoHost: r.repoHost, repoPrefix: r.repoPrefix ?? '' })) }),
-  );
+  // 拖拽排序 = 按新顺序整节提交（list 行与提交单项同构，原样回交）
+  const d = useDragOrder(dragKeyOf, list, (rows) => saveAll.mutateAsync(rows));
 
   return (
     <section>
@@ -122,7 +121,7 @@ export function CloneSection() {
       </div>
       {rules.error && <ErrorBanner message={`加载失败：${rules.error.message}`} />}
       {del.error && <ErrorBanner message={`删除失败：${del.error.message}`} />}
-      {reorder.error && <ErrorBanner message={`排序失败：${reorder.error.message}`} />}
+      {saveAll.error && <ErrorBanner message={`排序失败：${saveAll.error.message}`} />}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -178,7 +177,7 @@ export function CloneSection() {
         danger
         onConfirm={() => {
           if (deleting) {
-            del.mutate({ repoHost: deleting.repoHost, repoPrefix: deleting.repoPrefix ?? '' });
+            del.mutate(deleting);
           }
           setDeleting(null);
         }}

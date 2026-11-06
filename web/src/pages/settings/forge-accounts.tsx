@@ -14,9 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import {
   useForgeAccountDelete,
-  useForgeAccountReorder,
   useForgeAccounts,
   useForgeAccountSave,
+  useForgeAccountSaveAll,
   useForges,
 } from '@/queries/forge';
 import type { Forge, ForgeAccount } from '@/api/client';
@@ -118,15 +118,17 @@ export function ForgeAccountsSection() {
   const accounts = useForgeAccounts();
   const forgesQ = useForges();
   const del = useForgeAccountDelete();
-  const reorder = useForgeAccountReorder();
+  const saveAll = useForgeAccountSaveAll();
   const [editing, setEditing] = useState<AccountDraft | null>(null);
   const [deleting, setDeleting] = useState<ForgeAccount | null>(null);
 
   const list = accounts.data?.list ?? [];
+  // 拖拽排序 = 按新顺序整节提交：list 行原样回交（token 为掩码值，后端按唯一键沿用旧值）；
+  // host/username 仅作 UI 行标识，不出 API
   const d = useDragOrder(
     (a: ForgeAccount) => `${a.forgeHost}/${a.username}`,
     list,
-    (rows) => reorder.mutate({ keys: rows.map((r) => `${r.forgeHost}/${r.username}`) }),
+    (rows) => saveAll.mutateAsync(rows),
   );
 
   return (
@@ -152,7 +154,7 @@ export function ForgeAccountsSection() {
       </div>
       {accounts.error && <ErrorBanner message={`加载失败：${accounts.error.message}`} />}
       {del.error && <ErrorBanner message={`删除失败：${del.error.message}`} />}
-      {reorder.error && <ErrorBanner message={`排序失败：${reorder.error.message}`} />}
+      {saveAll.error && <ErrorBanner message={`排序失败：${saveAll.error.message}`} />}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -210,7 +212,7 @@ export function ForgeAccountsSection() {
         danger
         onConfirm={() => {
           if (deleting) {
-            del.mutate({ forgeHost: deleting.forgeHost, username: deleting.username });
+            del.mutate(deleting);
           }
           setDeleting(null);
         }}

@@ -48,7 +48,7 @@ func TestValidateTplSource(t *testing.T) {
 	}
 }
 
-// TestTplSourceCRUD save 同名替换 / delete / reorder 的配置节语义。
+// TestTplSourceCRUD save 同名替换 / delete / save-all 的配置节语义。
 func TestTplSourceCRUD(t *testing.T) {
 	s := newConfigService(t)
 
@@ -85,25 +85,38 @@ func TestTplSourceCRUD(t *testing.T) {
 		t.Fatalf("坏数据不应落文件, got %+v", s.TplSources())
 	}
 
-	// reorder：work 提前，未列出的殿后
-	if err := s.ReorderTplSources([]string{"work"}); err != nil {
-		t.Fatalf("reorder 失败: %v", err)
+	// save-all：提交清单即落盘结果（顺序 + 未提交即删除 + 新增），name 归一化
+	if err := s.SaveAllTplSources([]TplSource{
+		{Name: "work", RepoURL: "https://github.com/a/work.git"},
+		{Name: " extra ", RepoURL: "git@github.com:a/extra.git"},
+		{Name: "core", RepoURL: "git@github.com:a/core-v2.git"},
+	}); err != nil {
+		t.Fatalf("save-all 失败: %v", err)
 	}
 	got = s.TplSources()
-	if len(got) != 2 || got[0].Name != "work" || got[1].Name != "core" {
-		t.Fatalf("reorder 顺序不符: %+v", got)
+	if len(got) != 3 || got[0].Name != "work" || got[1].Name != "extra" || got[2].Name != "core" {
+		t.Fatalf("save-all 顺序不符: %+v", got)
 	}
 
-	// reorder 未知名报中文错误
-	if err := s.ReorderTplSources([]string{"nope"}); err == nil || !strings.Contains(err.Error(), "未找到指定") {
-		t.Fatalf("reorder 未知名应报错, got %v", err)
+	// save-all 重复名 / 单项非法整体拒绝不落盘
+	if err := s.SaveAllTplSources([]TplSource{{Name: "core", RepoURL: "git@github.com:a/x.git"}, {Name: "core ", RepoURL: "git@github.com:a/y.git"}}); err == nil || !strings.Contains(err.Error(), "重复") {
+		t.Fatalf("save-all 重复名应报错, got %v", err)
+	}
+	if err := s.SaveAllTplSources([]TplSource{{Name: "core", RepoURL: "git@github.com:a/x.git"}, {Name: "a/b", RepoURL: "git@github.com:a/y.git"}}); err == nil {
+		t.Fatal("save-all 单项非法应报错")
+	}
+	if len(s.TplSources()) != 3 {
+		t.Fatalf("失败的 save-all 不应改动数据, got %+v", s.TplSources())
+	}
+	if err := s.SaveAllTplSources([]TplSource{got[0], got[2]}); err != nil {
+		t.Fatalf("save-all 失败: %v", err)
 	}
 
 	// delete + 再删报错
-	if err := s.DeleteTplSource("core"); err != nil {
+	if err := s.DeleteTplSource(TplSource{Name: "core", RepoURL: "旧地址不参与匹配"}); err != nil {
 		t.Fatalf("delete 失败: %v", err)
 	}
-	if err := s.DeleteTplSource("core"); err == nil || !strings.Contains(err.Error(), "未找到指定模板源") {
+	if err := s.DeleteTplSource(TplSource{Name: "core"}); err == nil || !strings.Contains(err.Error(), "未找到指定模板源") {
 		t.Fatalf("删不存在应报中文错误, got %v", err)
 	}
 	if len(s.TplSources()) != 1 {

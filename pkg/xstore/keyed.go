@@ -10,6 +10,7 @@ import (
 	"cube/pkg/x"
 )
 
+// Keyed 以字符串唯一键标识自身的清单条目。
 type Keyed interface {
 	Key() string
 }
@@ -24,12 +25,14 @@ type KeyedSliceStoreOpts[T Keyed] struct {
 	LoadConvert func([]T) []T
 }
 
+// KeyedSliceStore 按唯一键组织的清单存储（save / delete / save-all 语义）。
 type KeyedSliceStore[T Keyed] struct {
 	name        string
 	store       store.Store[[]T]
 	loadConvert func([]T) []T
 }
 
+// NewKeyedSliceStore 按配置构造 KeyedSliceStore，Name / Store 缺失视为编程错误直接 panic。
 func NewKeyedSliceStore[T Keyed](opts KeyedSliceStoreOpts[T]) *KeyedSliceStore[T] {
 	if len(strings.TrimSpace(opts.Name)) == 0 {
 		panic("name is empty")
@@ -48,10 +51,12 @@ func NewKeyedSliceStore[T Keyed](opts KeyedSliceStoreOpts[T]) *KeyedSliceStore[T
 	}
 }
 
+// All 读全部条目（经 LoadConvert 转换）。
 func (s *KeyedSliceStore[T]) All() []T {
 	return s.loadConvert(s.store.LoadOrZero())
 }
 
+// Retain 按谓词保留条目，无删动时不写入。
 func (s *KeyedSliceStore[T]) Retain(f func(T) bool) error {
 	values := s.All()
 	rest := xslices.Filter(values, f)
@@ -61,6 +66,7 @@ func (s *KeyedSliceStore[T]) Retain(f func(T) bool) error {
 	return s.store.Save(rest)
 }
 
+// Save 命中唯一键原位替换，否则追加到末尾。
 func (s *KeyedSliceStore[T]) Save(v T) error {
 	values := s.All()
 
@@ -68,7 +74,9 @@ func (s *KeyedSliceStore[T]) Save(v T) error {
 	return s.store.Save(values)
 }
 
-func (s *KeyedSliceStore[T]) Delete(key string) error {
+// Delete 按 v 的唯一键删除条目（只按键匹配，不比对其他字段）。
+func (s *KeyedSliceStore[T]) Delete(v T) error {
+	key := v.Key()
 	values := s.All()
 	rest, removed := x.RemoveKeyed(values, T.Key, key)
 	if !removed {
@@ -77,15 +85,18 @@ func (s *KeyedSliceStore[T]) Delete(key string) error {
 	return s.store.Save(rest)
 }
 
-func (s *KeyedSliceStore[T]) Reorder(keys []string) error {
-	values := s.All()
-	ordered, err := x.ReorderKeyed(values, T.Key, keys, s.name, identity)
-	if err != nil {
-		return err
+// SaveAll 以 values 整体覆盖（顺序即落盘序），键重复拒绝写入。
+func (s *KeyedSliceStore[T]) SaveAll(values []T) error {
+	if dup, ok := x.DuplicateKeyed(values, T.Key); ok {
+		return fmt.Errorf("%s 重复: %s", s.name, dup)
 	}
-	return s.store.Save(ordered)
+	if values == nil {
+		values = []T{}
+	}
+	return s.store.Save(values)
 }
 
+// Find 按唯一键查找条目。
 func (s *KeyedSliceStore[T]) Find(key string) (T, bool) {
 	values := s.All()
 	for _, value := range values {
@@ -98,6 +109,7 @@ func (s *KeyedSliceStore[T]) Find(key string) (T, bool) {
 	return zero, false
 }
 
+// Exists 判断唯一键是否存在。
 func (s *KeyedSliceStore[T]) Exists(key string) bool {
 	_, exists := s.Find(key)
 	return exists

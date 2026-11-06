@@ -18,10 +18,10 @@ import {
   useOpenerDelete,
   useOpenerIntents,
   useOpenerList,
-  useOpenerReorder,
   useOpenerSave,
+  useOpenerSaveAll,
 } from '@/queries/opener';
-import type { Opener } from '@/api/client';
+import type { Opener, OpenerItem } from '@/api/client';
 import type { IconDecl } from '@/lib/icon';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
@@ -66,6 +66,18 @@ function fromOpener(op: Opener): Draft {
   };
 }
 
+// 草稿 → 提交单项（save / delete / save-all 共用）。list DTO 带后端合成的默认 title/icon，
+// 一律经 fromOpener 还原为草稿再转，避免把合成的默认 title 固化落盘
+function toOpenerItem(d: Draft): OpenerItem {
+  return {
+    name: d.name.trim(),
+    title: d.title.trim() || undefined,
+    // 过滤空动作串的 role（后端对空模板报错；勾了没填=未声明）
+    actions: Object.fromEntries(Object.entries(d.actions).filter(([, raw]) => raw.trim() !== '')),
+    icon: { type: d.icon.type, value: d.icon.value },
+  };
+}
+
 // 编辑表单（右侧抽屉）：关闭即放弃草稿，保存成功后自动关闭
 function OpenerForm({ draft, onClose }: { draft: Draft; onClose: () => void }) {
   const [form, setForm] = useState<Draft>(draft);
@@ -85,17 +97,7 @@ function OpenerForm({ draft, onClose }: { draft: Draft; onClose: () => void }) {
     });
 
   const submit = () => {
-    // 过滤空动作串的 role（后端对空模板报错；勾了没填=未声明）
-    const actions = Object.fromEntries(Object.entries(form.actions).filter(([, raw]) => raw.trim() !== ''));
-    save.mutate(
-      {
-        name: form.name.trim(),
-        title: form.title.trim() || undefined,
-        actions,
-        icon: { type: form.icon.type, value: form.icon.value },
-      },
-      { onSuccess: onClose },
-    );
+    save.mutate(toOpenerItem(form), { onSuccess: onClose });
   };
 
   return (
@@ -227,15 +229,16 @@ function IntentSection() {
 export function OpenerSection() {
   const openers = useOpenerList();
   const del = useOpenerDelete();
-  const reorder = useOpenerReorder();
+  const saveAll = useOpenerSaveAll();
   const [editing, setEditing] = useState<Draft | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<Opener | null>(null);
 
   const list = openers.data?.list ?? [];
+  // 拖拽排序 = 按新顺序整节提交
   const d = useDragOrder(
     (op: Opener) => op.name,
     list,
-    (rows) => reorder.mutate({ names: rows.map((r) => r.name) }),
+    (rows) => saveAll.mutateAsync(rows.map((op) => toOpenerItem(fromOpener(op)))),
   );
 
   return (
@@ -249,7 +252,7 @@ export function OpenerSection() {
       </div>
       {openers.error && <ErrorBanner message={`加载失败：${openers.error.message}`} />}
       {del.error && <ErrorBanner message={`删除失败：${del.error.message}`} />}
-      {reorder.error && <ErrorBanner message={`排序失败：${reorder.error.message}`} />}
+      {saveAll.error && <ErrorBanner message={`排序失败：${saveAll.error.message}`} />}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -286,7 +289,7 @@ export function OpenerSection() {
                   <Button size="sm" variant="ghost" onClick={() => setEditing(fromOpener(op))}>
                     编辑
                   </Button>
-                  <Button size="sm" variant="ghost" disabled={del.isPending} onClick={() => setDeleting(op.name)}>
+                  <Button size="sm" variant="ghost" disabled={del.isPending} onClick={() => setDeleting(op)}>
                     删除
                   </Button>
                 </TableCell>
@@ -298,12 +301,12 @@ export function OpenerSection() {
       <ConfirmDialog
         open={deleting !== null}
         title="删除 opener"
-        message={`确定删除「${deleting}」吗？该操作立即生效且不可恢复。`}
+        message={`确定删除「${deleting?.name}」吗？该操作立即生效且不可恢复。`}
         confirmText="删除"
         danger
         onConfirm={() => {
           if (deleting) {
-            del.mutate({ name: deleting });
+            del.mutate(toOpenerItem(fromOpener(deleting)));
           }
           setDeleting(null);
         }}

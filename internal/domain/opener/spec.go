@@ -12,3 +12,6 @@ type Spec struct {
 	Actions map[Role]string `json:"actions"`         // role → 动作串 `<kind>:<模板>`（kind: exec 命令 / url 链接，见 exec.go）；$0/$1... 占位路径槽位，可嵌在模板内（如 --wd=$0）。声明了哪些 role 即键集合
 	Icon    *icons.Icon     `json:"icon,omitempty"`  // 图标声明（前端渲染方式），缺省无图标
 }
+
+// specName opener 在 openers 节内的唯一键（name）。
+func specName(s Spec) string { return s.Name }

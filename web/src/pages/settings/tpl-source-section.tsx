@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useTplSourceDelete, useTplSourceReorder, useTplSources, useTplSourceSave } from '@/queries/template';
+import { useTplSourceDelete, useTplSources, useTplSourceSave, useTplSourceSaveAll } from '@/queries/template';
 import type { TplSource } from '@/api/client';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
@@ -39,9 +39,9 @@ function TplSourceForm({ draft, onClose }: { draft: TplSourceDraft; onClose: () 
       { name: newName, repoUrl: form.repoUrl.trim() },
       {
         onSuccess: () => {
-          // name 是唯一键：编辑改了 name 等价于删旧存新，补一步删旧
+          // name 是唯一键：编辑改了 name 等价于删旧存新，补一步删旧（提交原始单项）
           if (isEdit && newName !== draft.name) {
-            del.mutate({ name: draft.name });
+            del.mutate(draft);
           }
           onClose();
         },
@@ -96,16 +96,17 @@ function TplSourceForm({ draft, onClose }: { draft: TplSourceDraft; onClose: () 
 export function TplSourceSection() {
   const sources = useTplSources();
   const del = useTplSourceDelete();
-  const reorder = useTplSourceReorder();
+  const saveAll = useTplSourceSaveAll();
   const [editing, setEditing] = useState<TplSourceDraft | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<TplSource | null>(null);
 
   const list = sources.data?.list ?? [];
   const defaultSource = sources.data?.defaultSource ?? 'core';
+  // 拖拽排序 = 按新顺序整节提交（list 行与提交单项同构，原样回交）
   const d = useDragOrder(
     (s: TplSource) => s.name,
     list,
-    (rows) => reorder.mutate({ names: rows.map((r) => r.name) }),
+    (rows) => saveAll.mutateAsync(rows),
   );
   const hasDefault = list.some((s) => s.name === defaultSource);
 
@@ -129,7 +130,7 @@ export function TplSourceSection() {
       )}
       {sources.error && <ErrorBanner message={`加载失败：${sources.error.message}`} />}
       {del.error && <ErrorBanner message={`删除失败：${del.error.message}`} />}
-      {reorder.error && <ErrorBanner message={`排序失败：${reorder.error.message}`} />}
+      {saveAll.error && <ErrorBanner message={`排序失败：${saveAll.error.message}`} />}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -176,7 +177,7 @@ export function TplSourceSection() {
                   >
                     编辑
                   </Button>
-                  <Button size="sm" variant="ghost" disabled={del.isPending} onClick={() => setDeleting(s.name)}>
+                  <Button size="sm" variant="ghost" disabled={del.isPending} onClick={() => setDeleting(s)}>
                     删除
                   </Button>
                 </TableCell>
@@ -188,12 +189,12 @@ export function TplSourceSection() {
       <ConfirmDialog
         open={deleting !== null}
         title="删除模板源"
-        message={`确定删除「${deleting}」吗？cube create 将无法再按该名字引用，操作立即生效。`}
+        message={`确定删除「${deleting?.name}」吗？cube create 将无法再按该名字引用，操作立即生效。`}
         confirmText="删除"
         danger
         onConfirm={() => {
           if (deleting) {
-            del.mutate({ name: deleting });
+            del.mutate(deleting);
           }
           setDeleting(null);
         }}

@@ -12,8 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { renderIcon } from '@/lib/icon';
-import { useScanRuleDelete, useScanRuleReorder, useScanRules, useScanRuleSave } from '@/queries/scan-rule';
-import type { ScanRule } from '@/api/client';
+import { useScanRuleDelete, useScanRules, useScanRuleSave, useScanRuleSaveAll } from '@/queries/scan-rule';
+import type { ScanRule, ScanRuleItem } from '@/api/client';
 import type { IconDecl } from '@/lib/icon';
 
 import { STICKY_LEFT, STICKY_RIGHT, useDragOrder } from './drag-order';
@@ -38,6 +38,15 @@ const parseTags = (raw: string): string[] | undefined => {
   return tags.length > 0 ? tags : undefined;
 };
 
+// 草稿 → 提交单项（save / 改 path 后删旧共用）
+const toScanRuleItem = (f: ScanDraft): ScanRuleItem => ({
+  group: f.group.trim(),
+  path: f.path.trim(),
+  maxDepth: Number(f.maxDepth) || 0,
+  tags: parseTags(f.tags),
+  icon: f.icon && f.icon.value ? { type: f.icon.type, value: f.icon.value } : undefined,
+});
+
 // 编辑表单（右侧抽屉）：关闭即放弃草稿，保存成功后自动关闭
 function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => void }) {
   const [form, setForm] = useState<ScanDraft>(draft);
@@ -47,25 +56,16 @@ function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => voi
   const isEdit = draft.path !== '';
 
   const submit = () => {
-    const newPath = form.path.trim();
-    save.mutate(
-      {
-        group: form.group.trim(),
-        path: newPath,
-        maxDepth: Number(form.maxDepth) || 0,
-        tags: parseTags(form.tags),
-        icon: form.icon && form.icon.value ? { type: form.icon.type, value: form.icon.value } : undefined,
+    const item = toScanRuleItem(form);
+    save.mutate(item, {
+      onSuccess: () => {
+        // path 是规则唯一键：编辑改了 path 等价于删旧存新，补一步删旧（提交原始单项）
+        if (isEdit && item.path !== draft.path) {
+          del.mutate(toScanRuleItem(draft));
+        }
+        onClose();
       },
-      {
-        onSuccess: () => {
-          // path 是规则唯一键：编辑改了 path 等价于删旧存新，补一步删旧
-          if (isEdit && newPath !== draft.path) {
-            del.mutate({ path: draft.path });
-          }
-          onClose();
-        },
-      },
-    );
+    });
   };
 
   return (
@@ -133,15 +133,16 @@ function ScanRuleForm({ draft, onClose }: { draft: ScanDraft; onClose: () => voi
 export function ScanSection() {
   const rules = useScanRules();
   const del = useScanRuleDelete();
-  const reorder = useScanRuleReorder();
+  const saveAll = useScanRuleSaveAll();
   const [editing, setEditing] = useState<ScanDraft | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<ScanRule | null>(null);
 
   const list = rules.data?.list ?? [];
+  // 拖拽排序 = 按新顺序整节提交（list 行与提交单项同构，原样回交）
   const d = useDragOrder(
     (r: ScanRule) => r.path,
     list,
-    (rows) => reorder.mutate({ paths: rows.map((r) => r.path) }),
+    (rows) => saveAll.mutateAsync(rows),
   );
 
   return (
@@ -157,7 +158,7 @@ export function ScanSection() {
       </div>
       {rules.error && <ErrorBanner message={`加载失败：${rules.error.message}`} />}
       {del.error && <ErrorBanner message={`删除失败：${del.error.message}`} />}
-      {reorder.error && <ErrorBanner message={`排序失败：${reorder.error.message}`} />}
+      {saveAll.error && <ErrorBanner message={`排序失败：${saveAll.error.message}`} />}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -206,7 +207,7 @@ export function ScanSection() {
                   >
                     编辑
                   </Button>
-                  <Button size="sm" variant="ghost" disabled={del.isPending} onClick={() => setDeleting(r.path)}>
+                  <Button size="sm" variant="ghost" disabled={del.isPending} onClick={() => setDeleting(r)}>
                     删除
                   </Button>
                 </TableCell>
@@ -218,12 +219,12 @@ export function ScanSection() {
       <ConfirmDialog
         open={deleting !== null}
         title="删除扫描规则"
-        message={`确定删除「${deleting}」吗？该项目组将从列表中移除，操作立即生效。`}
+        message={`确定删除「${deleting?.path}」吗？该项目组将从列表中移除，操作立即生效。`}
         confirmText="删除"
         danger
         onConfirm={() => {
           if (deleting) {
-            del.mutate({ path: deleting });
+            del.mutate(deleting);
           }
           setDeleting(null);
         }}

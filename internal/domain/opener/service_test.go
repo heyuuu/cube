@@ -155,58 +155,83 @@ func TestServiceSaveDelete(t *testing.T) {
 
 	t.Run("删除与不存在报错", func(t *testing.T) {
 		s, _ := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
-		if err := s.DeleteOpener("code"); err != nil {
+		// 整项删除只按 name 匹配，其他字段不参与
+		if err := s.DeleteOpener(Spec{Name: "code", Title: "旧展示文案"}); err != nil {
 			t.Fatalf("删除失败: %v", err)
 		}
 		if got := s.AllOpeners(); len(got) != 0 {
 			t.Fatalf("删除后应为空, got %d", len(got))
 		}
-		if err := s.DeleteOpener("nope"); err == nil {
+		if err := s.DeleteOpener(Spec{Name: "nope"}); err == nil {
 			t.Fatal("删除不存在项应报错")
 		}
 	})
 }
 
-func TestServiceReorder(t *testing.T) {
+func TestServiceSaveAll(t *testing.T) {
 	newSpecs := []Spec{
 		{Name: "finder", Actions: map[Role]string{"open-dir": `exec: open -a Finder`}},
 		{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}},
 		{Name: "stree", Actions: map[Role]string{"open-dir": `exec: stree`}},
 	}
 
-	t.Run("按名单重排", func(t *testing.T) {
+	t.Run("提交清单即落盘结果（顺序 / 删除 / 新增 / 修改）", func(t *testing.T) {
 		s, _ := newServiceAt(t, newSpecs)
-		if err := s.ReorderOpeners([]string{"stree", "code", "finder"}); err != nil {
-			t.Fatalf("重排失败: %v", err)
+		if err := s.SaveAllOpeners([]Spec{
+			{Name: "stree", Actions: map[Role]string{"open-dir": `exec: stree $0`}},
+			{Name: "ghostty", Actions: map[Role]string{"open-dir": `exec: ghostty`}},
+			{Name: "finder", Actions: map[Role]string{"open-dir": `exec: open -a Finder`}},
+		}); err != nil {
+			t.Fatalf("save-all 失败: %v", err)
 		}
 		got := s.AllOpeners()
-		if len(got) != 3 || got[0].Name() != "stree" || got[1].Name() != "code" || got[2].Name() != "finder" {
-			t.Fatalf("顺序不符: %v", got)
+		if len(got) != 3 || got[0].Name() != "stree" || got[1].Name() != "ghostty" || got[2].Name() != "finder" {
+			t.Fatalf("顺序/成员不符: %v", got)
+		}
+		if got[0].Summary() != "open-dir:exec: stree $0" {
+			t.Fatalf("内容应被覆盖, got %q", got[0].Summary())
 		}
 	})
 
-	t.Run("未列名条目保持原序排在末尾", func(t *testing.T) {
+	t.Run("单项非法与重复名整体拒绝不落盘", func(t *testing.T) {
 		s, _ := newServiceAt(t, newSpecs)
-		if err := s.ReorderOpeners([]string{"code"}); err != nil {
-			t.Fatalf("重排失败: %v", err)
+		if err := s.SaveAllOpeners([]Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}, {Name: "bad", Actions: map[Role]string{"open-dir": `exec:`}}}); err == nil {
+			t.Fatal("单项非法应报错")
 		}
-		got := s.AllOpeners()
-		if len(got) != 3 || got[0].Name() != "code" || got[1].Name() != "finder" || got[2].Name() != "stree" {
-			t.Fatalf("未列名条目应原序殿后: %v", got)
-		}
-	})
-
-	t.Run("未知名与重复名报错且不落文件", func(t *testing.T) {
-		s, _ := newServiceAt(t, newSpecs)
-		if err := s.ReorderOpeners([]string{"code", "nope"}); err == nil {
-			t.Fatal("未知名应报错")
-		}
-		if err := s.ReorderOpeners([]string{"code", "code"}); err == nil {
+		if err := s.SaveAllOpeners([]Spec{newSpecs[1], newSpecs[1]}); err == nil {
 			t.Fatal("重复名应报错")
 		}
 		got := s.AllOpeners()
 		if len(got) != 3 || got[0].Name() != "finder" {
-			t.Fatalf("失败重排不应改动文件: %v", got)
+			t.Fatalf("失败的 save-all 不应改动文件: %v", got)
+		}
+	})
+
+	t.Run("空清单清空节", func(t *testing.T) {
+		s, _ := newServiceAt(t, newSpecs)
+		if err := s.SaveAllOpeners(nil); err != nil {
+			t.Fatalf("save-all 失败: %v", err)
+		}
+		if got := s.AllOpeners(); len(got) != 0 {
+			t.Fatalf("应清空, got %v", got)
+		}
+	})
+
+	t.Run("被移除的 opener 连带清理 intents 引用", func(t *testing.T) {
+		s, _ := newServiceAt(t, newSpecs)
+		writeIntents(t, s.settingsFile, map[Intent]IntentSpec{
+			IntentDir:      {DefaultOpener: "finder", Openers: []string{"finder", "code"}},
+			IntentTerminal: {Openers: []string{"stree"}},
+		})
+		if err := s.SaveAllOpeners([]Spec{newSpecs[1]}); err != nil {
+			t.Fatalf("save-all 失败: %v", err)
+		}
+		specs := s.loadIntents()
+		if d, ok := specs[IntentDir]; !ok || d.DefaultOpener != "" || len(d.Openers) != 1 || d.Openers[0] != "code" {
+			t.Fatalf("dir 引用应清理为 {无默认, [code]}, got %+v", d)
+		}
+		if _, ok := specs[IntentTerminal]; ok {
+			t.Fatalf("terminal 应整键删除, got %+v", specs[IntentTerminal])
 		}
 	})
 }
@@ -304,7 +329,7 @@ func TestDeleteOpenerCleansIntents(t *testing.T) {
 		IntentTerminal: {Openers: []string{"finder"}},
 	})
 
-	if err := s.DeleteOpener("finder"); err != nil {
+	if err := s.DeleteOpener(Spec{Name: "finder"}); err != nil {
 		t.Fatalf("删除 opener 失败: %v", err)
 	}
 	specs := s.loadIntents()

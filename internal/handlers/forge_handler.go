@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/internal/domain/forge"
 	"cube/internal/domain/icons"
 	"cube/internal/domain/project"
@@ -23,13 +25,13 @@ func NewForgeHandler(forgeService *forge.Service, projectService *project.Servic
 func (h *ForgeHandler) Register(r *server.Routes) {
 	r.Get("/api/forge/list", "获取 forge 列表", server.JSONHandler(h.forgeList))
 	r.Post("/api/forge/save", "新增或按 host 替换 forge", server.JSONHandler(h.forgeSave))
-	r.Post("/api/forge/delete", "按 host 删除 forge", server.JSONHandler(h.forgeDelete))
-	r.Post("/api/forge/reorder", "按 host 重排 forge 顺序", server.JSONHandler(h.forgeReorder))
+	r.Post("/api/forge/delete", "删除 forge（提交完整单项，按 host 定位，级联删其 account）", server.JSONHandler(h.forgeDelete))
+	r.Post("/api/forge/save-all", "整节覆盖 forge（提交即落盘，含顺序；被移除 forge 的 account 级联删除）", server.JSONHandler(h.forgeSaveAll))
 
 	r.Get("/api/forge/account/list", "获取 forge account 列表（token 打码）", server.JSONHandler(h.accountList))
 	r.Post("/api/forge/account/save", "新增或按 forgeHost+username 替换 account", server.JSONHandler(h.accountSave))
-	r.Post("/api/forge/account/delete", "按 forgeHost+username 删除 account", server.JSONHandler(h.accountDelete))
-	r.Post("/api/forge/account/reorder", "按键（host/username）重排 account 顺序", server.JSONHandler(h.accountReorder))
+	r.Post("/api/forge/account/delete", "删除 account（提交完整单项，按 forgeHost+username 定位）", server.JSONHandler(h.accountDelete))
+	r.Post("/api/forge/account/save-all", "整节覆盖 account（提交即落盘，含顺序；掩码 token 沿用旧值）", server.JSONHandler(h.accountSaveAll))
 	r.Post("/api/forge/account/fetch", "拉取 account 名下全部远端仓库", server.JSONHandler(h.accountFetch))
 
 	r.Get("/api/forge/overview", "forge 页聚合：全部 account 对账行 + 拉取元信息（只读缓存不外呼）", server.JSONHandler(h.forgeOverview))
@@ -39,49 +41,50 @@ func (h *ForgeHandler) forgeList(_ struct{}) (ListResult[forge.Forge], error) {
 	return listResult(h.forgeService.Forges()), nil
 }
 
-// ForgeSaveInput forge/save 接口入参（host 归一化后是唯一键）。
+// ForgeItem forge 单项（save / delete / save-all 共用，host 归一化后是唯一键）。
+type ForgeItem struct {
+	Host string      `json:"host" doc:"域名（可带端口），如 github.com"`
+	Kind string      `json:"kind" doc:"API 方言：github / gitea / gitee / generic"`
+	Icon *icons.Icon `json:"icon,omitempty" doc:"平台图标（可选：lucide 图名或 base64 PNG）"`
+}
+
+func (it ForgeItem) toForge() forge.Forge {
+	return forge.Forge{Host: it.Host, Kind: it.Kind, Icon: it.Icon}
+}
+
+// ForgeSaveInput forge/save 接口入参。
 type ForgeSaveInput struct {
-	Body struct {
-		Host string      `json:"host" doc:"域名（可带端口），如 github.com"`
-		Kind string      `json:"kind" doc:"API 方言：github / gitea / gitee / generic"`
-		Icon *icons.Icon `json:"icon,omitempty" doc:"平台图标（可选：lucide 图名或 base64 PNG）"`
-	}
+	Body ForgeItem
 }
 
 func (h *ForgeHandler) forgeSave(input ForgeSaveInput) (map[string]any, error) {
-	f := forge.Forge{Host: input.Body.Host, Kind: input.Body.Kind}
-	if input.Body.Icon != nil {
-		f.Icon = input.Body.Icon
-	}
-	if err := h.forgeService.SaveForge(f); err != nil {
+	if err := h.forgeService.SaveForge(input.Body.toForge()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// ForgeDeleteInput forge/delete 接口入参。
+// ForgeDeleteInput forge/delete 接口入参（完整单项，唯一键由 domain 计算）。
 type ForgeDeleteInput struct {
-	Body struct {
-		Host string `json:"host" doc:"规则唯一键"`
-	}
+	Body ForgeItem
 }
 
 func (h *ForgeHandler) forgeDelete(input ForgeDeleteInput) (map[string]any, error) {
-	if err := h.forgeService.DeleteForge(input.Body.Host); err != nil {
+	if err := h.forgeService.DeleteForge(input.Body.toForge()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// ForgeReorderInput forge/reorder 接口入参（整表按目标顺序提交 host 名单）。
-type ForgeReorderInput struct {
+// ForgeSaveAllInput forge/save-all 接口入参（提交清单即落盘结果，含顺序）。
+type ForgeSaveAllInput struct {
 	Body struct {
-		Hosts []string `json:"hosts" doc:"按目标顺序排列的 host 名单"`
+		Items []ForgeItem `json:"items" doc:"按目标顺序排列的全部 forge"`
 	}
 }
 
-func (h *ForgeHandler) forgeReorder(input ForgeReorderInput) (map[string]any, error) {
-	if err := h.forgeService.ReorderForges(input.Body.Hosts); err != nil {
+func (h *ForgeHandler) forgeSaveAll(input ForgeSaveAllInput) (map[string]any, error) {
+	if err := h.forgeService.SaveAllForges(xslices.Map(input.Body.Items, ForgeItem.toForge)); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
@@ -99,33 +102,36 @@ func (h *ForgeHandler) accountList(_ struct{}) (ListResult[forge.Account], error
 	return listResult(accounts), nil
 }
 
+// AccountItem account 单项（save / delete / save-all 共用，forgeHost+username 是唯一键）。
+type AccountItem struct {
+	ForgeHost string `json:"forgeHost" doc:"所属 forge host（唯一键之一）"`
+	Username  string `json:"username" doc:"平台用户名（唯一键之一）"`
+	Token     string `json:"token,omitempty" doc:"API token；提交掩码值视为未修改"`
+}
+
+func (it AccountItem) toAccount() forge.Account {
+	return forge.Account{ForgeHost: it.ForgeHost, Username: it.Username, Token: it.Token}
+}
+
 // AccountSaveInput account/save 接口入参。
 type AccountSaveInput struct {
-	Body struct {
-		ForgeHost string `json:"forgeHost" doc:"所属 forge host（唯一键之一）"`
-		Username  string `json:"username" doc:"平台用户名（唯一键之一）"`
-		Token     string `json:"token,omitempty" doc:"API token；提交掩码值视为未修改"`
-	}
+	Body AccountItem
 }
 
 func (h *ForgeHandler) accountSave(input AccountSaveInput) (map[string]any, error) {
-	b := input.Body
-	if err := h.forgeService.SaveAccount(forge.Account{ForgeHost: b.ForgeHost, Username: b.Username, Token: b.Token}); err != nil {
+	if err := h.forgeService.SaveAccount(input.Body.toAccount()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// AccountDeleteInput account/delete 接口入参。
+// AccountDeleteInput account/delete 接口入参（完整单项，唯一键由 domain 计算）。
 type AccountDeleteInput struct {
-	Body struct {
-		ForgeHost string `json:"forgeHost"`
-		Username  string `json:"username"`
-	}
+	Body AccountItem
 }
 
 func (h *ForgeHandler) accountDelete(input AccountDeleteInput) (map[string]any, error) {
-	if err := h.forgeService.DeleteAccount(input.Body.ForgeHost, input.Body.Username); err != nil {
+	if err := h.forgeService.DeleteAccount(input.Body.toAccount()); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil
@@ -149,15 +155,15 @@ func (h *ForgeHandler) accountFetch(input AccountFetchInput) (map[string]any, er
 	return map[string]any{"ok": true, "count": len(repos)}, nil
 }
 
-// AccountReorderInput account/reorder 接口入参（整表按目标顺序提交键名单）。
-type AccountReorderInput struct {
+// AccountSaveAllInput account/save-all 接口入参（提交清单即落盘结果，含顺序；token 可为 list 回显的掩码值）。
+type AccountSaveAllInput struct {
 	Body struct {
-		Keys []string `json:"keys" doc:"按目标顺序排列的 account 键名单（host/username）"`
+		Items []AccountItem `json:"items" doc:"按目标顺序排列的全部 account"`
 	}
 }
 
-func (h *ForgeHandler) accountReorder(input AccountReorderInput) (map[string]any, error) {
-	if err := h.forgeService.ReorderAccounts(input.Body.Keys); err != nil {
+func (h *ForgeHandler) accountSaveAll(input AccountSaveAllInput) (map[string]any, error) {
+	if err := h.forgeService.SaveAllAccounts(xslices.Map(input.Body.Items, AccountItem.toAccount)); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true}, nil

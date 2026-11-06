@@ -73,6 +73,24 @@ func RepoHost(repoURL string) string {
 	return NormalizeHost(u.Host)
 }
 
+// normalizeForge 归一化并校验一条待写入的 forge（save / save-all 共用），坏数据返回中文错误。
+func normalizeForge(f Forge) (Forge, error) {
+	f.Host = NormalizeHost(f.Host)
+	if err := ValidateHost(f.Host); err != nil {
+		return f, err
+	}
+	if !ValidKind(f.Kind) {
+		return f, fmt.Errorf("forge kind 未知: %q（合法值：%s）", f.Kind, strings.Join(Kinds(), " / "))
+	}
+	if err := icons.ValidateIcon(f.Icon); err != nil {
+		return f, fmt.Errorf("forge icon 配置错误: %s", err)
+	}
+	return f, nil
+}
+
+// forgeKey forge 的节内唯一键（归一化 host）。
+func forgeKey(f Forge) string { return NormalizeHost(f.Host) }
+
 // MatchHost 在 forges 里找 host 精确匹配的条目，无匹配返回 nil。
 func MatchHost(forges []Forge, host string) *Forge {
 	h := NormalizeHost(host)

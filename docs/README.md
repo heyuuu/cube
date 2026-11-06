@@ -19,6 +19,7 @@
 顶层活动提案：
 
 - [`1045-模板源映射与临时拉取/`](proposals/1045-模板源映射与临时拉取/) — ✅ 已交付（2026-10-08）：git 模板源改「settings 映射 + 临时拉取」轻量形态——`tplSources` 节（name↔repoUrl 映射，forge 同款 CRUD），create 引用语法 `@<source>/<tpl>` npm scope 式四形态，命名源临时浅 clone 用后即删（零状态管理）；默认源 core 不自动初始化
+- [`1046-settings清单接口整项化/`](proposals/1046-settings清单接口整项化/) — ✅ 已交付（2026-11-07）：六个 settings 清单节（opener / forge / forge account / scan 规则 / clone 规则 / 模板源）delete 改传完整单项（唯一键收敛为 domain 私有，删导出 Key 类型）；reorder 改名 save-all，语义为整节覆盖（last-write-wins、整体原子校验、副作用与单项 save/delete 对齐）；前端写后全量重拉（顺带修 opener intents / 项目列表漏刷）
 
 #### [proposals/parked/](proposals/parked/) — 挂起提案
 

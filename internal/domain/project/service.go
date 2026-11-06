@@ -77,37 +77,38 @@ func (s *Service) SaveScanRule(rule ScanRule) error {
 	return nil
 }
 
-// DeleteScanRule 按 path 删除 scan 规则，成功后立即重扫。
-func (s *Service) DeleteScanRule(path string) error {
-	if err := deleteScanRule(s.settingsFile, path); err != nil {
+// DeleteScanRule 按唯一键（path）删除 scan 规则，成功后立即重扫。
+func (s *Service) DeleteScanRule(rule ScanRule) error {
+	if err := deleteScanRule(s.settingsFile, rule); err != nil {
 		return err
 	}
 	s.scanCache.Reload()
 	return nil
 }
 
-// ReorderScanRules 重排也影响项目列表展示序（scan 按规则序遍历），成功后同样立即重扫。
-func (s *Service) ReorderScanRules(paths []string) error {
-	if err := reorderScanRules(s.settingsFile, paths); err != nil {
+// SaveAllScanRules 以提交清单整节覆盖 scan 规则；顺序影响项目列表展示序
+// （scan 按规则序遍历），成功后同样立即重扫。
+func (s *Service) SaveAllScanRules(rules []ScanRule) error {
+	if err := saveAllScanRules(s.settingsFile, rules); err != nil {
 		return err
 	}
 	s.scanCache.Reload()
 	return nil
 }
 
-// SaveCloneRule 新增或按 key 替换一条 clone 规则（校验在写侧）。
+// SaveCloneRule 新增或按 host+prefix 替换一条 clone 规则（校验在写侧）。
 func (s *Service) SaveCloneRule(rule CloneRule) error {
 	return saveCloneRule(s.settingsFile, rule)
 }
 
-// DeleteCloneRule 按 key 删除 clone 规则。
-func (s *Service) DeleteCloneRule(key CloneRuleKey) error {
-	return deleteCloneRule(s.settingsFile, key)
+// DeleteCloneRule 按唯一键（host+prefix）删除 clone 规则。
+func (s *Service) DeleteCloneRule(rule CloneRule) error {
+	return deleteCloneRule(s.settingsFile, rule)
 }
 
-// ReorderCloneRules 按给定 key 序重排 clone 规则。
-func (s *Service) ReorderCloneRules(keys []CloneRuleKey) error {
-	return reorderCloneRules(s.settingsFile, keys)
+// SaveAllCloneRules 以提交清单整节覆盖 clone 规则。
+func (s *Service) SaveAllCloneRules(rules []CloneRule) error {
+	return saveAllCloneRules(s.settingsFile, rules)
 }
 
 // --- project 读操作 ---

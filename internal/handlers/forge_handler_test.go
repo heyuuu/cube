@@ -65,35 +65,44 @@ func TestForgeWrite(t *testing.T) {
 		t.Fatalf("坏数据不应落文件, got %+v", out.List)
 	}
 
-	// delete 按 host；再删报中文错误
-	if r := postJSON(t, env.url("/api/forge/delete"), `{"host":"github.com"}`); !r.Ok {
+	// delete 提交完整单项（按归一化 host 定位）；再删报中文错误
+	if r := postJSON(t, env.url("/api/forge/delete"), `{"host":"GitHub.com","kind":"generic"}`); !r.Ok {
 		t.Fatalf("delete 应成功, message=%q", r.Message)
 	}
-	r2 := postJSON(t, env.url("/api/forge/delete"), `{"host":"github.com"}`)
+	r2 := postJSON(t, env.url("/api/forge/delete"), `{"host":"github.com","kind":"generic"}`)
 	if r2.Ok || !strings.Contains(r2.Message, "未找到") {
 		t.Fatalf("删不存在应报中文错误, message=%q", r2.Message)
 	}
 }
 
-// TestForgeReorder reorder 出口契约：重排生效 + 未知 host 中文错误。
-func TestForgeReorder(t *testing.T) {
+// TestForgeSaveAll save-all 出口契约：提交清单即落盘结果（顺序 / 删除）+ 重复 host 中文错误。
+func TestForgeSaveAll(t *testing.T) {
 	env := newTestEnv(t)
 	postJSON(t, env.url("/api/forge/save"), `{"host":"github.com","kind":"github"}`)
 	postJSON(t, env.url("/api/forge/save"), `{"host":"gitee.com","kind":"gitee"}`)
 
-	if r := postJSON(t, env.url("/api/forge/reorder"), `{"hosts":["gitee.com","github.com"]}`); !r.Ok {
-		t.Fatalf("reorder 应成功, message=%q", r.Message)
+	if r := postJSON(t, env.url("/api/forge/save-all"), `{"items":[{"host":"gitea.example.com","kind":"gitea"},{"host":"gitee.com","kind":"gitee"}]}`); !r.Ok {
+		t.Fatalf("save-all 应成功, message=%q", r.Message)
 	}
-	got := getJSON(t, env.url("/api/forge/list"))
 	var out ListResult[forge.Forge]
-	decodeData(t, got, &out)
-	if len(out.List) != 2 || out.List[0].Host != "gitee.com" {
-		t.Fatalf("重排后顺序不符: %+v", out.List)
+	decodeData(t, getJSON(t, env.url("/api/forge/list")), &out)
+	if len(out.List) != 2 || out.List[0].Host != "gitea.example.com" || out.List[1].Host != "gitee.com" {
+		t.Fatalf("save-all 后 forge 不符: %+v", out.List)
 	}
 
-	bad := postJSON(t, env.url("/api/forge/reorder"), `{"hosts":["unknown.com"]}`)
-	if bad.Ok || !strings.Contains(bad.Message, "未找到") {
-		t.Fatalf("未知 host 应报中文错误, message=%q", bad.Message)
+	bad := postJSON(t, env.url("/api/forge/save-all"), `{"items":[{"host":"a.com","kind":"github"},{"host":"A.com","kind":"github"}]}`)
+	if bad.Ok || !strings.Contains(bad.Message, "重复") {
+		t.Fatalf("重复 host 应报中文错误, message=%q", bad.Message)
+	}
+
+	// 旧 reorder 路由已移除
+	resp, err := http.Post(env.url("/api/forge/reorder"), "application/json", strings.NewReader(`{"hosts":[]}`))
+	if err != nil {
+		t.Fatalf("POST forge/reorder 失败: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("旧 reorder 路由应 404, got %d", resp.StatusCode)
 	}
 }
 
@@ -126,7 +135,19 @@ func TestForgeAccountApi(t *testing.T) {
 		t.Fatalf("坏数据应失败并带中文错误: %+v", r)
 	}
 
-	r = postJSON(t, env.url("/api/forge/account/delete"), `{"forgeHost":"github.com","username":"heyuuu"}`)
+	// save-all：list 回显的掩码 token 原样提交 = 沿用旧值
+	postJSON(t, env.url("/api/forge/account/save"), `{"forgeHost":"github.com","username":"other","token":"t2"}`)
+	r = postJSON(t, env.url("/api/forge/account/save-all"), `{"items":[{"forgeHost":"github.com","username":"other","token":"`+string(forge.TokenMasked)+`"},{"forgeHost":"github.com","username":"heyuuu","token":"`+string(forge.TokenMasked)+`"}]}`)
+	if !r.Ok {
+		t.Fatalf("save-all 应成功: %s", r.Message)
+	}
+	decodeData(t, getJSON(t, env.url("/api/forge/account/list")), &accounts)
+	if len(accounts.List) != 2 || accounts.List[0].Username != "other" || accounts.List[1].Username != "heyuuu" {
+		t.Fatalf("save-all 后顺序不符: %+v", accounts.List)
+	}
+
+	// delete 提交完整单项（list 回显行，token 为掩码）
+	r = postJSON(t, env.url("/api/forge/account/delete"), `{"forgeHost":"github.com","username":"heyuuu","token":"`+string(forge.TokenMasked)+`"}`)
 	if !r.Ok {
 		t.Fatalf("删除应成功: %s", r.Message)
 	}

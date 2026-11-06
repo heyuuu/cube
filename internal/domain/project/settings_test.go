@@ -115,7 +115,8 @@ func TestDeleteScanRule(t *testing.T) {
 		t.Fatalf("保存失败: %v", err)
 	}
 
-	if err := s.DeleteScanRule(root); err != nil {
+	// 整项删除只按 path 匹配，其他字段不参与
+	if err := s.DeleteScanRule(ScanRule{Group: "旧组名", Path: root, MaxDepth: 9}); err != nil {
 		t.Fatalf("删除失败: %v", err)
 	}
 	if rules := s.ScanRules(); len(rules) != 0 {
@@ -126,45 +127,64 @@ func TestDeleteScanRule(t *testing.T) {
 		t.Fatalf("删除后项目列表应即时重扫为空，实际 %d 个", len(projs))
 	}
 
-	if err := s.DeleteScanRule(root); err == nil || !strings.Contains(err.Error(), "未找到") {
+	if err := s.DeleteScanRule(ScanRule{Group: "g", Path: root}); err == nil || !strings.Contains(err.Error(), "未找到") {
 		t.Fatalf("删除不存在的规则应报中文错误，实际: %v", err)
 	}
 }
 
-// TestReorderScanRules 按路径重排；未知/重复路径报错且顺序不变，未列出的排在末尾。
-// 重排同时改变项目列表展示序（scan 按规则序遍历），保存后立即重扫。
-func TestReorderScanRules(t *testing.T) {
+// TestSaveAllScanRules 提交清单即落盘结果（顺序 / 删除 / 新增 / 修改）；顺序同时改变项目列表
+// 展示序（scan 按规则序遍历），保存后立即重扫。单项非法、path/group 重复整体拒绝不落盘。
+func TestSaveAllScanRules(t *testing.T) {
 	s, ws := newWriteService(t)
 	r1, r2, r3 := ws.Mkdir("r1"), ws.Mkdir("r2"), ws.Mkdir("r3")
 	ws.MakeProjectDir(path.Join("r1", "a"))
 	ws.MakeProjectDir(path.Join("r3", "b"))
-	for i, r := range []string{r1, r2, r3} {
+	for i, r := range []string{r1, r2} {
 		if err := s.SaveScanRule(ScanRule{Group: string(rune('a' + i)), Path: r, MaxDepth: 3}); err != nil {
 			t.Fatalf("保存失败: %v", err)
 		}
 	}
+	_ = s.Projects()
 
-	// 只列 r3、r1：r2 未列出，应保持原相对顺序排在末尾
-	if err := s.ReorderScanRules([]string{r3, r1}); err != nil {
-		t.Fatalf("重排失败: %v", err)
+	// r3 新增并置顶、r1 修改 group、r2 未提交即删除
+	if err := s.SaveAllScanRules([]ScanRule{
+		{Group: "c", Path: r3, MaxDepth: 3},
+		{Group: "a2", Path: r1, MaxDepth: 3},
+	}); err != nil {
+		t.Fatalf("save-all 失败: %v", err)
 	}
 	rules := s.ScanRules()
-	if len(rules) != 3 || rules[0].Path != r3 || rules[1].Path != r1 || rules[2].Path != r2 {
-		t.Fatalf("重排后顺序不符: %v", rules)
+	if len(rules) != 2 || rules[0].Path != r3 || rules[1].Path != r1 || rules[1].Group != "a2" {
+		t.Fatalf("save-all 后规则不符: %v", rules)
 	}
-	// 项目列表立即反映新顺序（r3 下的项目排最前）
 	projs := s.Projects()
 	if len(projs) != 2 || !strings.HasSuffix(projs[0].Path(), path.Join("r3", "b")) {
-		t.Fatalf("重排后项目列表应即时重扫，实际: %v", projs)
+		t.Fatalf("save-all 后项目列表应即时重扫，实际: %v", projs)
 	}
 
-	// 未知路径：报错且不改原顺序
-	if err := s.ReorderScanRules([]string{"/no/such"}); err == nil || !strings.Contains(err.Error(), "未找到") {
-		t.Fatalf("未知路径应报中文错误，实际: %v", err)
+	cases := []struct {
+		name  string
+		rules []ScanRule
+		want  string
+	}{
+		{"path 重复", []ScanRule{{Group: "x", Path: r1, MaxDepth: 3}, {Group: "y", Path: r1, MaxDepth: 3}}, "path 重复"},
+		{"group 重复", []ScanRule{{Group: "x", Path: r1, MaxDepth: 3}, {Group: "x", Path: r2, MaxDepth: 3}}, "group 已被其它规则占用"},
+		{"单项非法", []ScanRule{{Group: "x", Path: r1, MaxDepth: 3}, {Group: "y", Path: "/no/such/dir/xyz", MaxDepth: 3}}, "不存在"},
 	}
-	// 重复路径：报错
-	if err := s.ReorderScanRules([]string{r1, r1}); err == nil || !strings.Contains(err.Error(), "重复") {
-		t.Fatalf("重复路径应报中文错误，实际: %v", err)
+	for _, c := range cases {
+		if err := s.SaveAllScanRules(c.rules); err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Fatalf("%s 应报含 %q 的中文错误，实际: %v", c.name, c.want, err)
+		}
+	}
+	if rules := s.ScanRules(); len(rules) != 2 || rules[0].Path != r3 {
+		t.Fatalf("失败的 save-all 不应改动文件: %v", rules)
+	}
+
+	if err := s.SaveAllScanRules(nil); err != nil {
+		t.Fatalf("空清单 save-all 失败: %v", err)
+	}
+	if len(s.ScanRules()) != 0 || len(s.Projects()) != 0 {
+		t.Fatalf("空清单应清空规则并重扫为空")
 	}
 }
 
@@ -270,20 +290,21 @@ func TestDeleteCloneRule(t *testing.T) {
 		t.Fatalf("保存失败: %v", err)
 	}
 
-	key := CloneRuleKey{RepoHost: "github.com", RepoPrefix: "/heyuuu"}
-	if err := s.DeleteCloneRule(key); err != nil {
+	// 整项删除只按 host+prefix 匹配，localPath 不参与
+	rule := CloneRule{RepoHost: "github.com", RepoPrefix: "/heyuuu", LocalPath: "/other"}
+	if err := s.DeleteCloneRule(rule); err != nil {
 		t.Fatalf("删除失败: %v", err)
 	}
 	if rules := s.CloneRules(); len(rules) != 0 {
 		t.Fatalf("删除后规则应为空: %v", rules)
 	}
-	if err := s.DeleteCloneRule(key); err == nil || !strings.Contains(err.Error(), "未找到") {
+	if err := s.DeleteCloneRule(rule); err == nil || !strings.Contains(err.Error(), "未找到") {
 		t.Fatalf("删除不存在的规则应报中文错误，实际: %v", err)
 	}
 }
 
-// TestReorderCloneRules 按键重排；语义约束同 scan 规则重排。
-func TestReorderCloneRules(t *testing.T) {
+// TestSaveAllCloneRules 提交清单即落盘结果；host+prefix 重复 / 单项非法整体拒绝不落盘。
+func TestSaveAllCloneRules(t *testing.T) {
 	s, ws := newWriteService(t)
 	save := func(host, prefix string) {
 		t.Helper()
@@ -293,22 +314,25 @@ func TestReorderCloneRules(t *testing.T) {
 	}
 	save("github.com", "/heyuuu")
 	save("github.com", "")
-	save("gitee.com", "")
 
-	if err := s.ReorderCloneRules([]CloneRuleKey{
-		{RepoHost: "gitee.com"},
-		{RepoHost: "github.com", RepoPrefix: "/heyuuu"},
+	if err := s.SaveAllCloneRules([]CloneRule{
+		{RepoHost: "gitee.com", LocalPath: ws.Dir},
+		{RepoHost: "github.com", RepoPrefix: "/heyuuu", LocalPath: ws.Mkdir("gh")},
 	}); err != nil {
-		t.Fatalf("重排失败: %v", err)
+		t.Fatalf("save-all 失败: %v", err)
 	}
 	rules := s.CloneRules()
-	if len(rules) != 3 || rules[0].RepoHost != "gitee.com" || rules[1].RepoPrefix != "/heyuuu" || rules[2].RepoPrefix != "" {
-		t.Fatalf("重排后顺序不符: %v", rules)
+	if len(rules) != 2 || rules[0].RepoHost != "gitee.com" || rules[1].RepoPrefix != "/heyuuu" || rules[1].LocalPath != ws.Join("gh") {
+		t.Fatalf("save-all 后规则不符: %v", rules)
 	}
 
-	// 未知键：报中文错误
-	bad := CloneRuleKey{RepoHost: "gitlab.com"}
-	if err := s.ReorderCloneRules([]CloneRuleKey{bad}); err == nil || !strings.Contains(err.Error(), "未找到") {
-		t.Fatalf("未知键应报中文错误，实际: %v", err)
+	if err := s.SaveAllCloneRules([]CloneRule{{RepoHost: "a.com", LocalPath: ws.Dir}, {RepoHost: "a.com", LocalPath: ws.Dir}}); err == nil || !strings.Contains(err.Error(), "重复") {
+		t.Fatalf("重复键应报中文错误，实际: %v", err)
+	}
+	if err := s.SaveAllCloneRules([]CloneRule{{RepoHost: "a.com", LocalPath: "relative"}}); err == nil || !strings.Contains(err.Error(), "localPath") {
+		t.Fatalf("单项非法应报中文错误，实际: %v", err)
+	}
+	if rules := s.CloneRules(); len(rules) != 2 || rules[0].RepoHost != "gitee.com" {
+		t.Fatalf("失败的 save-all 不应改动文件: %v", rules)
 	}
 }

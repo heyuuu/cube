@@ -95,38 +95,74 @@ func (s *Service) FindByName(name string) Opener {
 // 写前先走领域构造校验（按 Type 分发到对应 Init，只验不留实例）——坏数据返回
 // 中文错误、落不了文件（提案「校验收敛在读写边界」的写侧）。
 func (s *Service) SaveOpener(spec Spec) error {
-	if spec.Name == "" {
-		return fmt.Errorf("opener name 不得为空")
-	}
-	if _, err := InitActionOpener(spec, s.executor, s.baseURL); err != nil {
+	if err := s.validateSpec(spec); err != nil {
 		return err
 	}
-
 	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
-	specs = x.UpsertKeyed(specs, func(cur Spec) string { return cur.Name }, spec)
+	specs = x.UpsertKeyed(specs, specName, spec)
 	return store.SaveSection(s.settingsFile, settingsSection, specs)
 }
 
-// DeleteOpener 按名删除一条 opener；不存在时返回中文错误。
-func (s *Service) DeleteOpener(name string) error {
+// SaveAllOpeners 以提交清单整节覆盖 openers 节。列表顺序即展示顺序（CLI/项目页快捷入口
+// 均按此序），前端拖拽排序落库走这里。逐项构造校验 + name 查重，任一失败整体不落盘；
+// 读侧不可见的坏条目随覆盖丢弃。被移除的 opener 连带清理 openerIntents 引用（同 DeleteOpener）。
+func (s *Service) SaveAllOpeners(specs []Spec) error {
+	for _, spec := range specs {
+		if err := s.validateSpec(spec); err != nil {
+			return err
+		}
+	}
+	if dup, ok := x.DuplicateKeyed(specs, specName); ok {
+		return fmt.Errorf("opener name 重复: %s", dup)
+	}
+	if specs == nil {
+		specs = []Spec{}
+	}
+	if err := store.SaveSection(s.settingsFile, settingsSection, specs); err != nil {
+		return err
+	}
+	kept := make(map[string]bool, len(specs))
+	for _, spec := range specs {
+		kept[spec.Name] = true
+	}
+	return s.pruneIntentRefs(func(name string) bool { return !kept[name] })
+}
+
+// DeleteOpener 按唯一键（name）删除一条 opener；不存在时返回中文错误。
+func (s *Service) DeleteOpener(spec Spec) error {
+	name := specName(spec)
 	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
-	rest, removed := x.RemoveKeyed(specs, func(cur Spec) string { return cur.Name }, name)
+	rest, removed := x.RemoveKeyed(specs, specName, name)
 	if !removed {
 		return fmt.Errorf("未找到指定 opener: %s", name)
 	}
 	if err := store.SaveSection(s.settingsFile, settingsSection, rest); err != nil {
 		return err
 	}
-	// 连带清理 openerIntents 节对该 opener 的引用（默认 + 候选），避免悬挂引用
+	return s.pruneIntentRefs(func(n string) bool { return n == name })
+}
+
+// validateSpec 写前领域构造校验（只验不留实例）——save / save-all 共用。
+func (s *Service) validateSpec(spec Spec) error {
+	if spec.Name == "" {
+		return fmt.Errorf("opener name 不得为空")
+	}
+	_, err := InitActionOpener(spec, s.executor, s.baseURL)
+	return err
+}
+
+// pruneIntentRefs 清理 openerIntents 节中对已移除 opener 的引用（默认 + 候选），
+// 避免悬挂引用；清空后的 intent 条目整条删除。
+func (s *Service) pruneIntentRefs(removed func(name string) bool) error {
 	intents := s.loadIntents()
 	dirty := false
 	for intent, spec := range intents {
-		if spec.DefaultOpener == name {
+		if spec.DefaultOpener != "" && removed(spec.DefaultOpener) {
 			spec.DefaultOpener = ""
 			dirty = true
 		}
-		if slices.Contains(spec.Openers, name) {
-			spec.Openers = xslices.Filter(spec.Openers, func(n string) bool { return n != name })
+		if slices.ContainsFunc(spec.Openers, removed) {
+			spec.Openers = xslices.Filter(spec.Openers, func(n string) bool { return !removed(n) })
 			dirty = true
 		}
 		if spec.DefaultOpener == "" && len(spec.Openers) == 0 {
@@ -139,18 +175,6 @@ func (s *Service) DeleteOpener(name string) error {
 		return store.SaveSection(s.settingsFile, intentsSection, intents)
 	}
 	return nil
-}
-
-// ReorderOpeners 按 names 顺序重排 openers 节。列表顺序即展示顺序（CLI/项目页快捷入口
-// 均按此序），前端拖拽排序落库走这里。未列名的条目（含坏条目，list 本就不可见）保持
-// 原相对顺序排在末尾，不丢数据；出现未知名或重复名返回中文错误。
-func (s *Service) ReorderOpeners(names []string) error {
-	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
-	ordered, err := x.ReorderKeyed(specs, func(cur Spec) string { return cur.Name }, names, "opener", func(k string) string { return k })
-	if err != nil {
-		return err
-	}
-	return store.SaveSection(s.settingsFile, settingsSection, ordered)
 }
 
 // loadIntents 现读 openerIntents 节为 map[Intent]IntentSpec。
