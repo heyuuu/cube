@@ -168,35 +168,58 @@ func TestFetchAccountPersist(t *testing.T) {
 	}
 }
 
-// TestFetchAccountPrunesDeleted 写入缓存时剔除已删除 account 的条目，落盘文件不随增删无限增长。
-func TestFetchAccountPrunesDeleted(t *testing.T) {
+// TestAccountRemovalPurgesRepoCache 移除 account 的写路径（delete / save-all / 删 forge 级联）
+// 即刻剔除其拉取缓存，落盘文件不随增删只增不减；现存 account 的缓存保留。
+func TestAccountRemovalPurgesRepoCache(t *testing.T) {
 	s, ws := newService(t)
 	seedForge(t, s)
-	for _, u := range []string{"a1", "a2"} {
-		if err := s.SaveAccount(Account{ForgeHost: "github.com", Username: u, Token: "t"}); err != nil {
+	if err := s.SaveForge(Forge{Host: "gitee.com", Kind: KindGitee}); err != nil {
+		t.Fatalf("seed 失败: %v", err)
+	}
+	accounts := []Account{
+		{ForgeHost: "github.com", Username: "a1", Token: "t"},
+		{ForgeHost: "github.com", Username: "a2", Token: "t"},
+		{ForgeHost: "gitee.com", Username: "b1", Token: "t"},
+	}
+	for _, a := range accounts {
+		if err := s.SaveAccount(a); err != nil {
 			t.Fatalf("保存 account 失败: %v", err)
 		}
 	}
 	fake := &fakeClient{repos: []gitapi.RemoteRepo{{Name: "cube", CloneURL: "https://github.com/a/cube.git"}}}
 	s.newClient = func(string, string, string) (gitapi.Client, error) { return fake, nil }
-
-	if _, err := s.FetchAccount("github.com", "a1", false); err != nil {
-		t.Fatalf("拉取失败: %v", err)
+	for _, a := range accounts {
+		if _, err := s.FetchAccount(a.ForgeHost, a.Username, false); err != nil {
+			t.Fatalf("拉取失败: %v", err)
+		}
 	}
+
+	// 以落盘为准：每步后用新 Service 重新加载断言
+	cached := func(host, user string) bool {
+		t.Helper()
+		_, ok := NewService(ws.Cfg).repoCache.get(accountKey(host, user))
+		return ok
+	}
+
 	if err := s.DeleteAccount(Account{ForgeHost: "github.com", Username: "a1"}); err != nil {
 		t.Fatalf("删除失败: %v", err)
 	}
-	if _, err := s.FetchAccount("github.com", "a2", false); err != nil {
-		t.Fatalf("拉取失败: %v", err)
+	if cached("github.com", "a1") || !cached("github.com", "a2") {
+		t.Fatal("delete 应即刻剔除被删 account 的缓存，保留其余")
 	}
 
-	// 以落盘为准（新 Service 重新加载）
-	s2 := NewService(ws.Cfg)
-	if _, ok := s2.repoCache.get(accountKey("github.com", "a1")); ok {
-		t.Fatal("已删除 account 的缓存条目应被剔除")
+	if err := s.SaveAllAccounts([]Account{{ForgeHost: "gitee.com", Username: "b1", Token: TokenMasked}}); err != nil {
+		t.Fatalf("save-all 失败: %v", err)
 	}
-	if _, ok := s2.repoCache.get(accountKey("github.com", "a2")); !ok {
-		t.Fatal("现存 account 的缓存条目应保留")
+	if cached("github.com", "a2") || !cached("gitee.com", "b1") {
+		t.Fatal("save-all 应剔除未提交 account 的缓存，保留其余")
+	}
+
+	if err := s.DeleteForge(Forge{Host: "gitee.com"}); err != nil {
+		t.Fatalf("删 forge 失败: %v", err)
+	}
+	if cached("gitee.com", "b1") {
+		t.Fatal("删 forge 级联删除的 account 缓存应被剔除")
 	}
 }
 

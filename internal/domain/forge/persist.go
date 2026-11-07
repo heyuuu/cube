@@ -48,19 +48,36 @@ func (c *repoCache) get(key string) (AcctCacheEntry, bool) {
 	return entry, ok
 }
 
-// put 写入一个 account 的快照并写穿落盘，顺带剔除不在 live 中的条目——account 删除
-// 不回调缓存，在写入时收敛，避免文件随账号增删只增不减。落盘失败只记日志：缓存语义，
-// 下次拉取会重写。
-func (c *repoCache) put(key string, entry AcctCacheEntry, live map[string]bool) {
+// put 写入一个 account 的快照并写穿落盘。
+func (c *repoCache) put(key string, entry AcctCacheEntry) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.ensureLoadedLocked()
+
 	c.entries[key] = entry
+	c.saveLocked()
+}
+
+// retain 只保留 keep 判定为真的条目，有删动才落盘。
+func (c *repoCache) retain(keep func(key string) bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ensureLoadedLocked()
+
+	removed := false
 	for k := range c.entries {
-		if !live[k] {
+		if !keep(k) {
 			delete(c.entries, k)
+			removed = true
 		}
 	}
+	if removed {
+		c.saveLocked()
+	}
+}
+
+// saveLocked 落盘失败只记日志：缓存语义，下次写入会重写。
+func (c *repoCache) saveLocked() {
 	if err := c.store.Save(acctDiskCache{Accounts: c.entries}); err != nil {
 		slog.Warn("forge 拉取缓存落盘失败", "err", err)
 	}
@@ -70,6 +87,7 @@ func (c *repoCache) ensureLoadedLocked() {
 	if c.entries != nil {
 		return
 	}
+
 	c.entries = c.store.LoadOrZero().Accounts
 	if c.entries == nil {
 		c.entries = map[string]AcctCacheEntry{}
