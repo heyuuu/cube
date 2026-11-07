@@ -72,27 +72,24 @@ func NewKeyedSliceStore[T any](opts KeyedSliceStoreOpts[T]) *KeyedSliceStore[T] 
 	}
 }
 
-// append 向已有数据集追加数据，成功返回 (新数据集, nil); 失败返回 (旧数据集, 错误信息)
-func (s *KeyedSliceStore[T]) append(exists []T, item T) (result []T, err error) {
-	key := s.keyOf(item)
-	existsIndex := slices.IndexFunc(exists, func(t T) bool {
-		return s.keyOf(t) == key
-	})
-
-	// 先规范化数据项
+// append 把 item 规范化后并入 exists（同键原位替换，否则追加到尾部），成功返回 (新数据集, nil)；
+// 失败返回 (exists, 错误信息)。olds 是 NormalizeWithExists 同键旧值的查找来源：Save / All 即
+// exists 自身；SaveAll 必须传落盘中的当前数据集——新清单逐项累积，在它里面永远查不到旧值。
+func (s *KeyedSliceStore[T]) append(exists []T, item T, olds []T) ([]T, error) {
 	if s.normalize != nil {
 		var old *T
-		if existsIndex >= 0 {
-			old = &exists[existsIndex]
+		if i := s.indexOf(olds, s.keyOf(item)); i >= 0 {
+			old = &olds[i]
 		}
-
-		item, err = s.normalize(item, old)
-		if err != nil {
+		var err error
+		if item, err = s.normalize(item, old); err != nil {
 			return exists, err
 		}
 	}
 
-	// 校验数据集冲突
+	// 键在规范化之后计算：KeyOf 未必对规范化不变（如 scan 规则 path 的 Clean）
+	existsIndex := s.indexOf(exists, s.keyOf(item))
+
 	if s.conflictCheck != nil {
 		for i, exist := range exists {
 			if i == existsIndex {
@@ -104,13 +101,15 @@ func (s *KeyedSliceStore[T]) append(exists []T, item T) (result []T, err error) 
 		}
 	}
 
-	// 更新数据
 	if existsIndex >= 0 {
 		exists[existsIndex] = item
-	} else {
-		exists = append(exists, item)
+		return exists, nil
 	}
-	return exists, nil
+	return append(exists, item), nil
+}
+
+func (s *KeyedSliceStore[T]) indexOf(list []T, key string) int {
+	return slices.IndexFunc(list, func(t T) bool { return s.keyOf(t) == key })
 }
 
 // All 读全部条目
@@ -123,7 +122,7 @@ func (s *KeyedSliceStore[T]) All() []T {
 	result := make([]T, 0, len(raw))
 	for i, item := range raw {
 		var err error
-		result, err = s.append(result, item)
+		result, err = s.append(result, item, result)
 
 		// 加载配置时，忽略错误项，仅记录日志
 		if err != nil {
@@ -133,11 +132,13 @@ func (s *KeyedSliceStore[T]) All() []T {
 	return result
 }
 
-// Retain 按谓词保留条目，无删动时不写入。
+// Retain 按谓词保留条目，与落盘结果一致时不写入。必须对比落盘原始数据而非 All()：
+// All() 已滤掉失效条目（如所属 forge 被删的 account），对比它会判定「无删动」而不落盘，
+// 失效条目残留在文件里，待条件恢复（重新添加同名 forge）时复活。
 func (s *KeyedSliceStore[T]) Retain(f func(T) bool) error {
-	values := s.All()
-	rest := xslices.Filter(values, f)
-	if len(rest) == len(values) {
+	raw := s.store.LoadOrZero()
+	rest := xslices.Filter(s.All(), f)
+	if len(rest) == len(raw) {
 		return nil
 	}
 	return s.store.Save(rest)
@@ -146,7 +147,7 @@ func (s *KeyedSliceStore[T]) Retain(f func(T) bool) error {
 // Save 命中唯一键原位替换，否则追加到末尾。
 func (s *KeyedSliceStore[T]) Save(v T) (err error) {
 	values := s.All()
-	values, err = s.append(values, v)
+	values, err = s.append(values, v, values)
 	if err != nil {
 		return err
 	}
@@ -168,9 +169,10 @@ func (s *KeyedSliceStore[T]) Delete(v T) error {
 // SaveAll 以 values 整体覆盖（顺序即落盘序）。逐项 normalize + 冲突校验，任一失败
 // 整体不落盘；重复键违反「key 在数据集中唯一」的假设，整体拒绝而非静默合并。
 func (s *KeyedSliceStore[T]) SaveAll(values []T) (err error) {
+	current := s.All()
 	normalized := make([]T, 0, len(values))
 	for _, item := range values {
-		next, err := s.append(normalized, item)
+		next, err := s.append(normalized, item, current)
 		if err != nil {
 			return err
 		}
@@ -186,12 +188,9 @@ func (s *KeyedSliceStore[T]) SaveAll(values []T) (err error) {
 // Find 按唯一键查找条目。
 func (s *KeyedSliceStore[T]) Find(key string) (T, bool) {
 	values := s.All()
-	for _, v := range values {
-		if s.keyOf(v) == key {
-			return v, true
-		}
+	if i := s.indexOf(values, key); i >= 0 {
+		return values[i], true
 	}
-
 	var zero T
 	return zero, false
 }

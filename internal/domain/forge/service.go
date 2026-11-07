@@ -2,9 +2,8 @@ package forge
 
 import (
 	"fmt"
-	"log/slog"
 	"path/filepath"
-	"sync"
+	"slices"
 	"time"
 
 	"cube/internal/config"
@@ -15,18 +14,14 @@ import (
 type clientFactory func(kind, host, token string) (gitapi.Client, error)
 
 // Service forge 配置管理：settings.json forges / forgeAccounts 两节的读写（直读不缓存，
-// 保存即生效），以及 account 远端拉取的编排（结果落盘 cacheFile，内存为一级缓存，写穿；
-// 见 persist.go）。1044 起 namespace 模型移除，拉取以 account 为唯一维度。
+// 保存即生效），以及 account 远端拉取的编排（结果按 accountKey 缓存，见 persist.go）。
+// 1044 起 namespace 模型移除，拉取以 account 为唯一维度。
 type Service struct {
 	// settings
 	forgesStore  ForgesStore
 	accountStore AccountStore
-	// 拉取结果落盘文件（cache/forge-repos.json）；空 = 不落盘（测试）
-	cacheFile string
-
-	cacheMu sync.Mutex
-	mem     map[string]AcctCacheEntry // acctCacheKey(host/username) → 快照（内存一级缓存）
-	loaded  bool                      // mem 是否已从落盘文件加载过（懒加载一次）
+	// 拉取结果缓存（内存 + 落盘 cache/forge-repos.json）
+	repoCache *repoCache
 
 	newClient clientFactory // 可注入（测试）；nil 用 gitapi.NewClient
 }
@@ -39,7 +34,7 @@ func NewService(cfg *config.Config) *Service {
 	return &Service{
 		forgesStore:  forgesStore,
 		accountStore: accountsStore,
-		cacheFile:    filepath.Join(cfg.CacheDir(), "forge-repos.json"),
+		repoCache:    newRepoCache(filepath.Join(cfg.CacheDir(), "forge-repos.json")),
 	}
 }
 
@@ -103,23 +98,33 @@ func (s *Service) DeleteAccount(a Account) error {
 // 失败直接上抛（调用方展示错误，不影响既有缓存）。
 func (s *Service) FetchAccount(forgeHost, username string, force bool) ([]gitapi.RemoteRepo, error) {
 	key := accountKey(forgeHost, username)
-	a, ok := s.accountStore.Find(key)
-	if !ok {
+	accounts := s.Accounts()
+	i := slices.IndexFunc(accounts, func(a Account) bool { return accountKey(a.ForgeHost, a.Username) == key })
+	if i < 0 {
 		return nil, fmt.Errorf("未找到指定 account: %s", key)
 	}
+	a := accounts[i]
 
-	cacheKey := acctCacheKey(a.ForgeHost, a.Username)
 	if !force {
-		if entry, ok := s.cachedEntry(cacheKey); ok {
+		if entry, ok := s.repoCache.get(key); ok {
 			return entry.Repos, nil
 		}
 	}
 
-	repos, err := s.loadRepos(key)
+	f, ok := s.forgesStore.Find(a.ForgeHost)
+	if !ok {
+		return nil, fmt.Errorf("account 所属 forge 未配置: %s", a.ForgeHost)
+	}
+	repos, err := fetchRepos(f, a, s.factory())
 	if err != nil {
 		return nil, err
 	}
-	s.storeEntry(cacheKey, AcctCacheEntry{FetchedAt: time.Now(), Repos: repos})
+
+	live := make(map[string]bool, len(accounts))
+	for _, a := range accounts {
+		live[accountKey(a.ForgeHost, a.Username)] = true
+	}
+	s.repoCache.put(key, AcctCacheEntry{FetchedAt: time.Now(), Repos: repos}, live)
 	return repos, nil
 }
 
@@ -127,7 +132,7 @@ func (s *Service) FetchAccount(forgeHost, username string, force bool) ([]gitapi
 // 只读既有缓存，不触发外呼；未拉取的 account 在 Accounts 元信息中 FetchedAt 为零值。
 func (s *Service) Overview(local []LocalRepo) *Overview {
 	return buildOverview(s.Forges(), s.Accounts(), func(a Account) (AcctCacheEntry, bool) {
-		return s.CachedAccountRepos(a.ForgeHost, a.Username)
+		return s.repoCache.get(accountKey(a.ForgeHost, a.Username))
 	}, local)
 }
 
@@ -152,70 +157,4 @@ func (s *Service) factory() clientFactory {
 	return func(kind, host, token string) (gitapi.Client, error) {
 		return gitapi.NewClient(kind, host, token, nil)
 	}
-}
-
-// loadRepos 按 account 键现读配置并执行一次真实拉取（内存缓存未命中时调用）。
-func (s *Service) loadRepos(key string) ([]gitapi.RemoteRepo, error) {
-	a, ok := s.accountStore.Find(key)
-	if !ok {
-		return nil, fmt.Errorf("未找到指定 account: %s", key)
-	}
-
-	f, ok := s.forgesStore.Find(a.ForgeHost)
-	if !ok {
-		return nil, fmt.Errorf("account 所属 forge 未配置: %s", a.ForgeHost)
-	}
-	return fetchRepos(f, a, s.factory())
-}
-
-// CachedAccountRepos 读 account 的拉取快照（含 fetchedAt），从未拉取过返回 false（不触发外呼）。
-func (s *Service) CachedAccountRepos(forgeHost, username string) (AcctCacheEntry, bool) {
-	a, ok := s.accountStore.Find(accountKey(forgeHost, username))
-	if !ok {
-		return AcctCacheEntry{}, false
-	}
-	return s.cachedEntry(acctCacheKey(a.ForgeHost, a.Username))
-}
-
-// cachedEntry 读内存缓存（懒加载落盘文件一次）。
-func (s *Service) cachedEntry(key string) (AcctCacheEntry, bool) {
-	s.cacheMu.Lock()
-	defer s.cacheMu.Unlock()
-	s.ensureLoadedLocked()
-	entry, ok := s.mem[key]
-	return entry, ok
-}
-
-// storeEntry 更新内存缓存并写穿落盘文件（落盘失败只记日志——缓存语义，下次拉取会重写）。
-func (s *Service) storeEntry(key string, entry AcctCacheEntry) {
-	s.cacheMu.Lock()
-	defer s.cacheMu.Unlock()
-	s.ensureLoadedLocked()
-	s.mem[key] = entry
-	if s.cacheFile == "" {
-		return
-	}
-	disk := loadDiskCache(s.cacheFile)
-	disk.Accounts[key] = entry
-	if err := saveDiskCache(s.cacheFile, disk); err != nil {
-		slog.Warn("forge 拉取缓存落盘失败", "file", s.cacheFile, "err", err)
-	}
-}
-
-// ensureLoadedLocked 首次访问时把落盘文件加载进内存（调用方须持 cacheMu）。
-func (s *Service) ensureLoadedLocked() {
-	if s.loaded {
-		return
-	}
-	s.loaded = true
-	if s.cacheFile == "" {
-		s.mem = map[string]AcctCacheEntry{}
-		return
-	}
-	s.mem = loadDiskCache(s.cacheFile).Accounts
-}
-
-// acctCacheKey account 缓存键（username 保留大小写——部分平台用户名大小写敏感）。
-func acctCacheKey(forgeHost, username string) string {
-	return NormalizeHost(forgeHost) + "/" + NormalizeUsername(username)
 }

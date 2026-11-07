@@ -1,6 +1,8 @@
 package forge
 
 import (
+	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/heyuuu/x/store"
@@ -19,24 +21,57 @@ type AcctCacheEntry struct {
 	Repos     []gitapi.RemoteRepo `json:"repos"`     // 该账号名下的远端仓库全量
 }
 
-// acctDiskCache 落盘文档形态：acctCacheKey(host/username) → 快照。
+// acctDiskCache 落盘文档形态：accountKey → 快照。
 type acctDiskCache struct {
 	Accounts map[string]AcctCacheEntry `json:"accounts"`
 }
 
-// loadDiskCache 读落盘缓存；文件不存在/坏 JSON 统一降级为空缓存（读路径不阻断）。
-func loadDiskCache(file string) acctDiskCache {
-	d, err := store.LoadJSON[acctDiskCache](file)
-	if err != nil {
-		return acctDiskCache{Accounts: map[string]AcctCacheEntry{}}
-	}
-	if d.Accounts == nil {
-		d.Accounts = map[string]AcctCacheEntry{}
-	}
-	return d
+// repoCache account 拉取结果缓存：内存为一级，写穿落盘。常驻 server 是唯一写方，
+// 内存即落盘的完整镜像，写入直接落内存快照、不回读合并。首次访问懒加载落盘文件，
+// 文件缺失 / 坏 JSON 降级为空缓存（读路径不阻断）。
+type repoCache struct {
+	store store.Store[acctDiskCache]
+
+	mu      sync.Mutex
+	entries map[string]AcctCacheEntry // nil = 尚未从落盘加载
 }
 
-// saveDiskCache 原子写落盘缓存。
-func saveDiskCache(file string, d acctDiskCache) error {
-	return store.SaveJSON(file, d)
+func newRepoCache(file string) *repoCache {
+	return &repoCache{store: store.JSONStore[acctDiskCache](file)}
+}
+
+func (c *repoCache) get(key string) (AcctCacheEntry, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ensureLoadedLocked()
+	entry, ok := c.entries[key]
+	return entry, ok
+}
+
+// put 写入一个 account 的快照并写穿落盘，顺带剔除不在 live 中的条目——account 删除
+// 不回调缓存，在写入时收敛，避免文件随账号增删只增不减。落盘失败只记日志：缓存语义，
+// 下次拉取会重写。
+func (c *repoCache) put(key string, entry AcctCacheEntry, live map[string]bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ensureLoadedLocked()
+	c.entries[key] = entry
+	for k := range c.entries {
+		if !live[k] {
+			delete(c.entries, k)
+		}
+	}
+	if err := c.store.Save(acctDiskCache{Accounts: c.entries}); err != nil {
+		slog.Warn("forge 拉取缓存落盘失败", "err", err)
+	}
+}
+
+func (c *repoCache) ensureLoadedLocked() {
+	if c.entries != nil {
+		return
+	}
+	c.entries = c.store.LoadOrZero().Accounts
+	if c.entries == nil {
+		c.entries = map[string]AcctCacheEntry{}
+	}
 }

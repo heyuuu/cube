@@ -65,13 +65,16 @@ func TestForgeWrite(t *testing.T) {
 		t.Fatalf("坏数据不应落文件, got %+v", out.List)
 	}
 
-	// delete 提交完整单项（按归一化 host 定位）；再删报中文错误
+	// delete 提交完整单项（按归一化 host 定位）；再删幂等成功
 	if r := postJSON(t, env.url("/api/forge/delete"), `{"host":"GitHub.com","kind":"generic"}`); !r.Ok {
 		t.Fatalf("delete 应成功, message=%q", r.Message)
 	}
-	r2 := postJSON(t, env.url("/api/forge/delete"), `{"host":"github.com","kind":"generic"}`)
-	if r2.Ok || !strings.Contains(r2.Message, "未找到") {
-		t.Fatalf("删不存在应报中文错误, message=%q", r2.Message)
+	if r2 := postJSON(t, env.url("/api/forge/delete"), `{"host":"github.com","kind":"generic"}`); !r2.Ok {
+		t.Fatalf("删不存在应幂等成功, message=%q", r2.Message)
+	}
+	decodeData(t, getJSON(t, env.url("/api/forge/list")), &out)
+	if len(out.List) != 0 {
+		t.Fatalf("删除后应为空: %+v", out.List)
 	}
 }
 

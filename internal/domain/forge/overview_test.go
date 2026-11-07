@@ -30,10 +30,10 @@ func TestBuildOverview(t *testing.T) {
 		{Name: "no-remote", RepoURL: ""},                              // 无远端 → 不参与
 	}
 	entries := map[string]AcctCacheEntry{
-		acctCacheKey("github.com", "heyuuu"): {FetchedAt: testNow(), Repos: repos},
+		accountKey("github.com", "heyuuu"): {FetchedAt: testNow(), Repos: repos},
 	}
 	ov := buildOverview(forges, accounts, func(a Account) (AcctCacheEntry, bool) {
-		e, ok := entries[acctCacheKey(a.ForgeHost, a.Username)]
+		e, ok := entries[accountKey(a.ForgeHost, a.Username)]
 		return e, ok
 	}, local)
 
