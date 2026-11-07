@@ -21,7 +21,8 @@ import (
 // Service project 领域服务：scan/clone 规则管理 + 项目列表查询（列表走 easycache 惰性缓存）。
 type Service struct {
 	// settings
-	settingsFile string // settings.json 路径，scan/clone 规则每次现读（直读不缓存，改完即生效）
+	scanRulesStore  ScanRulesStore
+	cloneRulesStore CloneRulesStore
 	// scan
 	scanCache *easycache.Item[[]*Project] // 项目扫描的缓存（新鲜度时间戳由缓存自身维护，见 UpdatedAt）
 	// 项目状态快照（projcache：git/worktree/workspace，落盘 cache/git.json）
@@ -39,8 +40,9 @@ func NewService(cfg *config.Config) *Service {
 	}
 
 	s := &Service{
-		settingsFile: cfg.SettingsFile(),
-		projCache:    projCache,
+		scanRulesStore:  newScanRulesStore(cfg.SettingsFile()),
+		cloneRulesStore: newCloneRulesStore(cfg.SettingsFile()),
+		projCache:       projCache,
 	}
 	// 扫描时现读规则（规则直读 settings.json，外部修改后 Reload 即可反映）
 	s.scanCache = easycache.NewItem(func() []*Project {
@@ -59,18 +61,18 @@ func NewService(cfg *config.Config) *Service {
 
 // ScanRules 现读 settings.json 的 scan 规则（外部改动 Reload 后即反映）。
 func (s *Service) ScanRules() []ScanRule {
-	return loadScanRules(s.settingsFile)
+	return s.scanRulesStore.All()
 }
 
 // CloneRules 现读 settings.json 的 clone 规则。
 func (s *Service) CloneRules() []CloneRule {
-	return loadCloneRules(s.settingsFile)
+	return s.cloneRulesStore.All()
 }
 
 // SaveScanRule 新增或按 path 替换一条 scan 规则（校验在写侧，坏数据返回中文错误）。
 // 成功后立即重扫项目列表（毫秒级），保证 Web 保存后列表即时反映。
 func (s *Service) SaveScanRule(rule ScanRule) error {
-	if err := saveScanRule(s.settingsFile, rule); err != nil {
+	if err := s.scanRulesStore.Save(rule); err != nil {
 		return err
 	}
 	s.scanCache.Reload()
@@ -79,7 +81,7 @@ func (s *Service) SaveScanRule(rule ScanRule) error {
 
 // DeleteScanRule 按唯一键（path）删除 scan 规则，成功后立即重扫。
 func (s *Service) DeleteScanRule(rule ScanRule) error {
-	if err := deleteScanRule(s.settingsFile, rule); err != nil {
+	if err := s.scanRulesStore.Delete(rule); err != nil {
 		return err
 	}
 	s.scanCache.Reload()
@@ -89,7 +91,7 @@ func (s *Service) DeleteScanRule(rule ScanRule) error {
 // SaveAllScanRules 以提交清单整节覆盖 scan 规则；顺序影响项目列表展示序
 // （scan 按规则序遍历），成功后同样立即重扫。
 func (s *Service) SaveAllScanRules(rules []ScanRule) error {
-	if err := saveAllScanRules(s.settingsFile, rules); err != nil {
+	if err := s.scanRulesStore.SaveAll(rules); err != nil {
 		return err
 	}
 	s.scanCache.Reload()
@@ -98,17 +100,17 @@ func (s *Service) SaveAllScanRules(rules []ScanRule) error {
 
 // SaveCloneRule 新增或按 host+prefix 替换一条 clone 规则（校验在写侧）。
 func (s *Service) SaveCloneRule(rule CloneRule) error {
-	return saveCloneRule(s.settingsFile, rule)
+	return s.cloneRulesStore.Save(rule)
 }
 
 // DeleteCloneRule 按唯一键（host+prefix）删除 clone 规则。
 func (s *Service) DeleteCloneRule(rule CloneRule) error {
-	return deleteCloneRule(s.settingsFile, rule)
+	return s.cloneRulesStore.Delete(rule)
 }
 
 // SaveAllCloneRules 以提交清单整节覆盖 clone 规则。
 func (s *Service) SaveAllCloneRules(rules []CloneRule) error {
-	return saveAllCloneRules(s.settingsFile, rules)
+	return s.cloneRulesStore.SaveAll(rules)
 }
 
 // --- project 读操作 ---

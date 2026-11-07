@@ -12,12 +12,11 @@ linters:
     - misspell   # 拼写错误
     - revive     # golint 继任者，导出符号注释等约定
     - unconvert  # 多余的类型转换
-#  settings:
-#    revive:
-#      # TODO 临时禁用
-#      rules:
-#        - name: exported
-#          disabled: true
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
   exclusions:
     rules:
       # 测试代码放宽 errcheck（httptest Close 之类常被有意忽略）
