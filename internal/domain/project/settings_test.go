@@ -127,8 +127,12 @@ func TestDeleteScanRule(t *testing.T) {
 		t.Fatalf("删除后项目列表应即时重扫为空，实际 %d 个", len(projs))
 	}
 
-	if err := s.DeleteScanRule(ScanRule{Group: "g", Path: root}); err == nil || !strings.Contains(err.Error(), "未找到") {
-		t.Fatalf("删除不存在的规则应报中文错误，实际: %v", err)
+	// 删除不存在：幂等成功（前端写后全量重拉，重复删除不应卡住）
+	if err := s.DeleteScanRule(ScanRule{Group: "g", Path: root}); err != nil {
+		t.Fatalf("删除不存在的规则应幂等成功，实际: %v", err)
+	}
+	if rules := s.ScanRules(); len(rules) != 0 {
+		t.Fatalf("幂等删除不应改动数据: %v", rules)
 	}
 }
 
@@ -167,7 +171,7 @@ func TestSaveAllScanRules(t *testing.T) {
 		rules []ScanRule
 		want  string
 	}{
-		{"path 重复", []ScanRule{{Group: "x", Path: r1, MaxDepth: 3}, {Group: "y", Path: r1, MaxDepth: 3}}, "path 重复"},
+		{"path 重复", []ScanRule{{Group: "x", Path: r1, MaxDepth: 3}, {Group: "y", Path: r1, MaxDepth: 3}}, "重复"},
 		{"group 重复", []ScanRule{{Group: "x", Path: r1, MaxDepth: 3}, {Group: "x", Path: r2, MaxDepth: 3}}, "group 已被其它规则占用"},
 		{"单项非法", []ScanRule{{Group: "x", Path: r1, MaxDepth: 3}, {Group: "y", Path: "/no/such/dir/xyz", MaxDepth: 3}}, "不存在"},
 	}
@@ -298,8 +302,9 @@ func TestDeleteCloneRule(t *testing.T) {
 	if rules := s.CloneRules(); len(rules) != 0 {
 		t.Fatalf("删除后规则应为空: %v", rules)
 	}
-	if err := s.DeleteCloneRule(rule); err == nil || !strings.Contains(err.Error(), "未找到") {
-		t.Fatalf("删除不存在的规则应报中文错误，实际: %v", err)
+	// 删除不存在：幂等成功
+	if err := s.DeleteCloneRule(rule); err != nil {
+		t.Fatalf("删除不存在的规则应幂等成功，实际: %v", err)
 	}
 }
 

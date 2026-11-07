@@ -162,10 +162,14 @@ func TestScanRuleWrite(t *testing.T) {
 	if len(got.List) != 2 {
 		t.Fatalf("删除后应剩 2 条, got %d", len(got.List))
 	}
-	// delete 不存在：中文错误
+	// delete 不存在：幂等成功（重复删除不报错），数据不变
 	r2 := postJSON(t, env.url("/api/project/scan-rule/delete"), `{"group":"x","path":"/no/such","maxDepth":1}`)
-	if r2.Ok || !strings.Contains(r2.Message, "未找到") {
-		t.Fatalf("删除不存在应报中文错误, message=%q", r2.Message)
+	if !r2.Ok {
+		t.Fatalf("删除不存在应幂等成功, message=%q", r2.Message)
+	}
+	decodeData(t, getJSON(t, env.url("/api/project/scan-rules")), &got)
+	if len(got.List) != 2 {
+		t.Fatalf("幂等删除不应改动数据, got %d", len(got.List))
 	}
 }
 
@@ -209,10 +213,14 @@ func TestCloneRuleWrite(t *testing.T) {
 	if len(got.List) != 1 {
 		t.Fatalf("删除后应剩 1 条, got %d", len(got.List))
 	}
-	// delete 不存在
+	// delete 不存在：幂等成功（重复删除不报错），数据不变
 	r2 := postJSON(t, env.url("/api/project/clone-rule/delete"), `{"repoHost":"nope.com","repoPrefix":"","localPath":"/x"}`)
-	if r2.Ok || !strings.Contains(r2.Message, "未找到") {
-		t.Fatalf("删除不存在应报中文错误, message=%q", r2.Message)
+	if !r2.Ok {
+		t.Fatalf("删除不存在应幂等成功, message=%q", r2.Message)
+	}
+	decodeData(t, getJSON(t, env.url("/api/project/clone-rules")), &got)
+	if len(got.List) != 1 {
+		t.Fatalf("幂等删除不应改动数据, got %d", len(got.List))
 	}
 }
 

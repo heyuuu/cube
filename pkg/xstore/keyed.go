@@ -1,6 +1,7 @@
 package xstore
 
 import (
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -136,16 +137,22 @@ func (s *KeyedSliceStore[T]) Delete(v T) error {
 	return s.store.Save(rest)
 }
 
-// SaveAll 以 values 整体覆盖（顺序即落盘序），键重复拒绝写入。
+// SaveAll 以 values 整体覆盖（顺序即落盘序）。逐项 normalize + 冲突校验，任一失败
+// 整体不落盘；重复键违反「key 在数据集中唯一」的假设，整体拒绝而非静默合并。
 func (s *KeyedSliceStore[T]) SaveAll(values []T) (err error) {
 	normalized := make([]T, 0, len(values))
 	for _, item := range values {
-		normalized, err = s.append(normalized, item)
+		next, err := s.append(normalized, item)
 		if err != nil {
 			return err
 		}
+		// append 对同键是替换语义（长度不变）——整表覆盖下意味着提交清单里键重复
+		if len(next) == len(normalized) {
+			return fmt.Errorf("%s 重复: %s", s.name, s.keyOf(item))
+		}
+		normalized = next
 	}
-	return s.store.Save(values)
+	return s.store.Save(normalized)
 }
 
 // Find 按唯一键查找条目。

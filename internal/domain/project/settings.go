@@ -50,9 +50,9 @@ func newScanRulesStore(settingsFile string) ScanRulesStore {
 			return r, nil
 		},
 		ConflictCheck: func(new ScanRule, exists ScanRule) error {
-			// 判断 group 是否冲突
+			// 判断 group 是否冲突（文案指向占用者）
 			if new.Group == exists.Group {
-				return fmt.Errorf("scan 规则 group 已被其它规则占用: group=%s 已用于 %s", new.Group, new.Path)
+				return fmt.Errorf("scan 规则 group 已被其它规则占用: group=%s 已用于 %s", new.Group, exists.Path)
 			}
 			return nil
 		},
@@ -62,7 +62,7 @@ func newScanRulesStore(settingsFile string) ScanRulesStore {
 func newCloneRulesStore(settingsFile string) CloneRulesStore {
 	return xstore.NewKeyedSliceStore(xstore.KeyedSliceStoreOpts[CloneRule]{
 		Name:  "clone 规则",
-		Store: store.SectionStore[[]CloneRule](settingsFile, scanRulesSection),
+		Store: store.SectionStore[[]CloneRule](settingsFile, cloneRulesSection),
 		KeyOf: func(r CloneRule) string { return r.RepoHost + "/" + r.RepoPrefix },
 		Normalize: func(r CloneRule) (CloneRule, error) {
 			if r.RepoHost == "" {
