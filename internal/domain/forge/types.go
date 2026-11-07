@@ -73,31 +73,16 @@ func RepoHost(repoURL string) string {
 	return NormalizeHost(u.Host)
 }
 
-// normalizeForge 归一化并校验一条待写入的 forge（save / save-all 共用），坏数据返回中文错误。
-func normalizeForge(f Forge) (Forge, error) {
-	f.Host = NormalizeHost(f.Host)
-	if err := ValidateHost(f.Host); err != nil {
-		return f, err
-	}
-	if !ValidKind(f.Kind) {
-		return f, fmt.Errorf("forge kind 未知: %q（合法值：%s）", f.Kind, strings.Join(Kinds(), " / "))
-	}
-	if err := icons.ValidateIcon(f.Icon); err != nil {
-		return f, fmt.Errorf("forge icon 配置错误: %s", err)
-	}
-	return f, nil
+// Account 一条 forge 账号配置，纯 API 凭证（token 只用于调平台 API 拉仓库列表，
+// 不参与 git 传输——git 操作走本机凭证）。forgeHost+username 归一化后是唯一键。
+type Account struct {
+	ForgeHost string `json:"forgeHost"` // 所属 forge host，必须命中已配置 forge
+	Username  string `json:"username"`  // 平台用户名
+	Token     string `json:"token"`     // API token，可为空（仅公开数据）
 }
 
-// forgeKey forge 的节内唯一键（归一化 host）。
-func forgeKey(f Forge) string { return NormalizeHost(f.Host) }
+// TokenMasked token 的掩码展示串：list 端点用返回，save 时提交此值视为「未修改」沿用旧值。
+const TokenMasked = "••••••"
 
-// MatchHost 在 forges 里找 host 精确匹配的条目，无匹配返回 nil。
-func MatchHost(forges []Forge, host string) *Forge {
-	h := NormalizeHost(host)
-	for i := range forges {
-		if NormalizeHost(forges[i].Host) == h {
-			return &forges[i]
-		}
-	}
-	return nil
-}
+// NormalizeUsername 归一化用户名：去首尾空白。保留大小写（部分平台用户名大小写敏感）。
+func NormalizeUsername(username string) string { return strings.TrimSpace(username) }

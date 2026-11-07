@@ -4,20 +4,12 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"cube/internal/config"
-	"cube/internal/domain/icons"
 	"cube/pkg/gitapi"
-	"cube/pkg/x"
-
-	"github.com/heyuuu/x/store"
 )
-
-// settings.json 中的 forge 域节名。
-const forgesSection = "forges"
 
 // clientFactory 构造平台 API 客户端的工厂签名（测试注入 fake 用）。
 type clientFactory func(kind, host, token string) (gitapi.Client, error)
@@ -26,8 +18,11 @@ type clientFactory func(kind, host, token string) (gitapi.Client, error)
 // 保存即生效），以及 account 远端拉取的编排（结果落盘 cacheFile，内存为一级缓存，写穿；
 // 见 persist.go）。1044 起 namespace 模型移除，拉取以 account 为唯一维度。
 type Service struct {
-	settingsFile string
-	cacheFile    string // 拉取结果落盘文件（cache/forge-repos.json）；空 = 不落盘（测试）
+	// settings
+	forgesStore  ForgesStore
+	accountStore AccountStore
+	// 拉取结果落盘文件（cache/forge-repos.json）；空 = 不落盘（测试）
+	cacheFile string
 
 	cacheMu sync.Mutex
 	mem     map[string]AcctCacheEntry // acctCacheKey(host/username) → 快照（内存一级缓存）
@@ -38,120 +33,67 @@ type Service struct {
 
 // NewService 由 Config 装配 Service（DI 注入用），拉取缓存落 cache/forge-repos.json。
 func NewService(cfg *config.Config) *Service {
+	forgesStore := newForgesStore(cfg.SettingsFile())
+	accountsStore := newAccountsStore(cfg.SettingsFile(), forgesStore)
+
 	return &Service{
-		settingsFile: cfg.SettingsFile(),
+		forgesStore:  forgesStore,
+		accountStore: accountsStore,
 		cacheFile:    filepath.Join(cfg.CacheDir(), "forge-repos.json"),
 	}
 }
 
 // Forges 读全部 forge（直读不缓存）。坏条目（host 空 / kind 未知 / icon 非法）跳过不阻断。
 func (s *Service) Forges() []Forge {
-	specs := store.LoadSectionOrZero[[]Forge](s.settingsFile, forgesSection)
-
-	forges := make([]Forge, 0, len(specs))
-	for _, f := range specs {
-		f.Host = NormalizeHost(f.Host)
-		if err := ValidateHost(f.Host); err != nil || !ValidKind(f.Kind) {
-			slog.Warn("forge 配置条目非法，跳过", "host", f.Host, "kind", f.Kind)
-			continue
-		}
-		if err := icons.ValidateIcon(f.Icon); err != nil {
-			slog.Warn("forge 配置 icon 非法，跳过该条目", "host", f.Host, "err", err)
-			continue
-		}
-		forges = append(forges, f)
-	}
-	return forges
+	return s.forgesStore.All()
 }
 
 // SaveForge 新增或按 host 替换一条 forge（host 归一化后是唯一键——
 // 编辑 host 等价于删旧存新，前端按此语义提交）。校验收敛在写侧，坏数据中文错误不落文件。
 func (s *Service) SaveForge(f Forge) error {
-	f, err := normalizeForge(f)
-	if err != nil {
-		return err
-	}
-	specs := x.UpsertKeyed(s.Forges(), forgeKey, f)
-	return store.SaveSection(s.settingsFile, forgesSection, specs)
+	return s.forgesStore.Save(f)
 }
 
 // SaveAllForges 以提交清单整节覆盖 forges 节（顺序即展示序，1042 forge 页沿用）。
 // 逐项校验 + host 查重，任一失败整体不落盘；被移除 forge 下的 account 级联清理（同 DeleteForge）。
 func (s *Service) SaveAllForges(forges []Forge) error {
-	normalized := make([]Forge, len(forges))
-	for i, f := range forges {
-		n, err := normalizeForge(f)
-		if err != nil {
-			return err
-		}
-		normalized[i] = n
-	}
-	if dup, ok := x.DuplicateKeyed(normalized, forgeKey); ok {
-		return fmt.Errorf("forge host 重复: %s", dup)
-	}
-	if err := store.SaveSection(s.settingsFile, forgesSection, normalized); err != nil {
+	if err := s.forgesStore.SaveAll(forges); err != nil {
 		return err
 	}
-	return s.retainAccounts(func(a Account) bool { return MatchHost(normalized, a.ForgeHost) != nil })
+
+	return s.purgeAccounts()
 }
 
 // DeleteForge 按唯一键（归一化 host）删除一条 forge，并级联清理该 host 下的 account
 // （孤挂配置对任何功能都不可见，留了就是脏数据）；不存在时返回中文错误。
 func (s *Service) DeleteForge(f Forge) error {
-	host := forgeKey(f)
-	rest, removed := x.RemoveKeyed(s.Forges(), forgeKey, host)
-	if !removed {
-		return fmt.Errorf("未找到指定 forge: %s", host)
-	}
-	if err := store.SaveSection(s.settingsFile, forgesSection, rest); err != nil {
+	if err := s.forgesStore.Delete(f); err != nil {
 		return err
 	}
-	return s.retainAccounts(func(a Account) bool { return NormalizeHost(a.ForgeHost) != host })
+
+	return s.purgeAccounts()
 }
 
 // --- account（1041，1044 起是 forge 下唯一的关联配置） ---
 
 // Accounts 读全部 account（含 token 原文，供拉取取凭证；对外展示的打码在出口层做）。
-func (s *Service) Accounts() []Account { return loadAccounts(s.settingsFile) }
+func (s *Service) Accounts() []Account { return s.accountStore.All() }
 
 // SaveAccount 新增或按 forgeHost+username 替换一条 account。
 // token 提交掩码值（TokenMasked）视为「未修改」沿用旧值——前端表单掩码展示的配套语义。
 func (s *Service) SaveAccount(a Account) error {
-	accounts := loadAccounts(s.settingsFile)
-	a, err := normalizeAccount(a, accounts, s.Forges())
-	if err != nil {
-		return err
-	}
-	return saveAccounts(s.settingsFile, x.UpsertKeyed(accounts, accountKey, a))
+	return s.accountStore.Save(a)
 }
 
 // SaveAllAccounts 以提交清单整节覆盖 accounts 节（顺序即 forge 页展示序）。
 // 逐项校验（含掩码 token 按唯一键回填旧值）+ 唯一键查重，任一失败整体不落盘。
 func (s *Service) SaveAllAccounts(accounts []Account) error {
-	existing := loadAccounts(s.settingsFile)
-	forges := s.Forges()
-	normalized := make([]Account, len(accounts))
-	for i, a := range accounts {
-		n, err := normalizeAccount(a, existing, forges)
-		if err != nil {
-			return err
-		}
-		normalized[i] = n
-	}
-	if dup, ok := x.DuplicateKeyed(normalized, accountKey); ok {
-		return fmt.Errorf("account 重复: %s", formatAccountKey(dup))
-	}
-	return saveAccounts(s.settingsFile, normalized)
+	return s.accountStore.SaveAll(accounts)
 }
 
 // DeleteAccount 按唯一键（forgeHost+username）删除一条 account；不存在时返回中文错误。
 func (s *Service) DeleteAccount(a Account) error {
-	key := accountKey(a)
-	rest, removed := x.RemoveKeyed(loadAccounts(s.settingsFile), accountKey, key)
-	if !removed {
-		return fmt.Errorf("未找到指定 account: %s", formatAccountKey(key))
-	}
-	return saveAccounts(s.settingsFile, rest)
+	return s.accountStore.Delete(a)
 }
 
 // --- 拉取与对账（account 维度） ---
@@ -160,21 +102,24 @@ func (s *Service) DeleteAccount(a Account) error {
 // 出站 API 调用是慢操作，手动/低频触发；成功结果写穿内存缓存与落盘文件（含 fetchedAt），
 // 失败直接上抛（调用方展示错误，不影响既有缓存）。
 func (s *Service) FetchAccount(forgeHost, username string, force bool) ([]gitapi.RemoteRepo, error) {
-	a := findAccount(loadAccounts(s.settingsFile), forgeHost, username)
-	if a == nil {
-		return nil, fmt.Errorf("未找到指定 account: %s@%s", NormalizeUsername(username), NormalizeHost(forgeHost))
+	key := accountKey(forgeHost, username)
+	a, ok := s.accountStore.Find(key)
+	if !ok {
+		return nil, fmt.Errorf("未找到指定 account: %s", key)
 	}
-	key := acctCacheKey(a.ForgeHost, a.Username)
+
+	cacheKey := acctCacheKey(a.ForgeHost, a.Username)
 	if !force {
-		if entry, ok := s.cachedEntry(key); ok {
+		if entry, ok := s.cachedEntry(cacheKey); ok {
 			return entry.Repos, nil
 		}
 	}
+
 	repos, err := s.loadRepos(key)
 	if err != nil {
 		return nil, err
 	}
-	s.storeEntry(key, AcctCacheEntry{FetchedAt: time.Now(), Repos: repos})
+	s.storeEntry(cacheKey, AcctCacheEntry{FetchedAt: time.Now(), Repos: repos})
 	return repos, nil
 }
 
@@ -188,19 +133,15 @@ func (s *Service) Overview(local []LocalRepo) *Overview {
 
 // --- 私有辅助 ---
 
-// retainAccounts 按谓词保留 account（forge 删除/整节覆盖的级联清理用）。
-func (s *Service) retainAccounts(keep func(Account) bool) error {
-	accounts := loadAccounts(s.settingsFile)
-	rest := make([]Account, 0, len(accounts))
-	for _, a := range accounts {
-		if keep(a) {
-			rest = append(rest, a)
-		}
+func (s *Service) purgeAccounts() error {
+	existHosts := make(map[string]bool)
+	for _, f := range s.Forges() {
+		existHosts[f.Host] = true
 	}
-	if len(rest) == len(accounts) {
-		return nil
-	}
-	return saveAccounts(s.settingsFile, rest)
+
+	return s.accountStore.Retain(func(a Account) bool {
+		return existHosts[a.ForgeHost]
+	})
 }
 
 // factory 返回客户端工厂（未注入时用真实实现，httpClient 默认）。
@@ -215,22 +156,22 @@ func (s *Service) factory() clientFactory {
 
 // loadRepos 按 account 键现读配置并执行一次真实拉取（内存缓存未命中时调用）。
 func (s *Service) loadRepos(key string) ([]gitapi.RemoteRepo, error) {
-	h, u := key2acct(key)
-	a := findAccount(loadAccounts(s.settingsFile), h, u)
-	if a == nil {
+	a, ok := s.accountStore.Find(key)
+	if !ok {
 		return nil, fmt.Errorf("未找到指定 account: %s", key)
 	}
-	f := MatchHost(s.Forges(), a.ForgeHost)
-	if f == nil {
+
+	f, ok := s.forgesStore.Find(a.ForgeHost)
+	if !ok {
 		return nil, fmt.Errorf("account 所属 forge 未配置: %s", a.ForgeHost)
 	}
-	return fetchRepos(*f, *a, s.factory())
+	return fetchRepos(f, a, s.factory())
 }
 
 // CachedAccountRepos 读 account 的拉取快照（含 fetchedAt），从未拉取过返回 false（不触发外呼）。
 func (s *Service) CachedAccountRepos(forgeHost, username string) (AcctCacheEntry, bool) {
-	a := findAccount(loadAccounts(s.settingsFile), forgeHost, username)
-	if a == nil {
+	a, ok := s.accountStore.Find(accountKey(forgeHost, username))
+	if !ok {
 		return AcctCacheEntry{}, false
 	}
 	return s.cachedEntry(acctCacheKey(a.ForgeHost, a.Username))
@@ -278,13 +219,3 @@ func (s *Service) ensureLoadedLocked() {
 func acctCacheKey(forgeHost, username string) string {
 	return NormalizeHost(forgeHost) + "/" + NormalizeUsername(username)
 }
-
-// key2acct 从缓存键反解出 forgeHost 与 username。
-func key2acct(key string) (string, string) {
-	h, u, _ := strings.Cut(key, "/")
-	return h, u
-}
-
-// accountKey / formatAccountKey account 的节内唯一键与错误文案渲染。
-func accountKey(a Account) string      { return acctCacheKey(a.ForgeHost, a.Username) }
-func formatAccountKey(k string) string { h, u := key2acct(k); return u + "@" + h }

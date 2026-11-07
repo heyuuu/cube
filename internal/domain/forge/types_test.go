@@ -67,19 +67,3 @@ func TestRepoHost(t *testing.T) {
 		}
 	}
 }
-
-func TestMatchHost(t *testing.T) {
-	forges := []Forge{
-		{Host: "github.com", Kind: KindGithub},
-		{Host: "gitea.example.com:3000", Kind: KindGitea},
-	}
-	if f := MatchHost(forges, "GitHub.com."); f == nil || f.Kind != KindGithub {
-		t.Fatalf("大小写/点号差异应匹配: %v", f)
-	}
-	if f := MatchHost(forges, "gitea.example.com:3000"); f == nil || f.Kind != KindGitea {
-		t.Fatalf("带端口 host 应匹配: %v", f)
-	}
-	if f := MatchHost(forges, "unknown.com"); f != nil {
-		t.Fatalf("未配置 host 不应匹配: %v", f)
-	}
-}

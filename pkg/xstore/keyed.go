@@ -3,6 +3,7 @@ package xstore
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/heyuuu/x/store"
@@ -20,7 +21,10 @@ type KeyedSliceStoreOpts[T any] struct {
 	// KeyOf 数据项唯一键计算
 	KeyOf func(T) string
 	// Normalize 格式化并校验数据项
-	Normalize func(T) (T, error)
+	Normalize func(new T) (T, error)
+	// NormalizeWithExists 格式化并校验数据项, 依赖旧数据
+	// NormalizeWithExists 不为 nil 时，Normalize 失效
+	NormalizeWithExists func(new T, old *T) (T, error)
 	// ConflictCheck 校验新元素和已有元素是否冲突
 	ConflictCheck func(new T, exists T) error
 }
@@ -35,7 +39,7 @@ type KeyedSliceStore[T any] struct {
 	name          string
 	store         store.Store[[]T]
 	keyOf         func(T) string
-	normalize     func(T) (T, error)
+	normalize     func(new T, old *T) (T, error)
 	conflictCheck func(new T, exists T) error
 }
 
@@ -49,20 +53,40 @@ func NewKeyedSliceStore[T any](opts KeyedSliceStoreOpts[T]) *KeyedSliceStore[T] 
 	if opts.KeyOf == nil {
 		panic("keyOf is nil")
 	}
+
+	var normalize func(new T, old *T) (T, error)
+	if opts.NormalizeWithExists != nil {
+		normalize = opts.NormalizeWithExists
+	} else if opts.Normalize != nil {
+		normalize = func(new T, old *T) (T, error) {
+			return opts.Normalize(new)
+		}
+	}
+
 	return &KeyedSliceStore[T]{
 		name:          opts.Name,
 		store:         opts.Store,
 		keyOf:         opts.KeyOf,
-		normalize:     opts.Normalize,
+		normalize:     normalize,
 		conflictCheck: opts.ConflictCheck,
 	}
 }
 
 // append 向已有数据集追加数据，成功返回 (新数据集, nil); 失败返回 (旧数据集, 错误信息)
 func (s *KeyedSliceStore[T]) append(exists []T, item T) (result []T, err error) {
+	key := s.keyOf(item)
+	existsIndex := slices.IndexFunc(exists, func(t T) bool {
+		return s.keyOf(t) == key
+	})
+
 	// 先规范化数据项
 	if s.normalize != nil {
-		item, err = s.normalize(item)
+		var old *T
+		if existsIndex >= 0 {
+			old = &exists[existsIndex]
+		}
+
+		item, err = s.normalize(item, old)
 		if err != nil {
 			return exists, err
 		}
@@ -70,9 +94,8 @@ func (s *KeyedSliceStore[T]) append(exists []T, item T) (result []T, err error) 
 
 	// 校验数据集冲突
 	if s.conflictCheck != nil {
-		key := s.keyOf(item)
-		for _, exist := range exists {
-			if s.keyOf(exist) == key {
+		for i, exist := range exists {
+			if i == existsIndex {
 				continue
 			}
 			if err := s.conflictCheck(item, exist); err != nil {
@@ -82,7 +105,12 @@ func (s *KeyedSliceStore[T]) append(exists []T, item T) (result []T, err error) 
 	}
 
 	// 更新数据
-	return x.UpsertKeyed(exists, s.keyOf, item), nil
+	if existsIndex >= 0 {
+		exists[existsIndex] = item
+	} else {
+		exists = append(exists, item)
+	}
+	return exists, nil
 }
 
 // All 读全部条目
