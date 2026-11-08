@@ -26,14 +26,18 @@ linters:
 
 formatters:
   # golangci-lint fmt 使用的格式化器
+  # goimports 与 gci 分工：goimports 负责按符号自动增删 import（fmt 顺手清理），
+  # gci 负责强制三段分组——goimports（含 -local）保留已有空行分组、只组内排序，
+  # 无法纠正组顺序错乱（如 cube 组排在第三方前），gci 按 sections 完全重写 import 块。
   enable:
     - gofmt
+    - goimports
     - gci
   settings:
+    goimports:
+      local-prefixes:
+        - cube
     gci:
-      # import 按标准库 / 第三方 / 本项目(cube) 三段强制重排。
-      # 用 gci 而非 goimports：goimports（含 -local）保留已有空行分组、只组内排序，
-      # 无法纠正组顺序错乱（如 cube 组排在第三方前）；gci 按 sections 完全重写 import 块。
       sections:
         - standard
         - default
