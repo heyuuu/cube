@@ -130,11 +130,11 @@ func TestOnChange(t *testing.T) {
 		Name:  "测试项",
 		Store: ms,
 		KeyOf: func(it item) string { return it.K },
-		OnChange: func(values []item) error {
-			calls++
-			got = values
-			return nil
-		},
+	})
+	s.OnChange(func(values []item) error {
+		calls++
+		got = values
+		return nil
 	})
 
 	if err := s.Save(item{K: "c"}); err != nil {
@@ -176,12 +176,39 @@ func TestOnChange(t *testing.T) {
 func TestOnChangeErrorPropagates(t *testing.T) {
 	wantErr := errors.New("级联失败")
 	s := NewKeyedSliceStore(KeyedSliceStoreOpts[item]{
-		Name:     "测试项",
-		Store:    &memStore[[]item]{},
-		KeyOf:    func(it item) string { return it.K },
-		OnChange: func([]item) error { return wantErr },
+		Name:  "测试项",
+		Store: &memStore[[]item]{},
+		KeyOf: func(it item) string { return it.K },
 	})
+	s.OnChange(func([]item) error { return wantErr })
 	if err := s.Save(item{K: "a"}); !errors.Is(err, wantErr) {
 		t.Fatalf("OnChange 错误应透传给调用方, got %v", err)
+	}
+}
+
+// 多个 listener 按注册序全部执行；单个出错不阻断后续，错误合并透传
+func TestOnChangeMultipleListeners(t *testing.T) {
+	ms := (&memStore[[]item]{})
+	s := newTestStore(ms)
+
+	var order []string
+	s.OnChange(func([]item) error { order = append(order, "l1"); return nil })
+	s.OnChange(func([]item) error { order = append(order, "l2"); return nil })
+
+	if err := s.Save(item{K: "a"}); err != nil {
+		t.Fatalf("save 失败: %v", err)
+	}
+	if len(order) != 2 || order[0] != "l1" || order[1] != "l2" {
+		t.Fatalf("多 listener 应按注册序全部执行: %v", order)
+	}
+
+	wantErr := errors.New("级联失败")
+	s.OnChange(func([]item) error { return wantErr })
+	order = nil
+	if err := s.Save(item{K: "b"}); !errors.Is(err, wantErr) {
+		t.Fatalf("listener 错误应透传给调用方, got %v", err)
+	}
+	if len(order) != 2 {
+		t.Fatalf("出错的 listener 不应阻断其他 listener: %v", order)
 	}
 }

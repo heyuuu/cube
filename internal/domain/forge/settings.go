@@ -19,7 +19,7 @@ const accountsSection = "forgeAccounts"
 type ForgesStore = *xstore.KeyedSliceStore[Forge]
 type AccountsStore = *xstore.KeyedSliceStore[Account]
 
-func newForgesStore(settingsFile string, onChange func([]Forge) error) ForgesStore {
+func newForgesStore(settingsFile string) ForgesStore {
 	return xstore.NewKeyedSliceStore(xstore.KeyedSliceStoreOpts[Forge]{
 		Name:  "forge 配置",
 		Store: store.SectionStore[[]Forge](settingsFile, forgesSection),
@@ -37,7 +37,6 @@ func newForgesStore(settingsFile string, onChange func([]Forge) error) ForgesSto
 			}
 			return f, nil
 		},
-		OnChange: onChange,
 	})
 }
 
@@ -49,12 +48,11 @@ func accountKeyOf(a Account) string {
 	return accountKey(a.ForgeHost, a.Username)
 }
 
-func newAccountsStore(settingsFile string, onChange func([]Account) error) AccountsStore {
+func newAccountsStore(settingsFile string) AccountsStore {
 	return xstore.NewKeyedSliceStore(xstore.KeyedSliceStoreOpts[Account]{
 		Name:      "forge account",
 		Store:     store.SectionStore[[]Account](settingsFile, accountsSection),
 		KeyOf:     accountKeyOf,
 		Normalize: normalizeAccount,
-		OnChange:  onChange,
 	})
 }

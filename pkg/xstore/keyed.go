@@ -1,10 +1,12 @@
 package xstore
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/heyuuu/x/store"
 	"github.com/heyuuu/x/xstd/xslices"
@@ -22,9 +24,6 @@ type KeyedSliceStoreOpts[T any] struct {
 	Normalize func(T) (T, error)
 	// ConflictCheck 校验新元素和已有元素是否冲突
 	ConflictCheck func(new T, exists T) error
-	// OnChange 数据集成功落盘后回调（入参为落盘后的数据集），用于级联维护依赖它的数据；
-	// 同步执行，错误透传给触发写入的调用方。未发生实际写入（幂等删除未命中、Retain 无删动）时不触发
-	OnChange func(values []T) error
 }
 
 // KeyedSliceStore 可被索引的数据结合
@@ -39,7 +38,9 @@ type KeyedSliceStore[T any] struct {
 	keyOf         func(T) string
 	normalize     func(T) (T, error)
 	conflictCheck func(new T, exists T) error
-	onChange      func(values []T) error
+
+	mu              sync.RWMutex
+	changeListeners []func(values []T) error
 }
 
 func NewKeyedSliceStore[T any](opts KeyedSliceStoreOpts[T]) *KeyedSliceStore[T] {
@@ -59,8 +60,16 @@ func NewKeyedSliceStore[T any](opts KeyedSliceStoreOpts[T]) *KeyedSliceStore[T] 
 		keyOf:         opts.KeyOf,
 		normalize:     opts.Normalize,
 		conflictCheck: opts.ConflictCheck,
-		onChange:      opts.OnChange,
 	}
+}
+
+// OnChange 注册数据集成功落盘后的回调（入参为落盘后的数据集），用于级联维护依赖它的数据；
+// 可注册多个（构造后随时追加），落盘时按注册序全部执行、错误合并透传给触发写入的调用方。
+// 未发生实际写入（幂等删除未命中、Retain 无删动）时不触发。
+func (s *KeyedSliceStore[T]) OnChange(listener func(values []T) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.changeListeners = append(s.changeListeners, listener)
 }
 
 // save 所有写盘的唯一出口：落盘成功后触发 OnChange，保证任何写路径都不会漏掉级联。
@@ -68,10 +77,19 @@ func (s *KeyedSliceStore[T]) save(values []T) error {
 	if err := s.store.Save(values); err != nil {
 		return err
 	}
-	if s.onChange != nil {
-		return s.onChange(values)
+
+	// 快照后放锁再执行：listener 可能再触发本 store 写入（级联回环），持读锁递归在有并发注册时会死锁
+	s.mu.RLock()
+	listeners := slices.Clone(s.changeListeners)
+	s.mu.RUnlock()
+
+	errs := make([]error, 0, len(listeners))
+	for _, listener := range listeners {
+		if err := listener(values); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 // append 把 item 规范化后并入 exists（同键原位替换，否则追加到尾部），成功返回 (新数据集, nil)；

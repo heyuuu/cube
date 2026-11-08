@@ -28,7 +28,10 @@ type Service struct {
 // NewService 由 Config 装配 Service（DI 注入用），拉取缓存落 cache/forge-repos.json。
 func NewService(cfg *config.Config) *Service {
 	repoCache := newRepoCache(filepath.Join(cfg.CacheDir(), "forge-repos.json"))
-	accountsStore := newAccountsStore(cfg.SettingsFile(), func(accounts []Account) error {
+	accountsStore := newAccountsStore(cfg.SettingsFile())
+	forgesStore := newForgesStore(cfg.SettingsFile())
+
+	accountsStore.OnChange(func(accounts []Account) error {
 		live := make(map[string]bool, len(accounts))
 		for _, a := range accounts {
 			live[accountKey(a.ForgeHost, a.Username)] = true
@@ -36,7 +39,8 @@ func NewService(cfg *config.Config) *Service {
 		repoCache.retain(func(key string) bool { return live[key] })
 		return nil
 	})
-	forgesStore := newForgesStore(cfg.SettingsFile(), func(forges []Forge) error {
+
+	forgesStore.OnChange(func(forges []Forge) error {
 		hosts := make(map[string]bool, len(forges))
 		for _, f := range forges {
 			hosts[f.Host] = true
