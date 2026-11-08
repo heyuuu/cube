@@ -11,6 +11,8 @@ import (
 )
 
 // TestLoad_EmptyDir 目录不存在 → 创建并返回空缓存。
+// TestLoad_EmptyDir 目录尚不存在（冷启动）→ 空缓存。Load 只读不写不建目录；
+// 目录创建懒化在 Save 侧（store.WriteFileAtomic 自带 MkdirAll）。
 func TestLoad_EmptyDir(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	dir := ws.Join("not-exist-yet")
@@ -19,9 +21,8 @@ func TestLoad_EmptyDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load 出错: %v", err)
 	}
-	// 目录应被创建
-	if _, err := os.Stat(dir); err != nil {
-		t.Fatalf("Load 应创建目录，实际未创建: %v", err)
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatalf("Load 不应创建目录: %v", err)
 	}
 	// 空缓存：Get 任意路径未命中
 	if _, ok := c.Get("/any"); ok {
@@ -66,7 +67,7 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestLoad_CorruptFile 损坏的 git.json 应降级为空缓存，且原文件被备份。
+// TestLoad_CorruptFile 损坏的 git.json 当文件不存在丢弃（降级空缓存，不备份）。
 func TestLoad_CorruptFile(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	dir := ws.Mkdir("cache")
@@ -78,11 +79,6 @@ func TestLoad_CorruptFile(t *testing.T) {
 	}
 	if _, ok := c.Get("/any"); ok {
 		t.Fatalf("损坏文件应返回空缓存")
-	}
-	// 损坏文件应被备份（git.json.corrupt-*）
-	matches, _ := filepath.Glob(filepath.Join(dir, cacheFileName+".corrupt-*"))
-	if len(matches) == 0 {
-		t.Fatalf("损坏文件应被备份为 .corrupt-*")
 	}
 }
 

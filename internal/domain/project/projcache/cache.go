@@ -10,7 +10,6 @@
 package projcache
 
 import (
-	"encoding/json/v2"
 	"fmt"
 	"log/slog"
 	"os"
@@ -78,7 +77,7 @@ type cacheFile struct {
 //   - 进程内：RWMutex 保护 map 读写；Refresh 每次整表重建（全新 map 覆盖 c.entries）。
 //   - 落盘靠 Save() 的原子写（tmp + rename）保证，无需 flock。
 type Cache struct {
-	dir       string // 缓存目录（~/.config/cube/cache/）
+	cacheFile string // 缓存文件路径
 	mu        sync.RWMutex
 	entries   map[string]*Entry // key = 项目绝对路径
 	updatedAt time.Time         // 最近一次采集落盘时间（缓存整体刷新时间）
@@ -97,33 +96,17 @@ func (c *Cache) UpdatedAt() time.Time {
 //   - git.json 不存在：返回空缓存。
 //   - 解析失败：备份损坏文件到 git.json.corrupt-{ts}，返回空缓存。
 func Load(dir string) (*Cache, error) {
-	c := &Cache{dir: dir, entries: make(map[string]*Entry)}
-
-	// 确保目录存在
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return c, fmt.Errorf("创建 cache 目录失败: %w", err)
+	c := &Cache{
+		cacheFile: filepath.Join(dir, cacheFileName),
+		entries:   make(map[string]*Entry),
 	}
 
-	// 文件不存在：空缓存
-	path := c.path()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return c, nil // 文件不存在或其他读错误，降级返回空缓存
-	}
-
-	// 解析失败：备份损坏文件，返回空缓存（降级优先）
-	// 版本不符：结构已变，老数据按新结构 lenient unmarshal 会得到缺字段全零值的
-	// 部分数据（比没有数据更糟），直接当文件不存在丢弃，靠下轮采集重建
-	var file cacheFile
-	if err := json.Unmarshal(data, &file); err != nil {
-		slog.Warn("git 缓存文件损坏，备份后从空重建", "path", path, "err", err)
-		backupCorrupt(path, data)
+	// 尝试读取缓存文件，读取失败直接丢弃
+	file, err := store.LoadJSON[cacheFile](c.cacheFile)
+	if err != nil || file.Version != cacheVersion {
 		return c, nil
 	}
-	if file.Version != cacheVersion {
-		slog.Warn("git 缓存版本不符，丢弃旧文件从空重建", "path", path, "version", file.Version)
-		return c, nil
-	}
+
 	c.mu.Lock()
 	if file.Entries != nil {
 		c.entries = file.Entries
@@ -133,9 +116,6 @@ func Load(dir string) (*Cache, error) {
 
 	return c, nil
 }
-
-// path 返回缓存文件完整路径（包内自用）。
-func (c *Cache) path() string { return filepath.Join(c.dir, cacheFileName) }
 
 // Get 读取单个项目的缓存条目；未命中返回 (nil, false)。
 func (c *Cache) Get(path string) (*Entry, bool) {
@@ -164,7 +144,7 @@ func (c *Cache) Save() error {
 	}
 	c.mu.Unlock()
 
-	if err := store.SaveJSON(c.path(), file); err != nil {
+	if err := store.SaveJSON(c.cacheFile, file); err != nil {
 		return fmt.Errorf("写入 cache 文件失败: %w", err)
 	}
 	return nil
@@ -351,15 +331,4 @@ func collectWorktrees(path string) []WorktreeInfo {
 		worktrees = append(worktrees, WorktreeInfo{Path: wt.Path, Branch: wt.Branch, Detached: wt.Detached, Workspaces: workspace.Resolve(wt.Path)})
 	}
 	return worktrees
-}
-
-// backupCorrupt 把损坏文件备份到 git.json.corrupt-{timestamp}，便于事后排查。
-// 备份失败不影响主流程（最多 Warn 一次）。
-func backupCorrupt(path string, data []byte) {
-	bk := fmt.Sprintf("%s.corrupt-%d", path, time.Now().Unix())
-	if err := os.WriteFile(bk, data, 0644); err != nil {
-		slog.Warn("备份损坏的 cache 文件失败", "src", path, "backup", bk, "err", err)
-		return
-	}
-	slog.Info("损坏的 cache 文件已备份", "src", path, "backup", bk)
 }
