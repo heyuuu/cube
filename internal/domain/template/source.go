@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xos"
+
 	"cube/pkg/git"
 	"cube/pkg/pathkit"
-	"cube/pkg/x"
 )
 
 // DefaultSource 缺省模板源名（免配置即可 create 的体验兜底）。
@@ -22,7 +23,7 @@ const DefaultSourceRepoURL = "git@github.com:heyuuu/cube-templates.git"
 func loadSourceDir(sourceRef string, sources []TplSource) (dir string, cleanup func(), err error) {
 	// 本地绝对路径：直接使用，不产生需要清理的资源
 	if filepath.IsAbs(sourceRef) {
-		if !x.IsDir(sourceRef) {
+		if !xos.IsDir(sourceRef) {
 			return "", nil, fmt.Errorf("模板源路径不存在或不为文件夹: %s", sourceRef)
 		}
 		return sourceRef, nil, nil
@@ -72,12 +73,12 @@ func cloneSource(repoURL string) (dir string, cleanup func(), err error) {
 // LoadSourceTemplates 加载 source 下的模板，返回 Map<模板名, 模板路径>
 func LoadSourceTemplates(sourcePath string) (map[string]string, error) {
 	// 单模板 source (根目录即为唯一模板目录)
-	if x.IsFile(filepath.Join(sourcePath, MetaFileName)) {
+	if xos.IsFile(filepath.Join(sourcePath, MetaFileName)) {
 		return map[string]string{"default": MetaFileName}, nil
 	}
 	// 多模板 source (默认 templates/* 为各模板地址)
 	tplRoot := filepath.Join(sourcePath, "templates")
-	if !x.IsDir(tplRoot) {
+	if !xos.IsDir(tplRoot) {
 		return nil, fmt.Errorf("%s 不是合法模板来源：根目录无 template.yaml，也无 templates/ 子目录", pathkit.PrettyPath(sourcePath))
 	}
 
@@ -95,7 +96,7 @@ func LoadSourceTemplates(sourcePath string) (map[string]string, error) {
 		}
 		// 通过 MetaFileName 是否存在判断是否为 template 目录
 		tplPath := filepath.Join(tplRoot, e.Name())
-		if !x.IsFile(filepath.Join(tplPath, MetaFileName)) {
+		if !xos.IsFile(filepath.Join(tplPath, MetaFileName)) {
 			continue
 		}
 		// 添加到结果

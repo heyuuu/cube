@@ -8,8 +8,6 @@ import (
 
 	"github.com/heyuuu/x/store"
 	"github.com/heyuuu/x/xstd/xslices"
-
-	"cube/pkg/x"
 )
 
 // KeyedSliceStoreOpts 声明 KeyedSliceStore 的配置
@@ -161,8 +159,8 @@ func (s *KeyedSliceStore[T]) Save(v T) (err error) {
 func (s *KeyedSliceStore[T]) Delete(v T) error {
 	key := s.keyOf(v)
 	values := s.All()
-	rest, removed := x.RemoveKeyed(values, s.keyOf, key)
-	if !removed {
+	rest := xslices.Filter(values, func(t T) bool { return s.keyOf(t) != key })
+	if len(values) == len(rest) {
 		return nil
 	}
 	return s.save(rest)

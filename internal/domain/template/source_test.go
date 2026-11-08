@@ -6,9 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/heyuuu/x/xstd/xos"
+
 	"cube/internal/testfixture"
 	"cube/pkg/git"
-	"cube/pkg/x"
 )
 
 // makeTplRepo 建一个含单模板集的本地 git 仓库（本地路径直接当 repoUrl 供 clone）。
@@ -97,7 +98,7 @@ func TestLoadSourceDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("命名源解析失败: %v", err)
 	}
-	if cloned == repo || !x.IsDir(filepath.Join(cloned, "templates", "hello")) {
+	if cloned == repo || !xos.IsDir(filepath.Join(cloned, "templates", "hello")) {
 		t.Fatalf("应 clone 到新目录且含模板: cloned=%s", cloned)
 	}
 	cleanup()

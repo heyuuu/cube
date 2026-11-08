@@ -6,8 +6,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xos"
+
 	"cube/internal/domain/icons"
-	"cube/pkg/x"
 )
 
 // ScanRule 扫描规则
@@ -83,7 +84,7 @@ func isProjectPath(path string) bool {
 	// 以 .git 目录是否存在判定
 	// 注意，判断的是 .git 目录；git worktree 目录会有 .git 文件，但是 git worktree 目录不作为单独项目
 	gitPath := filepath.Join(path, ".git")
-	return x.IsDir(gitPath)
+	return xos.IsDir(gitPath)
 }
 
 // MatchScanRule 判断 absPath（git init 后）能否被 scan 收录为新项目，

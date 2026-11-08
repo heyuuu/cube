@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xos"
 	"github.com/heyuuu/x/xstd/xslices"
-
-	"cube/pkg/x"
 )
 
 // ReplaceRule 替换规则
@@ -40,7 +39,7 @@ func Render(tpl *Template, targetDir string, vars map[string]string) (int, error
 			data = []byte(applyRules(string(data), rules))
 		}
 
-		if err := x.WriteFile(outPath, data, 0644); err != nil {
+		if err := xos.WriteFile(outPath, data, 0644); err != nil {
 			return fmt.Errorf("写入文件失败: %w", err)
 		}
 
