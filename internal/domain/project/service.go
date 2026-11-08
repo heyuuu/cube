@@ -286,8 +286,14 @@ func (s *Service) GitInfo(path string) (*projcache.Entry, bool) {
 
 // RefreshGitInfo 定向刷新单个项目的 git 快照并落盘（workbench 写操作后即时可见，
 // 提案 1031）。经 app 装配点以方法值注入 workbench，避免 workbench 反向依赖 project。
+// 归属校验：workbench 以任意 git 目录为输入，非本服务收录项目的仓库直接跳过——
+// 外来仓库进快照后会在下轮整表重建时被删掉（白采一次全量），快照也短暂混入
+// 无消费者的外来条目。
 func (s *Service) RefreshGitInfo(path string) error {
 	if s.projCache == nil {
+		return nil
+	}
+	if s.FindByPath(path) == nil {
 		return nil
 	}
 	return s.projCache.RefreshOne(path)
@@ -297,13 +303,14 @@ func (s *Service) RefreshGitInfo(path string) error {
 // 委托缓存的计算时间戳——数据与新鲜度由 scanCache 单点维护（对称：GitUpdatedAt 委托 projCache）。
 func (s *Service) ScanUpdatedAt() time.Time { return s.scanCache.UpdatedAt() }
 
-// GitUpdatedAt 返回 git 缓存最近一次落盘时间；无缓存返回零值。
-// 区别于单项目的 CollectedAt：这是整个 cache 文件的刷新时间。
+// GitUpdatedAt 返回 git 快照的整表新鲜度（全部项目中最旧的 Entry.UpdatedAt）；
+// 无缓存返回零值。取「最旧项目」口径：任一项目过期即整表过期，单项目定向刷新
+// （RefreshOne）不再给整表「续命」——前端展示与 TTL 调度同用此口径。
 func (s *Service) GitUpdatedAt() time.Time {
 	if s.projCache == nil {
 		return time.Time{}
 	}
-	return s.projCache.UpdatedAt()
+	return s.projCache.EarlyUpdatedAt()
 }
 
 // maxExpireTime 缓存可容忍的最大过期时间：任一时间戳（scanCache / projCache 的
@@ -340,7 +347,7 @@ func (s *Service) StartRefreshTicker() {
 		failed := false // 上轮刷新是否失败（失败退避整周期）
 		for {
 			now := time.Now()
-			staleness := max(now.Sub(s.scanCache.UpdatedAt()), now.Sub(s.projCache.UpdatedAt()))
+			staleness := max(now.Sub(s.scanCache.UpdatedAt()), now.Sub(s.projCache.EarlyUpdatedAt()))
 			delay := max(maxExpireTime-staleness, 0)
 			if failed {
 				delay = maxExpireTime

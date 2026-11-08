@@ -291,7 +291,7 @@ func TestRefresh_RealRepo(t *testing.T) {
 	}
 }
 
-// TestRefresh_EmptyPaths 空路径列表也成功（仅刷 UpdatedAt）。
+// TestRefresh_EmptyPaths 空路径列表也成功（整表清空 + 落盘）。
 func TestRefresh_EmptyPaths(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	c, _ := Load(ws.Mkdir("cache"))

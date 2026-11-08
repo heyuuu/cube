@@ -1,6 +1,7 @@
 package project
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -36,5 +37,30 @@ func TestStartRefreshTicker_StaleCacheTriggersStartupRefresh(t *testing.T) {
 	}
 	if s.ScanUpdatedAt().IsZero() {
 		t.Fatal("缓存过期时应启动即刷一次，scanUpdatedAt 保持零值")
+	}
+}
+
+// TestRefreshGitInfoOwnership 定向刷新只服务收录项目：scan 外的仓库不进快照
+// （workbench 以任意 git 目录为输入，外来仓库进了快照也会被整表重建删掉——白采）。
+func TestRefreshGitInfoOwnership(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	root := ws.Mkdir("root")
+	repo := ws.MakeProjectDir(filepath.Join("root", "repo"))
+	foreign := ws.MakeGitRepo("foreign") // scan root 之外的同级仓库
+
+	s := newServiceWithRules(t, ws, []ScanRule{{Group: "g", Path: root, MaxDepth: 3}}, nil)
+
+	if err := s.RefreshGitInfo(repo); err != nil {
+		t.Fatalf("收录项目应可定向刷新: %v", err)
+	}
+	if _, ok := s.GitInfo(repo); !ok {
+		t.Fatal("收录项目刷新后应有快照")
+	}
+
+	if err := s.RefreshGitInfo(foreign); err != nil {
+		t.Fatalf("外来仓库跳过不应报错: %v", err)
+	}
+	if _, ok := s.GitInfo(foreign); ok {
+		t.Fatal("外来仓库不应进快照")
 	}
 }

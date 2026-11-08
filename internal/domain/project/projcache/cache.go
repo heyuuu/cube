@@ -77,11 +77,11 @@ func (e *Entry) OriginURL() string {
 }
 
 // cacheFile 缓存文件的磁盘序列化结构。
-// key = 项目绝对路径。
+// key = 项目绝对路径。整体新鲜度不落盘——由 EarlyUpdatedAt 从 entries 现算
+// （单项目 UpdatedAt 已随数据落盘，整表时间戳是派生值，存两份会失联）。
 type cacheFile struct {
-	Version   int               `json:"version"`
-	UpdatedAt time.Time         `json:"updatedAt"`
-	Entries   map[string]*Entry `json:"entries"`
+	Version int               `json:"version"`
+	Entries map[string]*Entry `json:"entries"`
 }
 
 // Cache 内存态缓存。读多写少，用 RWMutex 保护 entries map。
@@ -89,19 +89,13 @@ type cacheFile struct {
 // 并发模型（单写者）：
 //   - 常驻 server 是 projcache.json 的唯一写方，CLI 只读不写，无跨进程并发写问题。
 //   - 进程内：RWMutex 保护 map 读写；Refresh 每次整表重建（全新 map 覆盖 c.entries）。
-//   - 落盘靠 Save() 的原子写（tmp + rename）保证，无需 flock。
+//   - 落盘在 Save() 的锁内串行执行：进程内 ticker 的 Refresh 与 HTTP handler 的
+//     RefreshOne 会并发调 Save，锁外写文件会出现旧快照后落覆盖新快照（盘上 stale）；
+//   - 文件本身的完整性靠原子写（tmp + rename）保证，无需 flock。
 type Cache struct {
 	cacheFile string // 缓存文件路径
 	mu        sync.RWMutex
 	entries   map[string]*Entry // key = 项目绝对路径
-	updatedAt time.Time         // 最近一次采集落盘时间（缓存整体刷新时间）
-}
-
-// UpdatedAt 返回缓存最近一次落盘时间（整体刷新时间，区别于单项目的 Entry.UpdatedAt）。
-func (c *Cache) UpdatedAt() time.Time {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.updatedAt
 }
 
 // Load 从 dir 加载缓存。
@@ -123,10 +117,25 @@ func Load(dir string) (*Cache, error) {
 	if file.Entries != nil {
 		c.entries = file.Entries
 	}
-	c.updatedAt = file.UpdatedAt
 	c.mu.Unlock()
 
 	return c, nil
+}
+
+// EarlyUpdatedAt 返回全部项目的最早更新时间——整表新鲜度取「最旧项目」口径，
+// 任一项目快照过期即整表视为过期（供 TTL 调度与前端 git 状态新鲜度展示）。
+// 没有项目时返回当前时间：空表无数据可 stale，视为新鲜（也让调度器不热循环）。
+func (c *Cache) EarlyUpdatedAt() time.Time {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	t := time.Now()
+	for _, v := range c.entries {
+		if t.After(v.UpdatedAt) {
+			t = v.UpdatedAt
+		}
+	}
+	return t
 }
 
 // Get 读取单个项目的缓存条目；未命中返回 (nil, false)。
@@ -145,17 +154,16 @@ func (c *Cache) Size() int {
 }
 
 // Save 落盘 projcache.json（store.SaveJSON：Deterministic 字节稳定 + 缩进 + 尾换行 + 原子写）。
+// 写盘在锁内：落盘低频且文件小，换来 Refresh / RefreshOne 两个写路径的落盘串行化
+// （见 Cache 并发模型注释）。
 func (c *Cache) Save() error {
 	c.mu.Lock()
-	now := time.Now()
-	c.updatedAt = now
-	file := cacheFile{
-		Version:   cacheVersion,
-		UpdatedAt: now,
-		Entries:   c.entries,
-	}
-	c.mu.Unlock()
+	defer c.mu.Unlock()
 
+	file := cacheFile{
+		Version: cacheVersion,
+		Entries: c.entries,
+	}
 	if err := store.SaveJSON(c.cacheFile, file); err != nil {
 		return fmt.Errorf("写入 cache 文件失败: %w", err)
 	}
