@@ -15,11 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
+
 	"cube/internal/domain/workbench"
 	"cube/internal/testfixture"
 	"cube/pkg/git"
-
-	"github.com/coder/websocket"
 )
 
 func TestWorkbenchInfo(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"cube/cmd/devtool/internal/tag"
-
 	"github.com/spf13/cobra"
+
+	"cube/cmd/devtool/internal/tag"
 )
 
 func newTagCmd() *cobra.Command {

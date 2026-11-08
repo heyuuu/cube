@@ -16,9 +16,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/heyuuu/x/xstd/xslices"
-
 	"github.com/coder/websocket"
+	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/domain/project"
 	"cube/internal/domain/project/workspace"

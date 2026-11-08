@@ -5,9 +5,8 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/heyuuu/x/xstd/xslices"
-
 	"github.com/heyuuu/x/store"
+	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/config"
 	"cube/internal/server"

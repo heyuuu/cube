@@ -4,9 +4,9 @@ package cmd
 import (
 	"os"
 
-	"cube/cmd/devtool/internal/generate"
-
 	"github.com/spf13/cobra"
+
+	"cube/cmd/devtool/internal/generate"
 )
 
 func newRootCmd() *cobra.Command {

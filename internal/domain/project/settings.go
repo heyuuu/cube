@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/heyuuu/x/store"
+
 	"cube/internal/domain/icons"
 	"cube/pkg/xstore"
-
-	"github.com/heyuuu/x/store"
 )
 
 // settings.json 中 project 域的两个规则节：分节存储，可独立读取与写入。
