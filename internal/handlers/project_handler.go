@@ -63,32 +63,24 @@ type WorktreeDTO struct {
 }
 
 // newProjectInfoDTO 把内部快照转为对外形态；nil（未采集）透传为 nil。
-// 主工作区信息（Worktrees[0]）升位到 DTO 顶级字段（wire 格式不变）；快照的 Worktrees[0]
-// 是主工作区，不作为 worktree 目标下发（前端「主目录」目标由固定首位承载）。
+// 主工作区信息（Entry.Main）升位到 DTO 顶级字段（wire 格式不变）；快照 Worktrees
+// 只含 linked worktree，作为 worktree 目标下发（前端「主目录」目标由固定首位承载）。
 func newProjectInfoDTO(e *projcache.Entry) *ProjectInfoDTO {
 	if e == nil {
 		return nil
 	}
-	var currentBranch string
-	var workspaces []workspace.Workspace
-	worktrees := e.Worktrees
-	if main := e.MainWorktree(); main != nil {
-		currentBranch = main.Branch
-		workspaces = main.Workspaces
-		worktrees = worktrees[1:]
-	}
 	return &ProjectInfoDTO{
 		RepoURL:       e.OriginURL(),
 		Remotes:       xslices.Map(e.Remotes, func(r projcache.RemoteInfo) RemoteDTO { return RemoteDTO{Name: r.Name, URL: r.URL} }),
-		CurrentBranch: currentBranch,
+		CurrentBranch: e.Main.Branch,
 		DefaultBranch: e.DefaultBranch,
 		Ahead:         e.Ahead,
 		Behind:        e.Behind,
 		Dirty:         e.Dirty,
-		Worktrees: xslices.Map(worktrees, func(wt projcache.WorktreeInfo) WorktreeDTO {
+		Worktrees: xslices.Map(e.Worktrees, func(wt projcache.WorktreeInfo) WorktreeDTO {
 			return WorktreeDTO{Path: wt.Path, Branch: wt.Branch, Workspaces: workspaceMemberDTOs(wt.Workspaces)}
 		}),
-		Workspaces:  workspaceMemberDTOs(workspaces),
+		Workspaces:  workspaceMemberDTOs(e.Main.Workspaces),
 		CollectedAt: e.UpdatedAt,
 	}
 }
@@ -361,11 +353,9 @@ func (h *ProjectHandler) workspaceGet(input struct {
 	}
 	root := proj.Path()
 	result := WorkspaceStateResult{Effective: []WorkspaceMemberDTO{}, Declared: []WorkspaceMemberDTO{}, Detected: []WorkspaceMemberDTO{}}
-	// 生效清单读主工作区（Worktrees[0]）的 workspace 成员
-	if info, ok := h.projectService.GitInfo(root); ok {
-		if main := info.MainWorktree(); main != nil {
-			result.Effective = workspaceMemberDTOs(main.Workspaces)
-		}
+	// 生效清单读主工作区（Entry.Main）的 workspace 成员
+	if info, ok := h.projectService.GitInfo(root); ok && info != nil {
+		result.Effective = workspaceMemberDTOs(info.Main.Workspaces)
 	}
 	if cf, ok := cubefile.Load(root); ok {
 		result.DeclaredSet = cf.WorkspacesSet

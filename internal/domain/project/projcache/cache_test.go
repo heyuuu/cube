@@ -51,9 +51,9 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	// 写入
 	c1, _ := Load(dir)
 	c1.entries["/proj/a"] = &Entry{
-		Remotes:   []RemoteInfo{{Name: "origin", URL: "git@x:a"}},
-		Worktrees: []WorktreeInfo{{Path: "/proj/a", Branch: "main"}},
-		Ahead:     3,
+		Remotes: []RemoteInfo{{Name: "origin", URL: "git@x:a"}},
+		Main:    WorktreeInfo{Path: "/proj/a", Branch: "main"},
+		Ahead:   3,
 	}
 	if err := c1.Save(); err != nil {
 		t.Fatalf("Save 失败: %v", err)
@@ -65,7 +65,7 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	if !ok {
 		t.Fatalf("Save 后 Load 应命中")
 	}
-	if got.OriginURL() != "git@x:a" || got.MainWorktree().Branch != "main" || got.Ahead != 3 {
+	if got.OriginURL() != "git@x:a" || got.Main.Branch != "main" || got.Ahead != 3 {
 		t.Fatalf("读回数据异常: %+v", got)
 	}
 }
@@ -133,8 +133,8 @@ func TestCollectEntry_RealRepo(t *testing.T) {
 	if e == nil {
 		t.Fatalf("collectEntry 不应返回 nil")
 	}
-	if main := e.MainWorktree(); main == nil || main.Branch != "main" {
-		t.Fatalf("主工作区分支不符（Worktrees[0] 即主工作区）: %+v", main)
+	if main := e.Main; main.Branch != "main" {
+		t.Fatalf("主工作区分支不符（Entry.Main）: %+v", main)
 	}
 }
 
@@ -185,16 +185,16 @@ func TestCollectEntry_Worktrees(t *testing.T) {
 	if err != nil {
 		t.Fatalf("collectEntry 不应返回 error: %v", err)
 	}
-	if len(e.Worktrees) != 3 {
-		t.Fatalf("应含主工作区 + 2 个 worktree, got %d (%+v)", len(e.Worktrees), e.Worktrees)
+	// Main 是主工作区（分支 = 仓库当前分支，路径经符号链接规范化），Worktrees 只含 linked
+	if len(e.Worktrees) != 2 {
+		t.Fatalf("应含 2 个 linked worktree, got %d (%+v)", len(e.Worktrees), e.Worktrees)
 	}
-	// [0] 是主工作区（分支 = 仓库当前分支，路径经符号链接规范化）
 	canonicalRepo, err := filepath.EvalSymlinks(repo)
 	if err != nil {
 		t.Fatalf("解析真实路径失败: %v", err)
 	}
-	if main := e.MainWorktree(); main.Path != canonicalRepo || main.Branch != "main" {
-		t.Fatalf("Worktrees[0] 应为主工作区: %+v", main)
+	if e.Main.Path != canonicalRepo || e.Main.Branch != "main" {
+		t.Fatalf("Main 应为主工作区: %+v", e.Main)
 	}
 	// 分支名 + 路径落在快照里；git 输出路径经符号链接规范化，比较前同样求值
 	canonicalWt, err := filepath.EvalSymlinks(ws.Join("wt-hot"))
@@ -229,11 +229,11 @@ func TestCollectEntry_WorktreePruned(t *testing.T) {
 	if err != nil {
 		t.Fatalf("collectEntry 不应返回 error: %v", err)
 	}
-	if len(e.Worktrees) != 2 {
-		t.Fatalf("失联 worktree 应被过滤，只留主工作区 + hotfix, got %+v", e.Worktrees)
+	if len(e.Worktrees) != 1 {
+		t.Fatalf("失联 worktree 应被过滤，只留 hotfix（Main 另计）, got %+v", e.Worktrees)
 	}
-	if e.Worktrees[1].Branch != "hotfix" {
-		t.Fatalf("留下的应是 hotfix: %+v", e.Worktrees[1])
+	if e.Worktrees[0].Branch != "hotfix" {
+		t.Fatalf("留下的应是 hotfix: %+v", e.Worktrees[0])
 	}
 }
 
@@ -251,8 +251,8 @@ func TestRefresh_RealRepo(t *testing.T) {
 	if !ok {
 		t.Fatalf("Refresh 后 Get 应命中")
 	}
-	if e.MainWorktree().Branch != "develop" {
-		t.Fatalf("Refresh 采集主工作区分支 = %q，期望 develop", e.MainWorktree().Branch)
+	if e.Main.Branch != "develop" {
+		t.Fatalf("Refresh 采集主工作区分支 = %q，期望 develop", e.Main.Branch)
 	}
 
 	// projcache.json 应已落盘
@@ -281,7 +281,7 @@ func TestRefreshOne(t *testing.T) {
 		t.Fatalf("RefreshOne 报错: %v", err)
 	}
 	e, ok := c.Get(repo)
-	if !ok || e.MainWorktree().Branch == "" {
+	if !ok || e.Main.Branch == "" {
 		t.Fatalf("刷新后应有该项目的 entry: %+v", e)
 	}
 	if _, ok := c.Get(other); ok {
@@ -293,15 +293,15 @@ func TestRefreshOne(t *testing.T) {
 		t.Fatalf("二次刷新报错: %v", err)
 	}
 	e, _ = c.Get(repo)
-	if len(e.Worktrees) != 2 || e.Worktrees[1].Branch != "hotfix" {
-		t.Fatalf("worktree 应已进快照（[0] 主工作区 + [1] hotfix）: %+v", e.Worktrees)
+	if len(e.Worktrees) != 1 || e.Worktrees[0].Branch != "hotfix" {
+		t.Fatalf("worktree 应已进快照（Worktrees 只含 linked）: %+v", e.Worktrees)
 	}
 
-	// 非 git 目录：与整表 Refresh 语义一致，整条失败不落盘（v4 全有或全无）
+	// 非 git 目录：与整表 Refresh 语义一致，整条失败不落盘（全有或全无）
 	if err := c.RefreshOne(ws.Join("plain")); err == nil {
 		t.Fatal("非仓库按约定应整条失败（不接受残缺数据）")
 	}
-	if e, ok := c.Get(repo); !ok || e.MainWorktree().Branch == "" {
+	if e, ok := c.Get(repo); !ok || e.Main.Branch == "" {
 		t.Fatalf("其他条目不受影响: %+v", e)
 	}
 }

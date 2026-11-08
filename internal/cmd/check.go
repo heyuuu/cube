@@ -107,7 +107,7 @@ func checkGitDirty(service *project.Service) {
 		}
 
 		// 分支不对
-		if main := info.MainWorktree(); main != nil && main.Branch != info.DefaultBranch {
+		if info.Main.Branch != info.DefaultBranch {
 			return true
 		}
 

@@ -30,9 +30,11 @@ import (
 // v2：worktree 归并为项目打开目标（1032）——移除 WorktreeMain（worktree 不再是独立项目），
 // 新增 Worktrees（主项目附带枚举 linked worktree）。
 // v3：包更名 projcache + workspace 字段（1030）——Entry/WorktreeInfo 各增 Workspaces。
-// v4：主工作区并入 Worktrees[0]（原 Entry 顶级 CurrentBranch/Workspaces/RepoURL 移除，
-// 改经 MainWorktree/OriginURL 取用）；采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
-const cacheVersion = 4
+// v4：主工作区并入 Worktrees[0]（原 Entry 顶级 CurrentBranch/Workspaces/RepoURL 移除）；
+// 采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
+// v5：主工作区拆出为独立 Main 值字段（恒存在，由类型强制），Worktrees 复归只含
+// linked worktree——v4 的「Worktrees[0] 为主」不变量无法被类型系统表达，且消费侧本就全部特判主区。
+const cacheVersion = 5
 
 // 缓存文件名（位于缓存目录 dir 下）。
 const cacheFileName = "projcache.json"
@@ -45,7 +47,8 @@ type Entry struct {
 	Ahead         int            `json:"ahead"`         // 默认分支相对 origin 的领先 commit 数
 	Behind        int            `json:"behind"`        // 落后的 commit 数
 	Dirty         bool           `json:"dirty"`         // 工作区是否有改动
-	Worktrees     []WorktreeInfo `json:"worktrees"`     // 工作区信息(含主项目根和 linked worktree, Worktrees[0] 为主工作区)
+	Main          WorktreeInfo   `json:"main"`          // 主工作区信息
+	Worktrees     []WorktreeInfo `json:"worktrees"`     // 各工作区信息(linked worktree)
 	UpdatedAt     time.Time      `json:"updatedAt"`     // 本次采集时间
 }
 
@@ -61,15 +64,6 @@ type WorktreeInfo struct {
 	Branch     string                `json:"branch"`     // 检出分支短名；detached 为空
 	Detached   bool                  `json:"detached"`   // HEAD 游离（展示名回退目录名的信号）
 	Workspaces []workspace.Workspace `json:"workspaces"` // 该 worktree 根的 workspace 成员（1030，Path 相对 worktree 根）
-}
-
-// MainWorktree 主工作区。不变量：Worktrees 恒非空且 [0] 为主工作区（collectEntry 保证）；
-// 磁盘数据异常破坏不变量时防御性返回 nil，调用方判空降级、不得 panic。
-func (e *Entry) MainWorktree() *WorktreeInfo {
-	if len(e.Worktrees) == 0 {
-		return nil
-	}
-	return &e.Worktrees[0]
 }
 
 // OriginURL origin remote 的地址（采集侧已归一 fetch 优先 push）；无 origin 返回空。
@@ -327,12 +321,13 @@ func collectEntry(path string) (*Entry, error) {
 		Ahead:         ahead,
 		Behind:        behind,
 		Dirty:         st.Dirty,
-		Worktrees:     worktrees,
+		Main:          worktrees[0],
+		Worktrees:     worktrees[1:],
 		UpdatedAt:     time.Now(),
 	}, nil
 }
 
-// collectWorktrees 枚举全部工作区（v4 起主目录自身也在内，Worktrees[0] 即主工作区）。
+// collectWorktrees 枚举全部工作区（主目录在前，调用方拆分为 Main 与 linked Worktrees）。
 // WorktreeList 输出主目录在前；枚举失败上抛（collectEntry 全有或全无，不降级）。
 func collectWorktrees(path string) ([]WorktreeInfo, error) {
 	list, err := git.WorktreeList(path)

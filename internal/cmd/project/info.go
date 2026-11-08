@@ -86,10 +86,7 @@ query 支持两种搜索模式：
 			if !hasCache {
 				printInfoKV("git", infoWarnStyle.Render("无缓存(可启动 cube server 自动采集)"))
 			} else {
-				branch := ""
-				if main := info.MainWorktree(); main != nil {
-					branch = main.Branch
-				}
+				branch := info.Main.Branch
 				if branch == "" {
 					branch = "HEAD(detached)" // 主工作区分支为空即 detached HEAD
 				}
