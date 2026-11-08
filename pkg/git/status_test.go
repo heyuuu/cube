@@ -66,6 +66,25 @@ func TestLoadRepoStatus(t *testing.T) {
 	}
 }
 
+// TestIsDirty 轻量 dirty 探测：clean / dirty / 非仓库三态，口径与 LoadRepoStatus.Dirty 一致。
+func TestIsDirty(t *testing.T) {
+	ws := newTestWorkspace(t)
+
+	cleanDir := ws.MakeGitRepoWith("clean", GitRepoSpec{Branch: "develop"})
+	if dirty, err := IsDirty(cleanDir); err != nil || dirty {
+		t.Fatalf("clean 仓库 IsDirty = (%v, %v)，期望 (false, nil)", dirty, err)
+	}
+
+	dirtyDir := ws.MakeGitRepoWith("dirty", GitRepoSpec{MakeDirty: true})
+	if dirty, err := IsDirty(dirtyDir); err != nil || !dirty {
+		t.Fatalf("dirty 仓库 IsDirty = (%v, %v)，期望 (true, nil)", dirty, err)
+	}
+
+	if dirty, err := IsDirty(ws.Mkdir("not-a-repo")); err != nil || dirty {
+		t.Fatalf("非仓库 IsDirty = (%v, %v)，期望 (false, nil)", dirty, err)
+	}
+}
+
 // TestLoadRepoStatus_Files_States 验证各文件状态映射为 git status --short 的 XY 码：
 // 未跟踪 / 暂存新增 / 暂存删除，以及按路径排序。
 // （工作区修改 " M" 场景由 TestLoadRepoStatus_Files_WorktreeModified 覆盖。）

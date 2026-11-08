@@ -117,7 +117,7 @@ func checkGitDirty(service *project.Service) {
 		}
 
 		// 工作区 dirty
-		if info.Dirty {
+		if info.Main.Dirty {
 			return true
 		}
 

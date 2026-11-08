@@ -181,7 +181,7 @@ func (h *ForgeHandler) localRepos() []forge.LocalRepo {
 		info := forge.LocalRepo{Name: p.Name(), Path: p.Path()}
 		if gi, ok := h.projectService.GitInfo(p.Path()); ok {
 			info.RepoURL = gi.OriginURL()
-			info.Dirty = gi.Dirty
+			info.Dirty = gi.Main.Dirty
 			info.Ahead = gi.Ahead
 			info.Behind = gi.Behind
 		}

@@ -32,8 +32,8 @@ import (
 // 新增 Worktrees（主项目附带枚举 linked worktree）。
 // v3：包更名 projcache + workspace 字段（1030）——Entry/WorktreeInfo 各增 Workspaces。
 // v4：主工作区拆出为独立 Main 值字段（恒存在，类型强制），Worktrees 只含 linked worktree；
-// 移除 Entry 顶级 RepoURL/CurrentBranch/Workspaces（改经 OriginURL/Main 取用）；
-// 采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
+// 移除 Entry 顶级 RepoURL/CurrentBranch/Workspaces/Dirty（改经 OriginURL/Main 取用，
+// dirty 迁入 WorktreeInfo 按工作区采集）；采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
 const cacheVersion = 4
 
 // 缓存文件名（位于缓存目录 dir 下）。
@@ -46,7 +46,6 @@ type Entry struct {
 	Branches      []string       `json:"branches"`      // 本地+远程分支短名列表
 	Ahead         int            `json:"ahead"`         // 默认分支相对 origin 的领先 commit 数
 	Behind        int            `json:"behind"`        // 落后的 commit 数
-	Dirty         bool           `json:"dirty"`         // 工作区是否有改动
 	Main          WorktreeInfo   `json:"main"`          // 主工作区信息
 	Worktrees     []WorktreeInfo `json:"worktrees"`     // 各工作区信息(linked worktree)
 	UpdatedAt     time.Time      `json:"updatedAt"`     // 本次采集时间
@@ -63,6 +62,7 @@ type WorktreeInfo struct {
 	Path       string                `json:"path"`       // worktree 绝对路径（git 输出经符号链接规范化）
 	Branch     string                `json:"branch"`     // 检出分支短名；detached 为空
 	Detached   bool                  `json:"detached"`   // HEAD 游离（展示名回退目录名的信号）
+	Dirty      bool                  `json:"dirty"`      // 该工作副本是否有变更（staged/unstaged/untracked 任一）
 	Workspaces []workspace.Workspace `json:"workspaces"` // 该 worktree 根的 workspace 成员（1030，Path 相对 worktree 根）
 }
 
@@ -300,12 +300,8 @@ func collectEntry(path string) (*Entry, error) {
 	if defaultBranch != "" {
 		ahead, behind, _ = git.AheadBehindRemote(path, defaultBranch, "origin", defaultBranch)
 	}
-	st, err := git.LoadRepoStatus(path)
-	if err != nil {
-		return nil, err
-	}
 
-	// 收集各工作区信息
+	// 收集各工作区信息（dirty 按工作区各自探测，主区与 linked 同路径）
 	worktrees, err := collectWorktrees(path)
 	if err != nil {
 		return nil, err
@@ -320,7 +316,6 @@ func collectEntry(path string) (*Entry, error) {
 		Branches:      branches,
 		Ahead:         ahead,
 		Behind:        behind,
-		Dirty:         st.Dirty,
 		Main:          worktrees[0],
 		Worktrees:     worktrees[1:],
 		UpdatedAt:     time.Now(),
@@ -341,7 +336,11 @@ func collectWorktrees(path string) ([]WorktreeInfo, error) {
 		if _, err := os.Stat(wt.Path); err != nil {
 			continue
 		}
-		worktrees = append(worktrees, WorktreeInfo{Path: wt.Path, Branch: wt.Branch, Detached: wt.Detached, Workspaces: workspace.Resolve(wt.Path)})
+		dirty, err := git.IsDirty(wt.Path)
+		if err != nil {
+			return nil, fmt.Errorf("探测工作区 dirty 失败: path=%s, err=%w", wt.Path, err)
+		}
+		worktrees = append(worktrees, WorktreeInfo{Path: wt.Path, Branch: wt.Branch, Detached: wt.Detached, Dirty: dirty, Workspaces: workspace.Resolve(wt.Path)})
 	}
 	return worktrees, nil
 }

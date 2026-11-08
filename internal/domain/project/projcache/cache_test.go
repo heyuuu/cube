@@ -213,6 +213,36 @@ func TestCollectEntry_Worktrees(t *testing.T) {
 	}
 }
 
+// TestCollectEntry_WorktreeDirty dirty 按工作区各自探测（迁入 WorktreeInfo）：
+// 主区与各 linked worktree 的 dirty 互不影响。
+func TestCollectEntry_WorktreeDirty(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "main", MakeDirty: true})
+	ws.MakeWorktree(repo, "wt-clean", "clean")
+	ws.MakeWorktree(repo, "wt-dirty", "dirt")
+	if err := os.WriteFile(ws.Join("wt-dirty", "new.txt"), []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	e, err := collectEntry(repo)
+	if err != nil {
+		t.Fatalf("collectEntry 不应返回 error: %v", err)
+	}
+	if !e.Main.Dirty {
+		t.Fatalf("主区 MakeDirty 应为 dirty: %+v", e.Main)
+	}
+	byBranch := map[string]WorktreeInfo{}
+	for _, wt := range e.Worktrees {
+		byBranch[wt.Branch] = wt
+	}
+	if byBranch["clean"].Dirty {
+		t.Fatalf("clean worktree 不应 dirty: %+v", byBranch["clean"])
+	}
+	if !byBranch["dirt"].Dirty {
+		t.Fatalf("含未跟踪文件的 worktree 应 dirty: %+v", byBranch["dirt"])
+	}
+}
+
 // TestCollectEntry_WorktreePruned 目录已删但 git 元数据未 prune 的 worktree 不进快照（幽灵目标）。
 func TestCollectEntry_WorktreePruned(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)

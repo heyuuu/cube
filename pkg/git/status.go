@@ -54,6 +54,20 @@ func LoadRepoStatus(dir string) (*RepoStatus, error) {
 	return parseStatusV2(out), nil
 }
 
+// IsDirty 工作副本是否有任何变更（staged/unstaged/untracked 任一即 true）。
+// 与 LoadRepoStatus 同源但不带 --branch、不解析明细——只要 dirty 布尔的调用方
+// （如 projcache 按工作区采集）走这条轻量路径。
+func IsDirty(dir string) (bool, error) {
+	if !isGitRepo(dir) {
+		return false, nil
+	}
+	out, err := runOut(dir, statusPorcelainArgs()...)
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(out) != "", nil
+}
+
 // parseStatusV2 解析 porcelain v2 + --branch 输出。行首标记：
 //
 //	# branch.head <name>|detached   # branch.oid <sha>

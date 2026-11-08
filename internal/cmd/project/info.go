@@ -95,7 +95,7 @@ query 支持两种搜索模式：
 					// ahead/behind 是默认分支相对 origin 的差异
 					printInfoKV("default", info.DefaultBranch+" "+cmdutil.FormatAheadBehind(info.Ahead, info.Behind))
 				}
-				printInfoKV("dirty", boolToCnColored(info.Dirty))
+				printInfoKV("dirty", boolToCnColored(info.Main.Dirty))
 				printInfoKV("branches", fmt.Sprintf("%d 个", len(info.Branches)))
 				printInfoKV("snapshot", formatInfoSnapshot(info.UpdatedAt))
 			}

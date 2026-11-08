@@ -76,7 +76,7 @@ func newProjectInfoDTO(e *projcache.Entry) *ProjectInfoDTO {
 		DefaultBranch: e.DefaultBranch,
 		Ahead:         e.Ahead,
 		Behind:        e.Behind,
-		Dirty:         e.Dirty,
+		Dirty:         e.Main.Dirty,
 		Worktrees: xslices.Map(e.Worktrees, func(wt projcache.WorktreeInfo) WorktreeDTO {
 			return WorktreeDTO{Path: wt.Path, Branch: wt.Branch, Workspaces: workspaceMemberDTOs(wt.Workspaces)}
 		}),
