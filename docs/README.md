@@ -73,6 +73,12 @@
 - [`mani.md`](references/mani.md) — alajmo/mani 竞品分析
 - [`gitbatch.md`](references/gitbatch.md) — isacikgoz/gitbatch 竞品分析（含批量操作避坑点）
 
+### [decisions/](decisions/) — 决策记录
+
+已裁决的技术选型与架构决策：实测数据、源码分析、复核条件。「再想起某个已否决方案」时，以这里的结论为准，先查复核条件再动手。
+
+- [`go-git否决.md`](decisions/go-git否决.md) — git 读操作维持原生子进程不走 go-git（2026-11-08 实测复核）：Status 的 diff-then-filter 架构致大仓库秒级卡顿（26.8 万文件 ~3s vs git 52ms，慢 47x）+ 全局忽略链不加载致 dirty 误报（可 3 行注入修复但不解性能）+ 无 worktree 枚举 API；仅小仓库元数据快 ~15x，不足以翻案。复核条件：go-git v6 重写 status 遍历
+
 ### [misc/](misc/) — 杂项
 
 暂时不好划分的文件。
