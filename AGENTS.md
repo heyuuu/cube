@@ -11,7 +11,7 @@
 - 历史有三代：v1 (php)、v2 (go)、**v3 (当前，按领域重构)**。
 - 出口：本地 Web HTTP server（`cube server`，huma + 标准 ServeMux，主要交互形态）、CLI（人用 / alfred，web 不可用时兜底可行）。
 - 定位原则：不做云服务、不绑 AI（cube 可被 AI 编排，但自身不集成 AI）。
-- Go 源码与 go.mod 都在仓库根（`cmd/` / `internal/` / `pkg/` 分目录）；构建 / 安装 / 校验工具链收敛在仓库根 `justfile`（`just --list` 看全量；Makefile 只保留 `make tag` / `make last-proposal`）。
+- Go 源码与 go.mod 都在仓库根（`cmd/` / `internal/` / `pkg/` 分目录）；构建 / 安装 / 校验 / 打 tag / 发号等全部工具链收敛在仓库根 `justfile`（`just --list` 看全量）。
 
 ## 分层架构（改代码必须遵守的依赖纪律）
 
@@ -42,7 +42,7 @@
 
 ## 常用命令
 
-构建 / 安装 / 校验统一走 justfile（仓库根 `justfile`，`just --list` 看全量；Makefile 只保留 `make tag` / `make last-proposal`）：
+构建 / 安装 / 校验统一走 justfile（仓库根 `justfile`，`just --list` 看全量）：
 
 ```bash
 just build        # 先 build-ui（pnpm --dir web build，产物 web/dist 由 web/embed.go 直接 go:embed），再 go build + ldflags 注入 version（产物 tmp/main，可用 OUTPUT 覆盖）并跑 version 自验
@@ -159,7 +159,7 @@ ws.MakeProjectDir("scanroot/g1/proj", testfixture.WithGodot())
 改动敏感区域前先读：
 
 - [`docs/spec/现状.md`](./docs/spec/现状.md) —— 项目现状（定位/架构/命令/API/数据/配置）。改架构边界或加 domain 前必读。**与代码冲突时以代码为准**。
-- [`docs/proposals/`](./docs/proposals/) —— 待办需求提案（按 `1xxx-主题/` 目录组织，每个提案含 README.md，部分含 alternatives.md / design/）。**新建提案必须先 `make last-proposal` 取最大 ID，新 ID = 最大 ID + 1，不得重复或凭猜测取号**（详见 docs/README.md 的「ID 分配规则」）。
+- [`docs/proposals/`](./docs/proposals/) —— 待办需求提案（按 `1xxx-主题/` 目录组织，每个提案含 README.md，部分含 alternatives.md / design/）。**新建提案必须先 `just last-proposal` 取最大 ID，新 ID = 最大 ID + 1，不得重复或凭猜测取号**（详见 docs/README.md 的「ID 分配规则」）。
 - [`docs/references/`](./docs/references/) —— 竞品分析（mani / gitbatch，做批量操作前必读 gitbatch 避坑点）。
 - `README.md` —— 项目简介与 v3 现状总览。
 

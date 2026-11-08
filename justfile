@@ -119,3 +119,8 @@ gen-api:
 # 打新标签
 tag:
      go run {{ devtool_cmd }} tag
+
+# 取当前最大提案 ID（新建提案前必跑：新 ID = 最大 + 1，不得猜测取号，见 docs/README.md 的「ID 分配规则」）
+last-proposal:
+    @ls -d docs/proposals/*/ docs/proposals/archived/*/ docs/proposals/parked/*/ 2>/dev/null \
+        | awk -F/ '/\/1[0-9]{3}-/ {print $(NF-1)}' | sort | tail -1

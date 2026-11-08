@@ -1,5 +1,5 @@
 
-# ---- cube shell 扩展（由 make install 追加，勿手改；source 本文件后可用） ----
+# ---- cube shell 扩展（由 just install 追加，勿手改；source 本文件后可用） ----
 
 # p <args>：以本目录模式跑 cube（等价 cube <args> --local，query 缺省以 cwd 定位项目），
 # 交互手敲的形态；脚本/Alfred 等非 shell 上下文仍直接用 cube --local
@@ -17,7 +17,7 @@ pz() {
 }
 
 # ---- p / pz 的 TAB 补全：转发给 cube 的 cobra 补全（__complete 协议），不手写候选 ----
-# 注意：本文件由 make install 拼接在 cobra 生成的 completion 之后，
+# 注意：本文件由 just install 拼接在 cobra 生成的 completion 之后，
 # 上文已有 `_cube`（cube 的 compdef 函数）可直接复用
 
 # p 即 cube：把命令名改写回 cube 后委托上文 cobra 生成的 _cube。

@@ -73,7 +73,7 @@ github.com/spf13/cobra            v1.10+
 | Go 格式化 + lint | `golangci-lint fmt` / `golangci-lint run`（justfile 收敛为 `just fmt` / `just lint`） |
 | 热重载（开发） | [air](https://github.com/cosmtrek/air)，pre_cmd 内置 `just lint` 预检 |
 | 前端热重载 | Vite dev server，开发期走 proxy 到后端 |
-| 任务编排 | **[just](https://just.systems)**（justfile：build / install / fmt / lint / test / dev / run / gen）；Makefile 只留 `tag` 等与 git 交互的动作 |
+| 任务编排 | **[just](https://just.systems)**（justfile：build / install / fmt / lint / test / dev / run / gen / tag / last-proposal） |
 | 版本号注入 | `go build -ldflags`（justfile 注入 git tag/commit/buildTime 到 `internal/version` 包变量） |
 | 脚手架 | 独立 devtool 二进制（`just gen domain <name>` 自动完成加新领域的全部加法，含装配清单注入点） |
 | API 文档 | huma 内置 Scalar 渲染（`/docs`） |
@@ -148,8 +148,7 @@ internal/domain/<domain>/
 │   └── testfixture/           # 测试辅助（建临时仓库/目录）
 ├── pkg/                       # 独立工具层：git / pathkit / slicekit / fuzzy / tui 等子包
 ├── web/                       # 前端工程 + embed 容器（embed.go，见 §8.2）
-├── justfile                   # build / install / fmt / lint / test / dev / run / gen
-├── Makefile                   # 仅 tag / 发号等动作
+├── justfile                   # build / install / fmt / lint / test / dev / run / gen / tag / last-proposal
 ├── .air.toml                  # air 热重载配置
 ├── scripts/                   # shell 集成等附加脚本
 └── docs/                      # 文档（现状快照 + 提案，见 §10）
@@ -427,7 +426,7 @@ docs/
 └── references/            # 竞品分析等参考文献
 ```
 
-- **发号硬约束**：新建提案前先取当前最大 ID（cube 用 `make last-proposal`），新 ID = 最大 + 1，不重复不猜测。
+- **发号硬约束**：新建提案前先取当前最大 ID（cube 用 `just last-proposal`），新 ID = 最大 + 1，不重复不猜测。
 - **维护节奏**：合并一个有意义变更后同步更新 现状.md；提案实施完毕把目录挪进 archived/（只挪目录不改号）。
 - `docs/` 记「为什么这么做」，现状.md 记「当前是什么」。
 
@@ -453,7 +452,7 @@ docs/
 ## 十二、起步流程（新项目如何用模板）
 
 1. **立项**：建 `docs/`（README.md + spec/现状.md），明确做什么、不做什么。
-2. **搭骨架**：照 §4 目录结构建空包；`go mod init <module>`；抄 justfile / Makefile / .air.toml / .gitignore / web 工程脚手架。
+2. **搭骨架**：照 §4 目录结构建空包；`go mod init <module>`；抄 justfile / .air.toml / .gitignore / web 工程脚手架。
 3. **后端起步**：
    - 写 `internal/config`（配置加载 + Paths）、`internal/logger`（双通道 handler）、`internal/version`（ldflags 变量 + AppName）。
    - 写 `internal/app`（App 空壳 + Init 组装 DI）与 `internal/cmd/root.go`（PersistentPreRunE 惰性 Init）。
