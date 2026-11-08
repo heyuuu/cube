@@ -39,14 +39,11 @@ func NewService(cfg *config.Config) *Service {
 		log.Printf("加载 git 缓存失败: %v", err)
 	}
 
-	s := &Service{
-		scanRulesStore:  newScanRulesStore(cfg.SettingsFile()),
-		cloneRulesStore: newCloneRulesStore(cfg.SettingsFile()),
-		projCache:       projCache,
-	}
-	// 扫描时现读规则（规则直读 settings.json，外部修改后 Reload 即可反映）
-	s.scanCache = easycache.NewItem(func() []*Project {
-		projects, err := scan(s.ScanRules())
+	// stores
+	scanRulesStore := newScanRulesStore(cfg.SettingsFile())
+	cloneRulesStore := newCloneRulesStore(cfg.SettingsFile())
+	scanCache := easycache.NewItem(func() []*Project {
+		projects, err := scan(scanRulesStore.All())
 		if err != nil {
 			slog.Error("扫描项目失败", "err", err)
 			return nil
@@ -54,7 +51,20 @@ func NewService(cfg *config.Config) *Service {
 		slog.Info("scan 项目完成", "count", len(projects))
 		return projects
 	})
-	return s
+
+	// 规则落盘后立即重扫（毫秒级），保证 Web 保存后列表即时反映；
+	// 级联收敛在此，写方法（Save/Delete/SaveAll）保持纯委托 store
+	scanRulesStore.OnChange(func(_ []ScanRule) error {
+		scanCache.Reload()
+		return nil
+	})
+
+	return &Service{
+		scanRulesStore:  scanRulesStore,
+		cloneRulesStore: cloneRulesStore,
+		projCache:       projCache,
+		scanCache:       scanCache,
+	}
 }
 
 // -- 规则（直读 settings.json，加载即转换校验） --
@@ -70,32 +80,21 @@ func (s *Service) CloneRules() []CloneRule {
 }
 
 // SaveScanRule 新增或按 path 替换一条 scan 规则（校验在写侧，坏数据返回中文错误）。
-// 成功后立即重扫项目列表（毫秒级），保证 Web 保存后列表即时反映。
+// 成功后立即重扫项目列表（毫秒级），保证 Web 保存后列表即时反映
+// （重扫经 NewService 注册的 OnChange 级联触发，下同）。
 func (s *Service) SaveScanRule(rule ScanRule) error {
-	if err := s.scanRulesStore.Save(rule); err != nil {
-		return err
-	}
-	s.scanCache.Reload()
-	return nil
+	return s.scanRulesStore.Save(rule)
 }
 
 // DeleteScanRule 按唯一键（path）删除 scan 规则，成功后立即重扫。
 func (s *Service) DeleteScanRule(rule ScanRule) error {
-	if err := s.scanRulesStore.Delete(rule); err != nil {
-		return err
-	}
-	s.scanCache.Reload()
-	return nil
+	return s.scanRulesStore.Delete(rule)
 }
 
 // SaveAllScanRules 以提交清单整节覆盖 scan 规则；顺序影响项目列表展示序
 // （scan 按规则序遍历），成功后同样立即重扫。
 func (s *Service) SaveAllScanRules(rules []ScanRule) error {
-	if err := s.scanRulesStore.SaveAll(rules); err != nil {
-		return err
-	}
-	s.scanCache.Reload()
-	return nil
+	return s.scanRulesStore.SaveAll(rules)
 }
 
 // SaveCloneRule 新增或按 host+prefix 替换一条 clone 规则（校验在写侧）。
