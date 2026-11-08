@@ -27,14 +27,14 @@ import (
 )
 
 // 当前缓存文件格式版本；结构变更时递增，用于后续做兼容迁移。
+// 版本号只在「上一版格式被真实使用过」后才递增——开发期连续演进不逐次 bump。
 // v2：worktree 归并为项目打开目标（1032）——移除 WorktreeMain（worktree 不再是独立项目），
 // 新增 Worktrees（主项目附带枚举 linked worktree）。
 // v3：包更名 projcache + workspace 字段（1030）——Entry/WorktreeInfo 各增 Workspaces。
-// v4：主工作区并入 Worktrees[0]（原 Entry 顶级 CurrentBranch/Workspaces/RepoURL 移除）；
+// v4：主工作区拆出为独立 Main 值字段（恒存在，类型强制），Worktrees 只含 linked worktree；
+// 移除 Entry 顶级 RepoURL/CurrentBranch/Workspaces（改经 OriginURL/Main 取用）；
 // 采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
-// v5：主工作区拆出为独立 Main 值字段（恒存在，由类型强制），Worktrees 复归只含
-// linked worktree——v4 的「Worktrees[0] 为主」不变量无法被类型系统表达，且消费侧本就全部特判主区。
-const cacheVersion = 5
+const cacheVersion = 4
 
 // 缓存文件名（位于缓存目录 dir 下）。
 const cacheFileName = "projcache.json"
