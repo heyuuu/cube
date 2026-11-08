@@ -30,8 +30,8 @@ import (
 // v2：worktree 归并为项目打开目标（1032）——移除 WorktreeMain（worktree 不再是独立项目），
 // 新增 Worktrees（主项目附带枚举 linked worktree）。
 // v3：包更名 projcache + workspace 字段（1030）——Entry/WorktreeInfo 各增 Workspaces。
-// v4：主工作区并入 Worktrees[0]（Entry 顶级 CurrentBranch/Workspaces 停采，待移除）；
-// RepoURL 停采、改经 Remotes 派生（OriginURL）；采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
+// v4：主工作区并入 Worktrees[0]（原 Entry 顶级 CurrentBranch/Workspaces/RepoURL 移除，
+// 改经 MainWorktree/OriginURL 取用）；采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
 const cacheVersion = 4
 
 // 缓存文件名（位于缓存目录 dir 下）。
@@ -39,7 +39,7 @@ const cacheFileName = "projcache.json"
 
 // Entry 单个项目的 git 信息快照。
 type Entry struct {
-	Remotes       []RemoteInfo   `json:"remotes"`       // 全部 remote（无则空数组；origin 不在其中时 repoUrl 为空）
+	Remotes       []RemoteInfo   `json:"remotes"`       // 全部 remote（无则空数组；origin 地址经 OriginURL 派生）
 	DefaultBranch string         `json:"defaultBranch"` // 默认主分支名（master/main/...）
 	Branches      []string       `json:"branches"`      // 本地+远程分支短名列表
 	Ahead         int            `json:"ahead"`         // 默认分支相对 origin 的领先 commit 数
@@ -47,21 +47,20 @@ type Entry struct {
 	Dirty         bool           `json:"dirty"`         // 工作区是否有改动
 	Worktrees     []WorktreeInfo `json:"worktrees"`     // 工作区信息(含主项目根和 linked worktree, Worktrees[0] 为主工作区)
 	UpdatedAt     time.Time      `json:"updatedAt"`     // 本次采集时间
-
-	// todo remove 可临时使用 Remotes[0].URL 代替，最好是理解多 Remotes 语义后使用 Remotes
-	RepoURL string `json:"repoUrl"` // origin remote URL
-
-	// todo remove 使用 Worktrees[0].Branch
-	CurrentBranch string `json:"currentBranch"` // HEAD 指向分支短名，detached 为空
-
-	// todo remove 使用 Worktrees[0].Workspaces
-	Workspaces []workspace.Workspace `json:"workspaces"` // 主项目根的 workspace 成员（1030，Path 相对项目根；无则空数组）
 }
 
 // RemoteInfo 快照中的单个 remote（多 remote 项目的 forge 匹配需要全部 host，1042 修）。
 type RemoteInfo struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
+}
+
+// WorktreeInfo 单个工作区信息(主项目根或单个 linked worktree)
+type WorktreeInfo struct {
+	Path       string                `json:"path"`       // worktree 绝对路径（git 输出经符号链接规范化）
+	Branch     string                `json:"branch"`     // 检出分支短名；detached 为空
+	Detached   bool                  `json:"detached"`   // HEAD 游离（展示名回退目录名的信号）
+	Workspaces []workspace.Workspace `json:"workspaces"` // 该 worktree 根的 workspace 成员（1030，Path 相对 worktree 根）
 }
 
 // MainWorktree 主工作区。不变量：Worktrees 恒非空且 [0] 为主工作区（collectEntry 保证）；
@@ -81,14 +80,6 @@ func (e *Entry) OriginURL() string {
 		}
 	}
 	return ""
-}
-
-// WorktreeInfo 单个工作区信息(主项目根或单个 linked worktree)
-type WorktreeInfo struct {
-	Path       string                `json:"path"`       // worktree 绝对路径（git 输出经符号链接规范化）
-	Branch     string                `json:"branch"`     // 检出分支短名；detached 为空
-	Detached   bool                  `json:"detached"`   // HEAD 游离（展示名回退目录名的信号）
-	Workspaces []workspace.Workspace `json:"workspaces"` // 该 worktree 根的 workspace 成员（1030，Path 相对 worktree 根）
 }
 
 // cacheFile 缓存文件的磁盘序列化结构。
