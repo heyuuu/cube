@@ -340,7 +340,13 @@ func collectWorktrees(path string) ([]WorktreeInfo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("探测工作区 dirty 失败: path=%s, err=%w", wt.Path, err)
 		}
-		worktrees = append(worktrees, WorktreeInfo{Path: wt.Path, Branch: wt.Branch, Detached: wt.Detached, Dirty: dirty, Workspaces: workspace.Resolve(wt.Path)})
+		worktrees = append(worktrees, WorktreeInfo{
+			Path:       wt.Path,
+			Branch:     wt.Branch,
+			Detached:   wt.Detached,
+			Dirty:      dirty,
+			Workspaces: workspace.Resolve(wt.Path),
+		})
 	}
 	return worktrees, nil
 }
