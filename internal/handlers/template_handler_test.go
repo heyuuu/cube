@@ -79,12 +79,14 @@ func TestTplSourceWrite(t *testing.T) {
 		t.Fatalf("save-all 坏数据应报中文错误, message=%q", r2.Message)
 	}
 
-	// delete 提交完整单项（按 name 定位）；再删报中文错误
+	// delete 提交完整单项（按 name 定位）；再删幂等成功
 	if r := postJSON(t, env.url("/api/template/source/delete"), `{"name":"core","repoUrl":"git@github.com:heyuuu/cube-templates-v2.git"}`); !r.Ok {
 		t.Fatalf("delete 应成功, message=%q", r.Message)
 	}
-	r3 := postJSON(t, env.url("/api/template/source/delete"), `{"name":"core","repoUrl":"git@github.com:heyuuu/cube-templates-v2.git"}`)
-	if r3.Ok || !strings.Contains(r3.Message, "未找到指定模板源") {
-		t.Fatalf("删不存在应报中文错误, message=%q", r3.Message)
+	if r3 := postJSON(t, env.url("/api/template/source/delete"), `{"name":"core","repoUrl":"git@github.com:heyuuu/cube-templates-v2.git"}`); !r3.Ok {
+		t.Fatalf("删不存在应幂等成功, message=%q", r3.Message)
+	}
+	if out := list(); len(out.List) != 1 {
+		t.Fatalf("删除后应剩一条, got %+v", out.List)
 	}
 }

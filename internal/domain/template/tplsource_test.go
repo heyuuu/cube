@@ -5,15 +5,13 @@ import (
 	"testing"
 
 	"cube/internal/testfixture"
-
-	"github.com/heyuuu/x/store"
 )
 
 // newConfigService 建配置管理测试 Service（settings.json 落临时目录）。
-func newConfigService(t *testing.T) *Service {
+func newConfigService(t *testing.T) (*Service, *testfixture.Workspace) {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
-	return NewService(ws.Cfg)
+	return NewService(ws.Cfg), ws
 }
 
 // TestValidateTplSource name / repoUrl 校验表。
@@ -50,7 +48,7 @@ func TestValidateTplSource(t *testing.T) {
 
 // TestTplSourceCRUD save 同名替换 / delete / save-all 的配置节语义。
 func TestTplSourceCRUD(t *testing.T) {
-	s := newConfigService(t)
+	s, _ := newConfigService(t)
 
 	// 空配置返回空列表
 	if got := s.TplSources(); len(got) != 0 {
@@ -112,12 +110,12 @@ func TestTplSourceCRUD(t *testing.T) {
 		t.Fatalf("save-all 失败: %v", err)
 	}
 
-	// delete + 再删报错
+	// delete + 再删幂等成功
 	if err := s.DeleteTplSource(TplSource{Name: "core", RepoURL: "旧地址不参与匹配"}); err != nil {
 		t.Fatalf("delete 失败: %v", err)
 	}
-	if err := s.DeleteTplSource(TplSource{Name: "core"}); err == nil || !strings.Contains(err.Error(), "未找到指定模板源") {
-		t.Fatalf("删不存在应报中文错误, got %v", err)
+	if err := s.DeleteTplSource(TplSource{Name: "core"}); err != nil {
+		t.Fatalf("删不存在应幂等成功, got %v", err)
 	}
 	if len(s.TplSources()) != 1 {
 		t.Fatalf("删除后应剩一条, got %+v", s.TplSources())
@@ -126,16 +124,12 @@ func TestTplSourceCRUD(t *testing.T) {
 
 // TestTplSourcesSkipBad 读侧跳过坏条目不阻断（手编 settings.json 容错）。
 func TestTplSourcesSkipBad(t *testing.T) {
-	s := newConfigService(t)
-	var raw []map[string]string
-	raw = append(raw,
-		map[string]string{"name": "core", "repoUrl": "git@github.com:a/core.git"},
-		map[string]string{"name": "a/b", "repoUrl": "git@github.com:a/b.git"}, // 坏 name
-		map[string]string{"name": "no-url", "repoUrl": ""},                    // 坏 url
-	)
-	if err := store.SaveSection(s.settingsFile, tplSourcesSection, raw); err != nil {
-		t.Fatalf("写入原始配置失败: %v", err)
-	}
+	s, ws := newConfigService(t)
+	ws.SaveSection(tplSourcesSection, []map[string]string{
+		{"name": "core", "repoUrl": "git@github.com:a/core.git"},
+		{"name": "a/b", "repoUrl": "git@github.com:a/b.git"}, // 坏 name
+		{"name": "no-url", "repoUrl": ""},                    // 坏 url
+	})
 
 	got := s.TplSources()
 	if len(got) != 1 || got[0].Name != "core" {

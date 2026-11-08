@@ -1,25 +1,19 @@
 package template
 
 import (
-	"fmt"
-	"log/slog"
-
 	"cube/internal/config"
-	"cube/pkg/x"
-
-	"github.com/heyuuu/x/store"
 )
 
 // Service 是模板引擎（cube create）的入口。
 // 模板源映射存 settings.json 的 tplSources 节（直读不缓存，保存即生效）。
 type Service struct {
-	settingsFile string
+	tplSourcesStore TplSourcesStore
 }
 
 // NewService 由 Config 装配 Service（DI 注入用）。
 func NewService(cfg *config.Config) *Service {
 	return &Service{
-		settingsFile: cfg.SettingsFile(),
+		tplSourcesStore: newTplSourcesStore(cfg.SettingsFile()),
 	}
 }
 
@@ -46,53 +40,22 @@ func (s *Service) Create(sourceRef string, tplName string, targetPath string, cl
 
 // TplSources 读全部模板源（直读不缓存）。坏条目（name/repoUrl 非法）跳过不阻断。
 func (s *Service) TplSources() []TplSource {
-	specs := store.LoadSectionOrZero[[]TplSource](s.settingsFile, tplSourcesSection)
-
-	sources := make([]TplSource, 0, len(specs))
-	for _, src := range specs {
-		if err := ValidateTplSource(src); err != nil {
-			slog.Warn("tplSources 配置条目非法，跳过", "name", src.Name, "err", err)
-			continue
-		}
-		sources = append(sources, src)
-	}
-	return sources
+	return s.tplSourcesStore.All()
 }
 
 // SaveTplSource 新增或按 name 替换一条模板源（name 是唯一键——编辑 name 等价于删旧存新）。
 // 校验收敛在写侧，坏数据中文错误不落文件。
 func (s *Service) SaveTplSource(src TplSource) error {
-	src, err := normalizeTplSource(src)
-	if err != nil {
-		return err
-	}
-	specs := x.UpsertKeyed(s.TplSources(), tplSourceName, src)
-	return store.SaveSection(s.settingsFile, tplSourcesSection, specs)
+	return s.tplSourcesStore.Save(src)
 }
 
 // SaveAllTplSources 以提交清单整节覆盖模板源节（顺序即 create 交互选择序）。
 // 逐项校验 + name 查重，任一失败整体不落盘。
 func (s *Service) SaveAllTplSources(sources []TplSource) error {
-	normalized := make([]TplSource, len(sources))
-	for i, src := range sources {
-		n, err := normalizeTplSource(src)
-		if err != nil {
-			return err
-		}
-		normalized[i] = n
-	}
-	if dup, ok := x.DuplicateKeyed(normalized, tplSourceName); ok {
-		return fmt.Errorf("模板源 name 重复: %s", dup)
-	}
-	return store.SaveSection(s.settingsFile, tplSourcesSection, normalized)
+	return s.tplSourcesStore.SaveAll(sources)
 }
 
-// DeleteTplSource 按唯一键（name）删除一条模板源；不存在时返回中文错误。
+// DeleteTplSource 按唯一键（name）删除一条模板源；未命中幂等成功。
 func (s *Service) DeleteTplSource(src TplSource) error {
-	name := tplSourceName(src)
-	rest, removed := x.RemoveKeyed(s.TplSources(), tplSourceName, name)
-	if !removed {
-		return fmt.Errorf("未找到指定模板源: %s", name)
-	}
-	return store.SaveSection(s.settingsFile, tplSourcesSection, rest)
+	return s.tplSourcesStore.Delete(src)
 }

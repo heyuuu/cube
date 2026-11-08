@@ -9,9 +9,6 @@ import (
 	"cube/pkg/git"
 )
 
-// settings.json 中的模板源节名。
-const tplSourcesSection = "tplSources"
-
 // TplSource 模板源配置：source 名 ↔ git 仓库地址的映射（settings.json tplSources 节）。
 // name 是 cube create 的引用短名（@name/模板名），节内顺序即 create 交互的选择顺序。
 type TplSource struct {
@@ -33,16 +30,6 @@ func ValidateTplSource(src TplSource) error {
 	}
 	return nil
 }
-
-// normalizeTplSource 归一化（去首尾空白）并校验一条待写入的模板源（save / save-all 共用）。
-func normalizeTplSource(src TplSource) (TplSource, error) {
-	src.Name = strings.TrimSpace(src.Name)
-	src.RepoURL = strings.TrimSpace(src.RepoURL)
-	return src, ValidateTplSource(src)
-}
-
-// tplSourceName 模板源在节内的唯一键（归一化 name）。
-func tplSourceName(src TplSource) string { return strings.TrimSpace(src.Name) }
 
 // validateTplSourceURL 校验 repoURL 是可 clone 的 git 地址：git@host:path / https://host:path /
 // 本地绝对路径（模板仓库放本地盘也是正当用法，git 原生支持 clone 本地路径）。
