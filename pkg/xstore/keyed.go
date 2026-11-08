@@ -21,7 +21,7 @@ type KeyedSliceStoreOpts[T any] struct {
 	// KeyOf 数据项唯一键计算
 	KeyOf func(T) string
 	// Normalize 格式化并校验数据项
-	Normalize func(new T) (T, error)
+	Normalize func(T) (T, error)
 	// ConflictCheck 校验新元素和已有元素是否冲突
 	ConflictCheck func(new T, exists T) error
 	// OnChange 数据集成功落盘后回调（入参为落盘后的数据集），用于级联维护依赖它的数据；

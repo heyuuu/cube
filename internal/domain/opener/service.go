@@ -7,26 +7,19 @@ import (
 
 	"github.com/heyuuu/x/xstd/xslices"
 
+	"github.com/heyuuu/x/store"
+
 	"cube/internal/config"
 	"cube/internal/server"
 	"cube/pkg/fuzzy"
-	"cube/pkg/x"
-
-	"github.com/heyuuu/x/store"
 )
-
-// settingsSection settings.json 中 opener 域的节名。
-const settingsSection = "openers"
-
-// intentsSection settings.json 中打开意图域的节名（1038）：键 = intent，
-// 值 = {defaultOpener?, openers?}。openers 节保持纯清单，意图与默认独立成节。
-const intentsSection = "openerIntents"
 
 // Service opener 领域服务：openers 节现读（直读不缓存，改完即生效）+ 模糊检索。
 type Service struct {
-	settingsFile string   // settings.json 路径，每次查询现读（直读不缓存，Web 改完立刻生效）
-	executor     Executor // 逐条构造 actionOpener 时注入；nil 时由 InitActionOpener 装默认执行器
-	baseURL      string   // 站内路由基地址（如 http://127.0.0.1:6001），装配注入
+	specsStore       SpecsStore
+	intentSpecsStore store.Store[map[Intent]IntentSpec]
+	executor         Executor // 逐条构造 actionOpener 时注入；nil 时由 InitActionOpener 装默认执行器
+	baseURL          string   // 站内路由基地址（如 http://127.0.0.1:6001），装配注入
 }
 
 // NewService di 装配入口：从 config 组装 settings 路径与 baseURL，用默认执行器。
@@ -37,10 +30,14 @@ func NewService(cfg *config.Config) *Service {
 // NewServiceWithExecutor 与 NewService 同构，但注入自定义 Executor
 // （跨包测试的 fake 注入口；executor 传 nil 则用默认执行器）。
 func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
+	specsStore := newSpecsStore(cfg.SettingsFile())
+	intentSpecsStore := store.SectionStore[map[Intent]IntentSpec](cfg.SettingsFile(), intentsSection)
+
 	return &Service{
-		settingsFile: cfg.SettingsFile(),
-		executor:     executor,
-		baseURL:      server.BaseURL(cfg.Server),
+		specsStore:       specsStore,
+		intentSpecsStore: intentSpecsStore,
+		executor:         executor,
+		baseURL:          server.BaseURL(cfg.Server),
 	}
 }
 
@@ -48,7 +45,7 @@ func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
 // store.LoadSection 已把文件级/节级坏数据降级为空；这里处理条目级：坏条目跳过不阻断
 // （配置错误不应让 list 等命令不可用），与旧 config 时代行为一致。
 func (s *Service) openers() []Opener {
-	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
+	specs := s.specsStore.All()
 
 	list := make([]Opener, 0, len(specs))
 	for _, spec := range specs {
@@ -95,30 +92,14 @@ func (s *Service) FindByName(name string) Opener {
 // 写前先走领域构造校验（按 Type 分发到对应 Init，只验不留实例）——坏数据返回
 // 中文错误、落不了文件（提案「校验收敛在读写边界」的写侧）。
 func (s *Service) SaveOpener(spec Spec) error {
-	if err := s.validateSpec(spec); err != nil {
-		return err
-	}
-	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
-	specs = x.UpsertKeyed(specs, specName, spec)
-	return store.SaveSection(s.settingsFile, settingsSection, specs)
+	return s.specsStore.Save(spec)
 }
 
 // SaveAllOpeners 以提交清单整节覆盖 openers 节。列表顺序即展示顺序（CLI/项目页快捷入口
 // 均按此序），前端拖拽排序落库走这里。逐项构造校验 + name 查重，任一失败整体不落盘；
 // 读侧不可见的坏条目随覆盖丢弃。被移除的 opener 连带清理 openerIntents 引用（同 DeleteOpener）。
 func (s *Service) SaveAllOpeners(specs []Spec) error {
-	for _, spec := range specs {
-		if err := s.validateSpec(spec); err != nil {
-			return err
-		}
-	}
-	if dup, ok := x.DuplicateKeyed(specs, specName); ok {
-		return fmt.Errorf("opener name 重复: %s", dup)
-	}
-	if specs == nil {
-		specs = []Spec{}
-	}
-	if err := store.SaveSection(s.settingsFile, settingsSection, specs); err != nil {
+	if err := s.specsStore.SaveAll(specs); err != nil {
 		return err
 	}
 	kept := make(map[string]bool, len(specs))
@@ -128,27 +109,13 @@ func (s *Service) SaveAllOpeners(specs []Spec) error {
 	return s.pruneIntentRefs(func(name string) bool { return !kept[name] })
 }
 
-// DeleteOpener 按唯一键（name）删除一条 opener；不存在时返回中文错误。
+// DeleteOpener 按唯一键（name）删除一条 opener；未命中幂等成功。
 func (s *Service) DeleteOpener(spec Spec) error {
 	name := specName(spec)
-	specs := store.LoadSectionOrZero[[]Spec](s.settingsFile, settingsSection)
-	rest, removed := x.RemoveKeyed(specs, specName, name)
-	if !removed {
-		return fmt.Errorf("未找到指定 opener: %s", name)
-	}
-	if err := store.SaveSection(s.settingsFile, settingsSection, rest); err != nil {
+	if err := s.specsStore.Delete(spec); err != nil {
 		return err
 	}
 	return s.pruneIntentRefs(func(n string) bool { return n == name })
-}
-
-// validateSpec 写前领域构造校验（只验不留实例）——save / save-all 共用。
-func (s *Service) validateSpec(spec Spec) error {
-	if spec.Name == "" {
-		return fmt.Errorf("opener name 不得为空")
-	}
-	_, err := InitActionOpener(spec, s.executor, s.baseURL)
-	return err
 }
 
 // pruneIntentRefs 清理 openerIntents 节中对已移除 opener 的引用（默认 + 候选），
@@ -172,19 +139,19 @@ func (s *Service) pruneIntentRefs(removed func(name string) bool) error {
 		}
 	}
 	if dirty {
-		return store.SaveSection(s.settingsFile, intentsSection, intents)
+		return s.intentSpecsStore.Save(intents)
 	}
 	return nil
 }
 
-// loadIntents 现读 openerIntents 节为 map[Intent]IntentSpec。
+// loadIntents 现读 openerIntents 节为 map[Intent]IntentSpec（恒非 nil，调用方可直接写入）。
 // 读侧校验（坏条目跳过 + slog.Warn）：未知 intent 键跳过。
 func (s *Service) loadIntents() map[Intent]IntentSpec {
-	raw := store.LoadSectionOrZero[map[string]IntentSpec](s.settingsFile, intentsSection)
+	raw := s.intentSpecsStore.LoadOrZero()
 
 	out := make(map[Intent]IntentSpec, len(raw))
 	for key, spec := range raw {
-		intent, err := ParseIntent(key)
+		intent, err := ParseIntent(string(key))
 		if err != nil {
 			slog.Warn("openerIntents 节存在未知 intent，已跳过", "intent", key)
 			continue
@@ -283,7 +250,7 @@ func (s *Service) SaveIntentDefault(intent Intent, openerName string) error {
 	spec := specs[intent]
 	spec.DefaultOpener = openerName
 	specs[intent] = spec
-	return store.SaveSection(s.settingsFile, intentsSection, specs)
+	return s.intentSpecsStore.Save(specs)
 }
 
 // DeleteIntentDefault 清除某 intent 的默认 opener（候选 openers 清单如有则保留）。
@@ -302,5 +269,5 @@ func (s *Service) DeleteIntentDefault(intent Intent) error {
 	} else {
 		specs[intent] = spec
 	}
-	return store.SaveSection(s.settingsFile, intentsSection, specs)
+	return s.intentSpecsStore.Save(specs)
 }

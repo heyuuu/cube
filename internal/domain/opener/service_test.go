@@ -5,19 +5,17 @@ import (
 
 	"cube/internal/domain/icons"
 	"cube/internal/testfixture"
-
-	"github.com/heyuuu/x/store"
 )
 
 // newServiceAt 建一个指向测试专属 settings.json 的 Service（注入 fakeExecutor）。
-func newServiceAt(t *testing.T, specs []Spec) (*Service, *fakeExecutor) {
+func newServiceAt(t *testing.T, specs []Spec) (*Service, *testfixture.Workspace) {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
 	if specs != nil {
 		ws.SaveSection(settingsSection, specs)
 	}
 	fake := &fakeExecutor{}
-	return NewServiceWithExecutor(ws.Cfg, fake), fake
+	return NewServiceWithExecutor(ws.Cfg, fake), ws
 }
 
 func TestServiceDirectRead(t *testing.T) {
@@ -77,11 +75,10 @@ func TestServiceDirectRead(t *testing.T) {
 	})
 
 	t.Run("保存后无需重建 Service 即生效（直读不缓存）", func(t *testing.T) {
-		s, _ := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
-		if err := store.SaveSection(s.settingsFile, settingsSection,
-			[]Spec{{Name: "newone", Actions: map[Role]string{"open-dir": `exec: newone`}}}); err != nil {
-			t.Fatalf("写入失败: %v", err)
-		}
+		s, ws := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
+		ws.SaveSection(settingsSection, []Spec{
+			{Name: "newone", Actions: map[Role]string{"open-dir": `exec: newone`}},
+		})
 		if o := s.FindByName("newone"); o == nil {
 			t.Fatal("新条目应立即可见（直读）")
 		}
@@ -91,10 +88,8 @@ func TestServiceDirectRead(t *testing.T) {
 	})
 
 	t.Run("其他节不受影响", func(t *testing.T) {
-		s, _ := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
-		if err := store.SaveSection(s.settingsFile, "other", map[string]int{"a": 1}); err != nil {
-			t.Fatalf("写入失败: %v", err)
-		}
+		s, ws := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
+		ws.SaveSection("other", map[string]int{"a": 1})
 		if got := s.AllOpeners(); len(got) != 1 || got[0].Name() != "code" {
 			t.Fatalf("写其他节不应影响 openers, got %v", got)
 		}
@@ -153,7 +148,7 @@ func TestServiceSaveDelete(t *testing.T) {
 		}
 	})
 
-	t.Run("删除与不存在报错", func(t *testing.T) {
+	t.Run("删除与不存在幂等", func(t *testing.T) {
 		s, _ := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
 		// 整项删除只按 name 匹配，其他字段不参与
 		if err := s.DeleteOpener(Spec{Name: "code", Title: "旧展示文案"}); err != nil {
@@ -162,8 +157,8 @@ func TestServiceSaveDelete(t *testing.T) {
 		if got := s.AllOpeners(); len(got) != 0 {
 			t.Fatalf("删除后应为空, got %d", len(got))
 		}
-		if err := s.DeleteOpener(Spec{Name: "nope"}); err == nil {
-			t.Fatal("删除不存在项应报错")
+		if err := s.DeleteOpener(Spec{Name: "nope"}); err != nil {
+			t.Fatalf("删除不存在项应幂等成功: %v", err)
 		}
 	})
 }
@@ -218,11 +213,12 @@ func TestServiceSaveAll(t *testing.T) {
 	})
 
 	t.Run("被移除的 opener 连带清理 intents 引用", func(t *testing.T) {
-		s, _ := newServiceAt(t, newSpecs)
-		writeIntents(t, s.settingsFile, map[Intent]IntentSpec{
+		s, ws := newServiceAt(t, newSpecs)
+		ws.SaveSection(intentsSection, map[Intent]IntentSpec{
 			IntentDir:      {DefaultOpener: "finder", Openers: []string{"finder", "code"}},
 			IntentTerminal: {Openers: []string{"stree"}},
 		})
+
 		if err := s.SaveAllOpeners([]Spec{newSpecs[1]}); err != nil {
 			t.Fatalf("save-all 失败: %v", err)
 		}
@@ -238,14 +234,6 @@ func TestServiceSaveAll(t *testing.T) {
 
 // ---------- intents（openerIntents 节，1038） ----------
 
-// writeIntents 写测试 openerIntents 节。
-func writeIntents(t *testing.T, file string, intents map[Intent]IntentSpec) {
-	t.Helper()
-	if err := store.SaveSection(file, intentsSection, intents); err != nil {
-		t.Fatalf("写入测试 openerIntents 失败: %v", err)
-	}
-}
-
 func mkSpecs(pairs ...any) []Spec {
 	specs := make([]Spec, 0, len(pairs)/2)
 	for i := 0; i+1 < len(pairs); i += 2 {
@@ -256,8 +244,8 @@ func mkSpecs(pairs ...any) []Spec {
 
 func TestIntentsSynthesis(t *testing.T) {
 	dirOnly := mkSpecs("finder", mkmk(RoleOpenDir, "finder"), "code", mkmk(RoleOpenDir, "code $0", RoleOpenFile, "code $0"))
-	s, _ := newServiceAt(t, dirOnly)
-	writeIntents(t, s.settingsFile, map[Intent]IntentSpec{
+	s, ws := newServiceAt(t, dirOnly)
+	ws.SaveSection(intentsSection, map[Intent]IntentSpec{
 		IntentDir:       {DefaultOpener: "finder"},
 		IntentGit:       {DefaultOpener: "stree"},               // opener 不存在 → 读侧忽略
 		IntentDoc:       {DefaultOpener: "finder"},              // role 不符（doc→open-file）→ 读侧忽略
@@ -323,8 +311,8 @@ func TestSaveDeleteIntentDefault(t *testing.T) {
 
 // DeleteOpener 连带清理 intents 引用（默认 + 候选）
 func TestDeleteOpenerCleansIntents(t *testing.T) {
-	s, _ := newServiceAt(t, mkSpecs("finder", mkmk(RoleOpenDir, "finder"), "code", mkmk(RoleOpenDir, "code $0")))
-	writeIntents(t, s.settingsFile, map[Intent]IntentSpec{
+	s, ws := newServiceAt(t, mkSpecs("finder", mkmk(RoleOpenDir, "finder"), "code", mkmk(RoleOpenDir, "code $0")))
+	ws.SaveSection(intentsSection, map[Intent]IntentSpec{
 		IntentDir:      {DefaultOpener: "finder", Openers: []string{"finder", "code"}},
 		IntentTerminal: {Openers: []string{"finder"}},
 	})

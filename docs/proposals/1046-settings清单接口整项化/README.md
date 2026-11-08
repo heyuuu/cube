@@ -124,7 +124,7 @@ save-all 天然可增删改，副作用须与单项 save/delete 对齐（逐节�
 - **单条 `SaveScanRule` 保留「只拦与本条冲突的 group」**，不对整节查重——手工编辑遗留的他人间 group 重复已由读侧降级，不应阻断无关规则的保存；整节查重只用于 save-all。
 - **opener 的 save 也刷 `['opener']` 整个前缀**：intents 的候选清单由 openers 读侧合成，单条 save 同样会改变 intents 视图（D4 表原只列了 delete / save-all）。
 - **opener 的 save-all / delete 提交前经编辑表单同款映射还原**：list DTO 带后端合成的默认 title，直接回交会把它固化落盘。
-- **delete 幂等**（后续提交 a0506e3 / 2646004，xstore 收拢时调整）：删除不存在的条目不再报「未找到」而是幂等成功——前端写后全量重拉，重复删除不该卡住流程。目前 project 域（scan/clone 规则）、forge 域（forge / account）与模板源如此，opener 的 delete 未命中仍报错，后续按需对齐。
+- **delete 幂等**（后续提交 a0506e3 起，各域收拢到 `pkg/xstore.KeyedSliceStore` 时调整）：删除不存在的条目不再报「未找到」而是幂等成功——前端写后全量重拉，重复删除不该卡住流程。六个清单节均已对齐。
 - **handler 的 Item DTO 与 save 入参合一**：各节一个命名 `XxxItem`，save / delete 的 `Body` 直接用它，save-all 为 `{items: XxxItem[]}`。
 
 顺带修复（实施中暴露的既有问题）：
