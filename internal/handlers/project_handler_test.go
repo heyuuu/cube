@@ -12,18 +12,17 @@ import (
 	"time"
 
 	"cube/internal/domain/project"
-	"cube/internal/domain/project/projcache"
 )
 
 func TestProjectList(t *testing.T) {
 	env := newTestEnv(t)
 	var got struct {
 		List []struct {
-			Name    string           `json:"name"`
-			Group   string           `json:"group"`
-			Path    string           `json:"path"`
-			Tags    []string         `json:"tags"`
-			GitInfo *projcache.Entry `json:"gitInfo"`
+			Name    string          `json:"name"`
+			Group   string          `json:"group"`
+			Path    string          `json:"path"`
+			Tags    []string        `json:"tags"`
+			GitInfo *ProjectInfoDTO `json:"gitInfo"`
 		} `json:"list"`
 	}
 	decodeData(t, getJSON(t, env.url("/api/project/list")), &got)

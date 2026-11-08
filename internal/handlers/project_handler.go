@@ -24,12 +24,63 @@ import (
 
 // ProjectDTO project/list 返回的单个项目快照（含 git 状态与最近使用时间）。
 type ProjectDTO struct {
-	Name       string           `json:"name"`
-	Group      string           `json:"group"`
-	Path       string           `json:"path"`
-	Tags       []string         `json:"tags"`
-	GitInfo    *projcache.Entry `json:"gitInfo"`              // git 状态快照，可能为 nil（未采集）
-	LastUsedAt *time.Time       `json:"lastUsedAt,omitempty"` // 最近使用时间（置顶排序信号，未用过为 nil）
+	Name       string          `json:"name"`
+	Group      string          `json:"group"`
+	Path       string          `json:"path"`
+	Tags       []string        `json:"tags"`
+	GitInfo    *ProjectInfoDTO `json:"gitInfo"`              // git 状态快照，可能为 nil（未采集）
+	LastUsedAt *time.Time      `json:"lastUsedAt,omitempty"` // 最近使用时间（置顶排序信号，未用过为 nil）
+}
+
+// ProjectInfoDTO git 状态快照的对外形态：隔离内部 projcache.Entry（存储格式与 API
+// 从此解耦，projcache 字段演化不再自动冲击前端）。字段是前端消费盘点后的子集，
+// 省略未消费项（branches 仅 CLI 用、worktree 的 detached 经 branch 为空表达）；
+// json tag 与原 wire 格式逐字段一致，前端无感。
+type ProjectInfoDTO struct {
+	RepoURL       string               `json:"repoUrl"`       // origin remote URL
+	Remotes       []RemoteDTO          `json:"remotes"`       // 全部 remote（forge 匹配需全部 host）
+	CurrentBranch string               `json:"currentBranch"` // 当前检出分支短名，detached 为空
+	DefaultBranch string               `json:"defaultBranch"` // 默认主分支名（master/main/...）
+	Ahead         int                  `json:"ahead"`         // 默认分支相对 origin 的领先 commit 数
+	Behind        int                  `json:"behind"`        // 落后的 commit 数
+	Dirty         bool                 `json:"dirty"`         // 工作区是否有改动
+	Worktrees     []WorktreeDTO        `json:"worktrees"`     // linked worktree 列表（无则空数组；主目录本身不含在内）
+	Workspaces    []WorkspaceMemberDTO `json:"workspaces"`    // 主项目根的 workspace 成员（无则空数组）
+	CollectedAt   time.Time            `json:"collectedAt"`   // 本次采集时间
+}
+
+// RemoteDTO 单个 remote 配置。
+type RemoteDTO struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+// WorktreeDTO 单个 linked worktree（path 相对主仓库独立）。
+type WorktreeDTO struct {
+	Path       string               `json:"path"`       // worktree 绝对路径
+	Branch     string               `json:"branch"`     // 检出分支短名；detached 为空
+	Workspaces []WorkspaceMemberDTO `json:"workspaces"` // 该 worktree 根的 workspace 成员
+}
+
+// newProjectInfoDTO 把内部快照转为对外形态；nil（未采集）透传为 nil。
+func newProjectInfoDTO(e *projcache.Entry) *ProjectInfoDTO {
+	if e == nil {
+		return nil
+	}
+	return &ProjectInfoDTO{
+		RepoURL:       e.RepoURL,
+		Remotes:       xslices.Map(e.Remotes, func(r projcache.RemoteInfo) RemoteDTO { return RemoteDTO{Name: r.Name, URL: r.URL} }),
+		CurrentBranch: e.CurrentBranch,
+		DefaultBranch: e.DefaultBranch,
+		Ahead:         e.Ahead,
+		Behind:        e.Behind,
+		Dirty:         e.Dirty,
+		Worktrees: xslices.Map(e.Worktrees, func(wt projcache.WorktreeInfo) WorktreeDTO {
+			return WorktreeDTO{Path: wt.Path, Branch: wt.Branch, Workspaces: workspaceMemberDTOs(wt.Workspaces)}
+		}),
+		Workspaces:  workspaceMemberDTOs(e.Workspaces),
+		CollectedAt: e.CollectedAt,
+	}
 }
 
 // ProjectListResult 列表接口返回结构：含项目列表 + 两类刷新时间。
@@ -151,7 +202,7 @@ func (h *ProjectHandler) toProjectDTO(entity *project.Project) *ProjectDTO {
 		Group:   entity.Group(),
 		Path:    entity.Path(),
 		Tags:    entity.CollectTags(),
-		GitInfo: info,
+		GitInfo: newProjectInfoDTO(info),
 	}
 }
 
@@ -275,6 +326,11 @@ type WorkspaceMemberDTO struct {
 	Path string `json:"path"`
 }
 
+// workspaceMemberDTOs workspace.Workspace → WorkspaceMemberDTO（字段同构，类型直转）。
+func workspaceMemberDTOs(ws []workspace.Workspace) []WorkspaceMemberDTO {
+	return xslices.Map(ws, func(w workspace.Workspace) WorkspaceMemberDTO { return WorkspaceMemberDTO(w) })
+}
+
 // WorkspaceStateResult workspace/get 返回：编辑视图所需的三块信息。
 // Effective 读 projcache 快照（读路径不读声明文件、不探测）；Declared/Detected 是
 // 编辑场景的一次性现算（编辑场景可以严格，与「读路径纯快照」纪律不冲突）。
@@ -296,9 +352,7 @@ func (h *ProjectHandler) workspaceGet(input struct {
 	root := proj.Path()
 	result := WorkspaceStateResult{Effective: []WorkspaceMemberDTO{}, Declared: []WorkspaceMemberDTO{}, Detected: []WorkspaceMemberDTO{}}
 	if info, ok := h.projectService.GitInfo(root); ok && info != nil {
-		result.Effective = xslices.Map(info.Workspaces, func(w workspace.Workspace) WorkspaceMemberDTO {
-			return WorkspaceMemberDTO(w)
-		})
+		result.Effective = workspaceMemberDTOs(info.Workspaces)
 	}
 	if cf, ok := cubefile.Load(root); ok {
 		result.DeclaredSet = cf.WorkspacesSet

@@ -1198,22 +1198,6 @@ export interface components {
       list: components['schemas']['DiffEntry'][] | null;
       mode: string;
     };
-    Entry: {
-      /** Format: int64 */
-      ahead: number;
-      /** Format: int64 */
-      behind: number;
-      branches: string[] | null;
-      /** Format: date-time */
-      collectedAt: string;
-      currentBranch: string;
-      defaultBranch: string;
-      dirty: boolean;
-      remotes: components['schemas']['RemoteInfo'][] | null;
-      repoUrl: string;
-      workspaces: components['schemas']['Workspace'][] | null;
-      worktrees: components['schemas']['WorktreeInfo'][] | null;
-    };
     EnvelopeCommitDetail: {
       /**
        * Format: uri
@@ -1805,13 +1789,28 @@ export interface components {
       time: string;
     };
     ProjectDTO: {
-      gitInfo: components['schemas']['Entry'];
+      gitInfo: components['schemas']['ProjectInfoDTO'];
       group: string;
       /** Format: date-time */
       lastUsedAt?: string;
       name: string;
       path: string;
       tags: string[] | null;
+    };
+    ProjectInfoDTO: {
+      /** Format: int64 */
+      ahead: number;
+      /** Format: int64 */
+      behind: number;
+      /** Format: date-time */
+      collectedAt: string;
+      currentBranch: string;
+      defaultBranch: string;
+      dirty: boolean;
+      remotes: components['schemas']['RemoteDTO'][] | null;
+      repoUrl: string;
+      workspaces: components['schemas']['WorkspaceMemberDTO'][] | null;
+      worktrees: components['schemas']['WorktreeDTO'][] | null;
     };
     ProjectListResult: {
       /** Format: date-time */
@@ -1840,14 +1839,14 @@ export interface components {
       remotes: string[] | null;
       tags: string[] | null;
     };
+    RemoteDTO: {
+      name: string;
+      url: string;
+    };
     RemoteEntry: {
       name: string;
       url: string;
       webUrl: string;
-    };
-    RemoteInfo: {
-      name: string;
-      url: string;
     };
     RemoteRepo: {
       cloneUrl: string;
@@ -2004,11 +2003,10 @@ export interface components {
       detached: boolean;
       path: string;
     };
-    WorktreeInfo: {
+    WorktreeDTO: {
       branch: string;
-      detached: boolean;
       path: string;
-      workspaces: components['schemas']['Workspace'][] | null;
+      workspaces: components['schemas']['WorkspaceMemberDTO'][] | null;
     };
     WorktreePruneRequest: {
       /**
