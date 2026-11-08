@@ -12,8 +12,8 @@ import (
 
 func entryFixture() *projcache.Entry {
 	return &projcache.Entry{
-		Workspaces: []workspace.Workspace{{Name: "server", Path: "server"}, {Name: "web", Path: "web"}},
 		Worktrees: []projcache.WorktreeInfo{
+			{Path: "/x/main", Branch: "main", Workspaces: []workspace.Workspace{{Name: "server", Path: "server"}, {Name: "web", Path: "web"}}},
 			{Path: "/x/wt-hot", Branch: "hotfix"},
 			{Path: "/x/wt-detached", Branch: "", Detached: true},
 			{Path: "/x/wt-a", Branch: "feat"},
@@ -33,7 +33,6 @@ func TestTargetEntries(t *testing.T) {
 	}
 
 	info := entryFixture()
-	info.Worktrees[0].Workspaces = []workspace.Workspace{{Name: "server", Path: "server"}}
 
 	got := targetEntries(root, info)
 	type wantItem struct {
@@ -78,11 +77,14 @@ func TestTargetEntriesWorktreeWorkspaces(t *testing.T) {
 	ws.Mkdir(filepath.Join("wt", "app"))
 
 	got := targetEntries("/main", &projcache.Entry{
-		Worktrees: []projcache.WorktreeInfo{{
-			Path:       wtRoot,
-			Branch:     "feat",
-			Workspaces: []workspace.Workspace{{Name: "app", Path: "app"}},
-		}},
+		Worktrees: []projcache.WorktreeInfo{
+			{Path: "/main", Branch: "main"},
+			{
+				Path:       wtRoot,
+				Branch:     "feat",
+				Workspaces: []workspace.Workspace{{Name: "app", Path: "app"}},
+			},
+		},
 	})
 	if len(got) != 2 {
 		t.Fatalf("应返回 worktree 根 + 1 个 workspace, got %+v", got)
@@ -106,11 +108,11 @@ func TestTargetEntriesLabelDedup(t *testing.T) {
 	}
 
 	got := targetEntries(ws.Dir, &projcache.Entry{
-		Workspaces: []workspace.Workspace{
-			{Name: "server", Path: "server"},
-			{Name: "server", Path: "web/server"},
-		},
 		Worktrees: []projcache.WorktreeInfo{
+			{Path: ws.Dir, Branch: "main", Workspaces: []workspace.Workspace{
+				{Name: "server", Path: "server"},
+				{Name: "server", Path: "web/server"},
+			}},
 			{Path: ws.Join("wt-feat"), Branch: "feat", Workspaces: []workspace.Workspace{{Name: "app", Path: "app"}}},
 		},
 	})
@@ -137,6 +139,7 @@ func TestTargetEntriesLabelDedupMultiWorktrees(t *testing.T) {
 
 	got := targetEntries(ws.Dir, &projcache.Entry{
 		Worktrees: []projcache.WorktreeInfo{
+			{Path: ws.Dir, Branch: "main"},
 			{Path: ws.Join("f1-x"), Branch: "f1", Workspaces: []workspace.Workspace{{Name: "s1", Path: "s1"}}},
 			{Path: ws.Join("f2-x"), Branch: "f2", Workspaces: []workspace.Workspace{
 				{Name: "s", Path: "a"}, {Name: "s", Path: "b"},

@@ -67,7 +67,7 @@ func checkCloneRules(service *project.Service) {
 		info, ok := service.GitInfo(p.Path())
 		repoURL := ""
 		if ok {
-			repoURL = info.RepoURL
+			repoURL = info.OriginURL()
 		}
 		if repoURL == "" {
 			continue
@@ -102,12 +102,12 @@ func checkGitDirty(service *project.Service) {
 
 	targets := xslices.Filter(projects, func(p *project.Project) bool {
 		info, ok := service.GitInfo(p.Path())
-		if !ok || len(info.RepoURL) == 0 {
+		if !ok || len(info.OriginURL()) == 0 {
 			return false
 		}
 
 		// 分支不对
-		if info.CurrentBranch != info.DefaultBranch {
+		if main := info.MainWorktree(); main != nil && main.Branch != info.DefaultBranch {
 			return true
 		}
 

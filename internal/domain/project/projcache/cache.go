@@ -1,23 +1,26 @@
 // Package projcache 提供项目状态快照的本地缓存（git 信息 + 打开目标元数据）。
 //
 // 对几十个 git 项目的全量采集是 IO 密集型操作，每次都跑会明显卡顿。
-// 本包把采集结果缓存到 ~/.config/cube/cache/git.json：
+// 本包把采集结果缓存到 ~/.config/cube/cache/projcache.json：
 //   - CLI（短命进程）启动时 Load 一次快照到内存，只读不刷新；
-//   - 常驻 server 进程内 goroutine 定时 Refresh 采集，写内存 + flush git.json。
+//   - 常驻 server 进程内 goroutine 定时 Refresh 采集，写内存 + flush projcache.json。
 //
-// git.json 的角色是「跨重启持久化缓存」：server 重启后秒恢复，CLI 读最近一次落盘。
-// 原名 gitcache，1030 起快照含 workspace 信息（非纯 git 信息）更名 projcache。
+// projcache.json 的角色是「跨重启持久化缓存」：server 重启后秒恢复，CLI 读最近一次落盘。
+// 原名 gitcache/git.json，v3 起快照含 workspace 信息更名 projcache，v4 起文件同步更名。
 package projcache
 
 import (
+	"cmp"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/heyuuu/x/store"
+	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/domain/project/workspace"
 	"cube/pkg/git"
@@ -27,18 +30,32 @@ import (
 // v2：worktree 归并为项目打开目标（1032）——移除 WorktreeMain（worktree 不再是独立项目），
 // 新增 Worktrees（主项目附带枚举 linked worktree）。
 // v3：包更名 projcache + workspace 字段（1030）——Entry/WorktreeInfo 各增 Workspaces。
-const cacheVersion = 3
+// v4：主工作区并入 Worktrees[0]（Entry 顶级 CurrentBranch/Workspaces 停采，待移除）；
+// RepoURL 停采、改经 Remotes 派生（OriginURL）；采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
+const cacheVersion = 4
 
 // 缓存文件名（位于缓存目录 dir 下）。
-const cacheFileName = "git.json"
+const cacheFileName = "projcache.json"
 
-// WorktreeInfo 主项目快照里的单个 linked worktree（提案 1032：worktree 归并为项目打开目标，
-// 不再是独立项目，枚举结果挂在主项目条目下）。
-type WorktreeInfo struct {
-	Path       string                `json:"path"`       // worktree 绝对路径（git 输出经符号链接规范化）
-	Branch     string                `json:"branch"`     // 检出分支短名；detached 为空
-	Detached   bool                  `json:"detached"`   // HEAD 游离（展示名回退目录名的信号）
-	Workspaces []workspace.Workspace `json:"workspaces"` // 该 worktree 根的 workspace 成员（1030，Path 相对 worktree 根）
+// Entry 单个项目的 git 信息快照。
+type Entry struct {
+	Remotes       []RemoteInfo   `json:"remotes"`       // 全部 remote（无则空数组；origin 不在其中时 repoUrl 为空）
+	DefaultBranch string         `json:"defaultBranch"` // 默认主分支名（master/main/...）
+	Branches      []string       `json:"branches"`      // 本地+远程分支短名列表
+	Ahead         int            `json:"ahead"`         // 默认分支相对 origin 的领先 commit 数
+	Behind        int            `json:"behind"`        // 落后的 commit 数
+	Dirty         bool           `json:"dirty"`         // 工作区是否有改动
+	Worktrees     []WorktreeInfo `json:"worktrees"`     // 工作区信息(含主项目根和 linked worktree, Worktrees[0] 为主工作区)
+	UpdatedAt     time.Time      `json:"updatedAt"`     // 本次采集时间
+
+	// todo remove 可临时使用 Remotes[0].URL 代替，最好是理解多 Remotes 语义后使用 Remotes
+	RepoURL string `json:"repoUrl"` // origin remote URL
+
+	// todo remove 使用 Worktrees[0].Branch
+	CurrentBranch string `json:"currentBranch"` // HEAD 指向分支短名，detached 为空
+
+	// todo remove 使用 Worktrees[0].Workspaces
+	Workspaces []workspace.Workspace `json:"workspaces"` // 主项目根的 workspace 成员（1030，Path 相对项目根；无则空数组）
 }
 
 // RemoteInfo 快照中的单个 remote（多 remote 项目的 forge 匹配需要全部 host，1042 修）。
@@ -47,19 +64,31 @@ type RemoteInfo struct {
 	URL  string `json:"url"`
 }
 
-// Entry 单个项目的 git 信息快照。
-type Entry struct {
-	RepoURL       string                `json:"repoUrl"`       // origin remote URL
-	Remotes       []RemoteInfo          `json:"remotes"`       // 全部 remote（无则空数组；origin 不在其中时 repoUrl 为空）
-	CurrentBranch string                `json:"currentBranch"` // HEAD 指向分支短名，detached 为空
-	DefaultBranch string                `json:"defaultBranch"` // 默认主分支名（master/main/...）
-	Branches      []string              `json:"branches"`      // 本地+远程分支短名列表
-	Ahead         int                   `json:"ahead"`         // 默认分支相对 origin 的领先 commit 数
-	Behind        int                   `json:"behind"`        // 落后的 commit 数
-	Dirty         bool                  `json:"dirty"`         // 工作区是否有改动
-	Worktrees     []WorktreeInfo        `json:"worktrees"`     // 主项目的 linked worktree 列表（无则空数组；主目录本身不含在内）
-	Workspaces    []workspace.Workspace `json:"workspaces"`    // 主项目根的 workspace 成员（1030，Path 相对项目根；无则空数组）
-	CollectedAt   time.Time             `json:"collectedAt"`   // 本次采集时间
+// MainWorktree 主工作区。不变量：Worktrees 恒非空且 [0] 为主工作区（collectEntry 保证）；
+// 磁盘数据异常破坏不变量时防御性返回 nil，调用方判空降级、不得 panic。
+func (e *Entry) MainWorktree() *WorktreeInfo {
+	if len(e.Worktrees) == 0 {
+		return nil
+	}
+	return &e.Worktrees[0]
+}
+
+// OriginURL origin remote 的地址（采集侧已归一 fetch 优先 push）；无 origin 返回空。
+func (e *Entry) OriginURL() string {
+	for _, r := range e.Remotes {
+		if r.Name == "origin" {
+			return r.URL
+		}
+	}
+	return ""
+}
+
+// WorktreeInfo 单个工作区信息(主项目根或单个 linked worktree)
+type WorktreeInfo struct {
+	Path       string                `json:"path"`       // worktree 绝对路径（git 输出经符号链接规范化）
+	Branch     string                `json:"branch"`     // 检出分支短名；detached 为空
+	Detached   bool                  `json:"detached"`   // HEAD 游离（展示名回退目录名的信号）
+	Workspaces []workspace.Workspace `json:"workspaces"` // 该 worktree 根的 workspace 成员（1030，Path 相对 worktree 根）
 }
 
 // cacheFile 缓存文件的磁盘序列化结构。
@@ -73,7 +102,7 @@ type cacheFile struct {
 // Cache 内存态缓存。读多写少，用 RWMutex 保护 entries map。
 //
 // 并发模型（单写者）：
-//   - 常驻 server 是 git.json 的唯一写方，CLI 只读不写，无跨进程并发写问题。
+//   - 常驻 server 是 projcache.json 的唯一写方，CLI 只读不写，无跨进程并发写问题。
 //   - 进程内：RWMutex 保护 map 读写；Refresh 每次整表重建（全新 map 覆盖 c.entries）。
 //   - 落盘靠 Save() 的原子写（tmp + rename）保证，无需 flock。
 type Cache struct {
@@ -83,7 +112,7 @@ type Cache struct {
 	updatedAt time.Time         // 最近一次采集落盘时间（缓存整体刷新时间）
 }
 
-// UpdatedAt 返回缓存最近一次落盘时间（整体刷新时间，区别于单项目的 CollectedAt）。
+// UpdatedAt 返回缓存最近一次落盘时间（整体刷新时间，区别于单项目的 Entry.UpdatedAt）。
 func (c *Cache) UpdatedAt() time.Time {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -92,9 +121,7 @@ func (c *Cache) UpdatedAt() time.Time {
 
 // Load 从 dir 加载缓存。
 // 行为约定（降级优先，绝不因缓存问题阻塞 CLI）：
-//   - dir 不存在：创建并返回空缓存。
-//   - git.json 不存在：返回空缓存。
-//   - 解析失败：备份损坏文件到 git.json.corrupt-{ts}，返回空缓存。
+//   - 文件缺失 / 解析失败 / 版本不符：一律当文件不存在，返回空缓存。
 func Load(dir string) (*Cache, error) {
 	c := &Cache{
 		cacheFile: filepath.Join(dir, cacheFileName),
@@ -132,7 +159,7 @@ func (c *Cache) Size() int {
 	return len(c.entries)
 }
 
-// Save 落盘 git.json（store.SaveJSON：Deterministic 字节稳定 + 缩进 + 尾换行 + 原子写）。
+// Save 落盘 projcache.json（store.SaveJSON：Deterministic 字节稳定 + 缩进 + 尾换行 + 原子写）。
 func (c *Cache) Save() error {
 	c.mu.Lock()
 	now := time.Now()
@@ -257,35 +284,30 @@ func collectEntries(paths []string) map[string]*Entry {
 	return entries
 }
 
-// collectEntry 采集单个项目的 git 信息。
-// 依赖 pkg/git 包的错误约定：业务空值场景返回零值+nil；但 git 子进程执行失败
-// （如指向已删主仓库的 worktree 残骸）会返回 nil+err，必须上抛跳过，否则解引用 nil panic。
+// collectEntry 采集单个项目的 git 信息。全有或全无：任一 git 子命令失败即整体失败
+// （返回 error，调用方丢弃该条目），不接受残缺数据——残缺快照在消费侧（打开目标、
+// forge 对账）比没有快照更糟。业务空值（无 remote、detached 等）不是失败，落零值。
 func collectEntry(path string) (*Entry, error) {
-	// 一次 Remotes() 同时派生 repoURL（origin 的 fetch 地址，与 git.RemoteURL 同口径）与
-	// 全部 remote 快照，避免每个项目多打一次 git 子进程
-	gitRemotes, _ := git.Remotes(path)
-	repoURL := ""
-	remotes := make([]RemoteInfo, 0, len(gitRemotes))
-	for _, r := range gitRemotes {
-		url := r.Fetch
-		if url == "" {
-			url = r.Push
-		}
-		if r.Name == "origin" && repoURL == "" {
-			repoURL = url
-		}
-		remotes = append(remotes, RemoteInfo{Name: r.Name, URL: url})
+	// Remotes 一次拿到全部 remote 快照（origin 地址经 OriginURL 派生）
+	gitRemotes, err := git.Remotes(path)
+	if err != nil {
+		return nil, err
 	}
+	remotes := xslices.Map(gitRemotes, func(r git.Remote) RemoteInfo {
+		return RemoteInfo{
+			Name: r.Name,
+			URL:  cmp.Or(r.Fetch, r.Push),
+		}
+	})
+
+	// Refs 信息
 	refs, err := git.Refs(path)
 	if err != nil {
 		return nil, err
 	}
-	branches := make([]string, 0, len(refs.Locals))
-	for _, ref := range refs.Locals {
-		branches = append(branches, ref.ShortName)
-	}
-	currentBranch := git.CurrentBranch(path)
-	defaultBranch, _ := git.DefaultBranch(path)
+	branches := xslices.Map(refs.Locals, func(r git.Ref) string { return r.ShortName })
+	defaultBranch := calcDefaultBranch(branches)
+
 	// ahead/behind 用仓库的默认分支（master/main/...）做本地 vs 远程比较——
 	// 刻意不用 LoadRepoStatus 的 branch.ab：那是「当前检出分支 vs 其 upstream」，
 	// 在 feature 分支上时与列表页要的口径不同
@@ -297,32 +319,37 @@ func collectEntry(path string) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 收集各工作区信息
+	worktrees, err := collectWorktrees(path)
+	if err != nil {
+		return nil, err
+	}
+	if len(worktrees) == 0 {
+		return nil, fmt.Errorf("工作区信息错误，至少应该包含主工作区: path = %s", path)
+	}
+
 	return &Entry{
-		RepoURL:       repoURL,
 		Remotes:       remotes,
-		CurrentBranch: currentBranch,
 		DefaultBranch: defaultBranch,
 		Branches:      branches,
 		Ahead:         ahead,
 		Behind:        behind,
 		Dirty:         st.Dirty,
-		Worktrees:     collectWorktrees(path),
-		Workspaces:    workspace.Resolve(path),
-		CollectedAt:   time.Now(),
+		Worktrees:     worktrees,
+		UpdatedAt:     time.Now(),
 	}, nil
 }
 
-// collectWorktrees 枚举主项目的 linked worktree 列表（1032：worktree 归并为项目打开目标）。
-// WorktreeList 输出主目录在前，从第 2 项起才是 worktree；枚举失败降级为空列表
-// （与非仓库目录 collectEntry 返回零值 entry 的降级基调一致，不让 worktree 问题拖垮整个条目）。
-func collectWorktrees(path string) []WorktreeInfo {
+// collectWorktrees 枚举全部工作区（v4 起主目录自身也在内，Worktrees[0] 即主工作区）。
+// WorktreeList 输出主目录在前；枚举失败上抛（collectEntry 全有或全无，不降级）。
+func collectWorktrees(path string) ([]WorktreeInfo, error) {
 	list, err := git.WorktreeList(path)
 	if err != nil {
-		slog.Debug("枚举 worktree 失败，降级为空列表", "path", path, "err", err)
-		return []WorktreeInfo{}
+		return nil, fmt.Errorf("枚举 worktree 失败: path=%s, err=%w", path, err)
 	}
 	worktrees := make([]WorktreeInfo, 0, len(list))
-	for _, wt := range list[1:] { // 第 1 项是主目录自身
+	for _, wt := range list {
 		// 目录已删但 git 元数据未 prune 的 worktree 仍会被列出，按存在性过滤，
 		// 避免失联路径进快照成为打不开的幽灵目标
 		if _, err := os.Stat(wt.Path); err != nil {
@@ -330,5 +357,17 @@ func collectWorktrees(path string) []WorktreeInfo {
 		}
 		worktrees = append(worktrees, WorktreeInfo{Path: wt.Path, Branch: wt.Branch, Detached: wt.Detached, Workspaces: workspace.Resolve(wt.Path)})
 	}
-	return worktrees
+	return worktrees, nil
+}
+
+// calcDefaultBranch 从本地分支清单推断默认分支：master/main 优先（覆盖绝大多数仓库），
+// 都不存在返回空（ahead/behind 放弃比较、前端展示回退）。比远端探测（git.DefaultBranch
+// 再起一个子进程）省一次调用，代价是 develop 等非惯例默认分支的仓库拿不到该数据。
+func calcDefaultBranch(branches []string) string {
+	for _, branch := range []string{"master", "main"} {
+		if slices.Contains(branches, branch) {
+			return branch
+		}
+	}
+	return ""
 }

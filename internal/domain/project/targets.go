@@ -55,16 +55,25 @@ func targetEntries(root string, info *projcache.Entry) []OpenTarget {
 	if info == nil {
 		return nil
 	}
-	targets := make([]OpenTarget, 0, len(info.Workspaces)+2*len(info.Worktrees))
+	// 快照 Worktrees[0] 是主工作区：其 workspaces 即主根目标，其余条目才是 linked worktree。
+	// 主根路径用调用方传入的 root（scan 规则字面路径），不用快照里的 git 规范化路径。
+	var rootWorkspaces []workspace.Workspace
+	worktrees := info.Worktrees
+	if main := info.MainWorktree(); main != nil {
+		rootWorkspaces = main.Workspaces
+		worktrees = worktrees[1:]
+	}
+
+	targets := make([]OpenTarget, 0, len(rootWorkspaces)+2*len(worktrees))
 	rels := make([]string, 0, cap(targets)) // workspace 相对所属根的路径，撞名消歧时作后缀；非 workspace 位（各 worktree 根）填 ""
-	targets = append(targets, workspaceTargetsAt(root, info.Workspaces, 0, "", &rels)...)
-	branchCount := make(map[string]int, len(info.Worktrees))
-	for _, wt := range info.Worktrees {
+	targets = append(targets, workspaceTargetsAt(root, rootWorkspaces, 0, "", &rels)...)
+	branchCount := make(map[string]int, len(worktrees))
+	for _, wt := range worktrees {
 		if wt.Branch != "" {
 			branchCount[wt.Branch]++
 		}
 	}
-	for _, wt := range info.Worktrees {
+	for _, wt := range worktrees {
 		label := wt.Branch
 		if label == "" || branchCount[label] > 1 {
 			label = filepath.Base(wt.Path)

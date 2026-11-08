@@ -25,7 +25,7 @@ type Service struct {
 	cloneRulesStore CloneRulesStore
 	// scan
 	scanCache *easycache.Item[[]*Project] // 项目扫描的缓存（新鲜度时间戳由缓存自身维护，见 UpdatedAt）
-	// 项目状态快照（projcache：git/worktree/workspace，落盘 cache/git.json）
+	// 项目状态快照（projcache：git/worktree/workspace，落盘 cache/projcache.json）
 	projCache *projcache.Cache
 	// 定时刷新（仅常驻 server 启用，CLI 不启用）
 	stopCh chan struct{} // nil = 未启用；非 nil = 定时器在跑
@@ -387,7 +387,7 @@ func (s *Service) refresh() error {
 }
 
 // Refresh 立即完整刷新 project 视图：重扫项目列表 → 整表采集 git 信息
-// （写内存 + 落盘 git.json）。返回 (项目总数, 采集成功数, 错误)。
+// （写内存 + 落盘 projcache.json）。返回 (项目总数, 采集成功数, 错误)。
 //
 // 与 server 定时刷新同一逻辑。CLI 平时只读缓存不写（单写者模型：server 是唯一写方），
 // 本方法仅供 dev 调试命令手动触发，用于开发期实测全量采集的时间成本。

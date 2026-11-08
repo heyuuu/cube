@@ -10,7 +10,6 @@ import (
 	"cube/internal/testfixture"
 )
 
-// TestLoad_EmptyDir 目录不存在 → 创建并返回空缓存。
 // TestLoad_EmptyDir 目录尚不存在（冷启动）→ 空缓存。Load 只读不写不建目录；
 // 目录创建懒化在 Save 侧（store.WriteFileAtomic 自带 MkdirAll）。
 func TestLoad_EmptyDir(t *testing.T) {
@@ -30,7 +29,7 @@ func TestLoad_EmptyDir(t *testing.T) {
 	}
 }
 
-// TestLoad_FileMissing git.json 不存在 → 空缓存（冷启动降级）。
+// TestLoad_FileMissing projcache.json 不存在 → 空缓存（冷启动降级）。
 func TestLoad_FileMissing(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	dir := ws.Mkdir("cache")
@@ -40,7 +39,7 @@ func TestLoad_FileMissing(t *testing.T) {
 		t.Fatalf("Load 出错: %v", err)
 	}
 	if _, ok := c.Get("/any"); ok {
-		t.Fatalf("无 git.json 时应返回空缓存")
+		t.Fatalf("无 projcache.json 时应返回空缓存")
 	}
 }
 
@@ -51,7 +50,11 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 
 	// 写入
 	c1, _ := Load(dir)
-	c1.entries["/proj/a"] = &Entry{RepoURL: "git@x:a", CurrentBranch: "main", Ahead: 3}
+	c1.entries["/proj/a"] = &Entry{
+		Remotes:   []RemoteInfo{{Name: "origin", URL: "git@x:a"}},
+		Worktrees: []WorktreeInfo{{Path: "/proj/a", Branch: "main"}},
+		Ahead:     3,
+	}
 	if err := c1.Save(); err != nil {
 		t.Fatalf("Save 失败: %v", err)
 	}
@@ -62,12 +65,12 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	if !ok {
 		t.Fatalf("Save 后 Load 应命中")
 	}
-	if got.RepoURL != "git@x:a" || got.CurrentBranch != "main" || got.Ahead != 3 {
+	if got.OriginURL() != "git@x:a" || got.MainWorktree().Branch != "main" || got.Ahead != 3 {
 		t.Fatalf("读回数据异常: %+v", got)
 	}
 }
 
-// TestLoad_CorruptFile 损坏的 git.json 当文件不存在丢弃（降级空缓存，不备份）。
+// TestLoad_CorruptFile 损坏的 projcache.json 当文件不存在丢弃（降级空缓存，不备份）。
 func TestLoad_CorruptFile(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	dir := ws.Mkdir("cache")
@@ -82,7 +85,7 @@ func TestLoad_CorruptFile(t *testing.T) {
 	}
 }
 
-// TestLoad_VersionMismatch 版本不符的 git.json 当文件不存在丢弃（不备份、不 lenient 混入）。
+// TestLoad_VersionMismatch 版本不符的 projcache.json 当文件不存在丢弃（不备份、不 lenient 混入）。
 // 老数据按新结构反序列化会得到缺字段全零值的部分数据，比空缓存更糟。
 func TestLoad_VersionMismatch(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
@@ -118,7 +121,7 @@ func TestCache_Get(t *testing.T) {
 	}
 }
 
-// TestCollectEntry_RealRepo 真实仓库采集能拿到 branch。
+// TestCollectEntry_RealRepo 真实仓库采集能拿到 branch（主工作区信息）。
 func TestCollectEntry_RealRepo(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "main"})
@@ -130,12 +133,13 @@ func TestCollectEntry_RealRepo(t *testing.T) {
 	if e == nil {
 		t.Fatalf("collectEntry 不应返回 nil")
 	}
-	if e.CurrentBranch != "main" {
-		t.Fatalf("CurrentBranch = %q，期望 main", e.CurrentBranch)
+	if main := e.MainWorktree(); main == nil || main.Branch != "main" {
+		t.Fatalf("主工作区分支不符（Worktrees[0] 即主工作区）: %+v", main)
 	}
 }
 
-// TestCollectEntry_Remotes 全部 remote 进快照（多 remote 项目的 forge 匹配依赖此数据）。
+// TestCollectEntry_Remotes 全部 remote 进快照（多 remote 项目的 forge 匹配依赖此数据），
+// origin 地址经 OriginURL 派生。
 func TestCollectEntry_Remotes(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "main", RemoteURL: "git@github.com:heyuuu/repo.git"})
@@ -148,8 +152,8 @@ func TestCollectEntry_Remotes(t *testing.T) {
 	if err != nil || e == nil {
 		t.Fatalf("collectEntry 失败: %v", err)
 	}
-	if e.RepoURL != "git@github.com:heyuuu/repo.git" {
-		t.Fatalf("RepoURL = %q（origin 口径不变）", e.RepoURL)
+	if e.OriginURL() != "git@github.com:heyuuu/repo.git" {
+		t.Fatalf("OriginURL = %q（origin 口径不变）", e.OriginURL())
 	}
 	hosts := make([]string, 0, len(e.Remotes))
 	for _, r := range e.Remotes {
@@ -160,25 +164,17 @@ func TestCollectEntry_Remotes(t *testing.T) {
 	}
 }
 
-// TestCollectEntry_NonRepo 非仓库目录：git 读函数返回零值，collectEntry 拼出零值 entry。
+// TestCollectEntry_NonRepo 非仓库目录：任一 git 子命令失败即整条失败（全有或全无，v4）。
 func TestCollectEntry_NonRepo(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	dir := ws.Mkdir("empty")
 
-	e, err := collectEntry(dir)
-	if err != nil {
-		t.Fatalf("非仓库 collectEntry 不应返回 error: %v", err)
-	}
-	if e == nil {
-		t.Fatalf("collectEntry 应返回非 nil entry")
-	}
-	// 字段应为零值
-	if e.CurrentBranch != "" {
-		t.Fatalf("非仓库 CurrentBranch 应为空，实际 %q", e.CurrentBranch)
+	if e, err := collectEntry(dir); err == nil {
+		t.Fatalf("非仓库 collectEntry 应返回 error（不接受残缺数据）, got %+v", e)
 	}
 }
 
-// TestCollectEntry_Worktrees 主项目采集时附带枚举 linked worktree（1032 归并）。
+// TestCollectEntry_Worktrees 工作区枚举含主工作区（Worktrees[0]）+ linked worktree（1032 归并、v4 主区并入）。
 func TestCollectEntry_Worktrees(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "main"})
@@ -189,10 +185,18 @@ func TestCollectEntry_Worktrees(t *testing.T) {
 	if err != nil {
 		t.Fatalf("collectEntry 不应返回 error: %v", err)
 	}
-	if len(e.Worktrees) != 2 {
-		t.Fatalf("应附带 2 个 worktree, got %d (%+v)", len(e.Worktrees), e.Worktrees)
+	if len(e.Worktrees) != 3 {
+		t.Fatalf("应含主工作区 + 2 个 worktree, got %d (%+v)", len(e.Worktrees), e.Worktrees)
 	}
-	// 分支名 + 路径落在快照里（主目录自身不含在内）；git 输出路径经符号链接规范化，比较前同样求值
+	// [0] 是主工作区（分支 = 仓库当前分支，路径经符号链接规范化）
+	canonicalRepo, err := filepath.EvalSymlinks(repo)
+	if err != nil {
+		t.Fatalf("解析真实路径失败: %v", err)
+	}
+	if main := e.MainWorktree(); main.Path != canonicalRepo || main.Branch != "main" {
+		t.Fatalf("Worktrees[0] 应为主工作区: %+v", main)
+	}
+	// 分支名 + 路径落在快照里；git 输出路径经符号链接规范化，比较前同样求值
 	canonicalWt, err := filepath.EvalSymlinks(ws.Join("wt-hot"))
 	if err != nil {
 		t.Fatalf("解析真实路径失败: %v", err)
@@ -206,20 +210,6 @@ func TestCollectEntry_Worktrees(t *testing.T) {
 	}
 	if _, ok := byBranch["feat"]; !ok {
 		t.Fatalf("缺少 feat worktree: %+v", e.Worktrees)
-	}
-}
-
-// TestCollectEntry_WorktreesDegraded 非仓库目录（WorktreeList 失败）降级为空列表而非报错。
-func TestCollectEntry_WorktreesDegraded(t *testing.T) {
-	ws := testfixture.NewWorkspace(t)
-	dir := ws.Mkdir("empty")
-
-	e, err := collectEntry(dir)
-	if err != nil {
-		t.Fatalf("非仓库 collectEntry 不应返回 error: %v", err)
-	}
-	if e.Worktrees == nil || len(e.Worktrees) != 0 {
-		t.Fatalf("非仓库 Worktrees 应为空列表, got %+v", e.Worktrees)
 	}
 }
 
@@ -239,11 +229,11 @@ func TestCollectEntry_WorktreePruned(t *testing.T) {
 	if err != nil {
 		t.Fatalf("collectEntry 不应返回 error: %v", err)
 	}
-	if len(e.Worktrees) != 1 {
-		t.Fatalf("失联 worktree 应被过滤，只留 1 个, got %+v", e.Worktrees)
+	if len(e.Worktrees) != 2 {
+		t.Fatalf("失联 worktree 应被过滤，只留主工作区 + hotfix, got %+v", e.Worktrees)
 	}
-	if e.Worktrees[0].Branch != "hotfix" {
-		t.Fatalf("留下的应是 hotfix: %+v", e.Worktrees[0])
+	if e.Worktrees[1].Branch != "hotfix" {
+		t.Fatalf("留下的应是 hotfix: %+v", e.Worktrees[1])
 	}
 }
 
@@ -261,13 +251,13 @@ func TestRefresh_RealRepo(t *testing.T) {
 	if !ok {
 		t.Fatalf("Refresh 后 Get 应命中")
 	}
-	if e.CurrentBranch != "develop" {
-		t.Fatalf("Refresh 采集 CurrentBranch = %q，期望 develop", e.CurrentBranch)
+	if e.MainWorktree().Branch != "develop" {
+		t.Fatalf("Refresh 采集主工作区分支 = %q，期望 develop", e.MainWorktree().Branch)
 	}
 
-	// git.json 应已落盘
+	// projcache.json 应已落盘
 	if _, err := os.Stat(filepath.Join(cacheDir, cacheFileName)); err != nil {
-		t.Fatalf("Refresh 后 git.json 应存在: %v", err)
+		t.Fatalf("Refresh 后 projcache.json 应存在: %v", err)
 	}
 }
 
@@ -291,7 +281,7 @@ func TestRefreshOne(t *testing.T) {
 		t.Fatalf("RefreshOne 报错: %v", err)
 	}
 	e, ok := c.Get(repo)
-	if !ok || e.CurrentBranch == "" {
+	if !ok || e.MainWorktree().Branch == "" {
 		t.Fatalf("刷新后应有该项目的 entry: %+v", e)
 	}
 	if _, ok := c.Get(other); ok {
@@ -303,15 +293,15 @@ func TestRefreshOne(t *testing.T) {
 		t.Fatalf("二次刷新报错: %v", err)
 	}
 	e, _ = c.Get(repo)
-	if len(e.Worktrees) != 1 || e.Worktrees[0].Branch != "hotfix" {
-		t.Fatalf("worktree 应已进快照: %+v", e.Worktrees)
+	if len(e.Worktrees) != 2 || e.Worktrees[1].Branch != "hotfix" {
+		t.Fatalf("worktree 应已进快照（[0] 主工作区 + [1] hotfix）: %+v", e.Worktrees)
 	}
 
-	// 非 git 目录与整表 Refresh 语义一致：零值 entry 成功写入，不报错
-	if err := c.RefreshOne(ws.Join("plain")); err != nil {
-		t.Fatalf("非仓库按约定应写入零值 entry: %v", err)
+	// 非 git 目录：与整表 Refresh 语义一致，整条失败不落盘（v4 全有或全无）
+	if err := c.RefreshOne(ws.Join("plain")); err == nil {
+		t.Fatal("非仓库按约定应整条失败（不接受残缺数据）")
 	}
-	if e, ok := c.Get(repo); !ok || e.CurrentBranch == "" {
+	if e, ok := c.Get(repo); !ok || e.MainWorktree().Branch == "" {
 		t.Fatalf("其他条目不受影响: %+v", e)
 	}
 }

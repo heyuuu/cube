@@ -79,16 +79,19 @@ query 支持两种搜索模式：
 			info, hasCache := a.ProjectService().GitInfo(proj.Path())
 			cacheURL := ""
 			if hasCache {
-				cacheURL = info.RepoURL
+				cacheURL = info.OriginURL()
 			}
 			printInfoRemotes(proj.Path(), cacheURL)
 
 			if !hasCache {
 				printInfoKV("git", infoWarnStyle.Render("无缓存(可启动 cube server 自动采集)"))
 			} else {
-				branch := info.CurrentBranch
+				branch := ""
+				if main := info.MainWorktree(); main != nil {
+					branch = main.Branch
+				}
 				if branch == "" {
-					branch = "HEAD(detached)" // CurrentBranch 为空即 detached HEAD
+					branch = "HEAD(detached)" // 主工作区分支为空即 detached HEAD
 				}
 				printInfoKV("branch", branch)
 				if info.DefaultBranch != "" {
@@ -97,7 +100,7 @@ query 支持两种搜索模式：
 				}
 				printInfoKV("dirty", boolToCnColored(info.Dirty))
 				printInfoKV("branches", fmt.Sprintf("%d 个", len(info.Branches)))
-				printInfoKV("snapshot", formatInfoSnapshot(info.CollectedAt))
+				printInfoKV("snapshot", formatInfoSnapshot(info.UpdatedAt))
 			}
 
 			if verbose {
