@@ -18,29 +18,21 @@ func (m *memStore[T]) LoadOrZero() T        { return m.v }
 func (m *memStore[T]) set(v T) *memStore[T] { m.v = v; return m }
 
 type item struct {
-	K      string
-	Secret string
-	Bad    bool
+	K   string
+	V   string
+	Bad bool
 }
 
-const masked = "***"
-
-// newTestStore K 去空白后为唯一键；Bad 项不合规；Secret 提交掩码值时沿用同键旧值（同 forge account token）。
+// newTestStore K 去空白后为唯一键；Bad 项不合规。
 func newTestStore(ms *memStore[[]item]) *KeyedSliceStore[item] {
 	return NewKeyedSliceStore(KeyedSliceStoreOpts[item]{
 		Name:  "测试项",
 		Store: ms,
 		KeyOf: func(it item) string { return it.K },
-		NormalizeWithExists: func(it item, old *item) (item, error) {
+		Normalize: func(it item) (item, error) {
 			it.K = strings.TrimSpace(it.K)
 			if it.Bad {
 				return it, errors.New("不合规")
-			}
-			if it.Secret == masked {
-				if old == nil {
-					return it, errors.New("不存在，不能提交掩码")
-				}
-				it.Secret = old.Secret
 			}
 			return it, nil
 		},
@@ -48,20 +40,23 @@ func newTestStore(ms *memStore[[]item]) *KeyedSliceStore[item] {
 }
 
 func TestSaveAll(t *testing.T) {
-	t.Run("同键旧值取自落盘数据（掩码沿用）且顺序即落盘序", func(t *testing.T) {
-		ms := (&memStore[[]item]{}).set([]item{{K: "a", Secret: "s1"}, {K: "b", Secret: "s2"}})
-		if err := newTestStore(ms).SaveAll([]item{{K: "b", Secret: masked}, {K: "a", Secret: masked}}); err != nil {
+	t.Run("提交清单即落盘结果，顺序即落盘序", func(t *testing.T) {
+		ms := (&memStore[[]item]{}).set([]item{{K: "a", V: "1"}, {K: "b", V: "2"}})
+		if err := newTestStore(ms).SaveAll([]item{{K: "c", V: "3"}, {K: "a", V: "9"}}); err != nil {
 			t.Fatalf("save-all 失败: %v", err)
 		}
-		if got := ms.v; len(got) != 2 || got[0] != (item{K: "b", Secret: "s2"}) || got[1] != (item{K: "a", Secret: "s1"}) {
-			t.Fatalf("应按提交序落盘且掩码沿用旧值: %+v", got)
+		if got := ms.v; len(got) != 2 || got[0] != (item{K: "c", V: "3"}) || got[1] != (item{K: "a", V: "9"}) {
+			t.Fatalf("应按提交序整体覆盖: %+v", got)
 		}
 	})
 
-	t.Run("新条目提交掩码报错", func(t *testing.T) {
-		ms := &memStore[[]item]{}
-		if err := newTestStore(ms).SaveAll([]item{{K: "new", Secret: masked}}); err == nil {
-			t.Fatal("新条目提交掩码应报错")
+	t.Run("单项不合规整体拒绝不落盘", func(t *testing.T) {
+		ms := (&memStore[[]item]{}).set([]item{{K: "a"}})
+		if err := newTestStore(ms).SaveAll([]item{{K: "x"}, {K: "y", Bad: true}}); err == nil {
+			t.Fatal("单项不合规应报错")
+		}
+		if ms.saves != 0 {
+			t.Fatal("失败的 save-all 不应落盘")
 		}
 	})
 
@@ -89,11 +84,11 @@ func TestSaveAll(t *testing.T) {
 
 // 键在规范化之后计算：未规范化的同键提交应替换而非追加
 func TestSaveKeyAfterNormalize(t *testing.T) {
-	ms := (&memStore[[]item]{}).set([]item{{K: "a", Secret: "s1"}})
-	if err := newTestStore(ms).Save(item{K: " a ", Secret: "s2"}); err != nil {
+	ms := (&memStore[[]item]{}).set([]item{{K: "a", V: "s1"}})
+	if err := newTestStore(ms).Save(item{K: " a ", V: "s2"}); err != nil {
 		t.Fatalf("save 失败: %v", err)
 	}
-	if len(ms.v) != 1 || ms.v[0].Secret != "s2" {
+	if len(ms.v) != 1 || ms.v[0].V != "s2" {
 		t.Fatalf("规范化后同键应原位替换: %+v", ms.v)
 	}
 }
@@ -101,7 +96,7 @@ func TestSaveKeyAfterNormalize(t *testing.T) {
 func TestDeleteIdempotent(t *testing.T) {
 	ms := (&memStore[[]item]{}).set([]item{{K: "a"}})
 	s := newTestStore(ms)
-	if err := s.Delete(item{K: "a", Secret: "其他字段不参与匹配"}); err != nil || len(ms.v) != 0 {
+	if err := s.Delete(item{K: "a", V: "其他字段不参与匹配"}); err != nil || len(ms.v) != 0 {
 		t.Fatalf("应按键删除: err=%v %+v", err, ms.v)
 	}
 	saves := ms.saves
@@ -123,5 +118,70 @@ func TestRetainPersistsFilteredInvalid(t *testing.T) {
 	saves := ms.saves
 	if err := s.Retain(func(item) bool { return true }); err != nil || ms.saves != saves {
 		t.Fatalf("与落盘一致时不应写入: err=%v saves=%d", err, ms.saves)
+	}
+}
+
+// OnChange 在每次实际落盘后触发（入参为落盘数据集），未写入的幂等路径不触发，错误透传调用方
+func TestOnChange(t *testing.T) {
+	var got []item
+	var calls int
+	ms := (&memStore[[]item]{}).set([]item{{K: "a"}, {K: "b"}})
+	s := NewKeyedSliceStore(KeyedSliceStoreOpts[item]{
+		Name:  "测试项",
+		Store: ms,
+		KeyOf: func(it item) string { return it.K },
+		OnChange: func(values []item) error {
+			calls++
+			got = values
+			return nil
+		},
+	})
+
+	if err := s.Save(item{K: "c"}); err != nil {
+		t.Fatalf("save 失败: %v", err)
+	}
+	if calls != 1 || len(got) != 3 {
+		t.Fatalf("save 落盘后应触发 OnChange: calls=%d values=%+v", calls, got)
+	}
+
+	if err := s.Delete(item{K: "zz"}); err != nil {
+		t.Fatalf("delete 失败: %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("幂等删除未写入不应触发 OnChange: calls=%d", calls)
+	}
+
+	if err := s.Delete(item{K: "b"}); err != nil {
+		t.Fatalf("delete 失败: %v", err)
+	}
+	if calls != 2 || len(got) != 2 {
+		t.Fatalf("delete 落盘后应触发 OnChange: calls=%d values=%+v", calls, got)
+	}
+
+	if err := s.SaveAll([]item{{K: "a"}}); err != nil {
+		t.Fatalf("save-all 失败: %v", err)
+	}
+	if calls != 3 || len(got) != 1 {
+		t.Fatalf("save-all 落盘后应触发 OnChange: calls=%d values=%+v", calls, got)
+	}
+
+	if err := s.Retain(func(item) bool { return true }); err != nil {
+		t.Fatalf("retain 失败: %v", err)
+	}
+	if calls != 3 {
+		t.Fatalf("retain 无删动不应触发 OnChange: calls=%d", calls)
+	}
+}
+
+func TestOnChangeErrorPropagates(t *testing.T) {
+	wantErr := errors.New("级联失败")
+	s := NewKeyedSliceStore(KeyedSliceStoreOpts[item]{
+		Name:     "测试项",
+		Store:    &memStore[[]item]{},
+		KeyOf:    func(it item) string { return it.K },
+		OnChange: func([]item) error { return wantErr },
+	})
+	if err := s.Save(item{K: "a"}); !errors.Is(err, wantErr) {
+		t.Fatalf("OnChange 错误应透传给调用方, got %v", err)
 	}
 }

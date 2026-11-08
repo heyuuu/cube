@@ -17,9 +17,9 @@ const forgesSection = "forges"
 const accountsSection = "forgeAccounts"
 
 type ForgesStore = *xstore.KeyedSliceStore[Forge]
-type AccountStore = *xstore.KeyedSliceStore[Account]
+type AccountsStore = *xstore.KeyedSliceStore[Account]
 
-func newForgesStore(settingsFile string) ForgesStore {
+func newForgesStore(settingsFile string, onChange func([]Forge) error) ForgesStore {
 	return xstore.NewKeyedSliceStore(xstore.KeyedSliceStoreOpts[Forge]{
 		Name:  "forge 配置",
 		Store: store.SectionStore[[]Forge](settingsFile, forgesSection),
@@ -37,6 +37,7 @@ func newForgesStore(settingsFile string) ForgesStore {
 			}
 			return f, nil
 		},
+		OnChange: onChange,
 	})
 }
 
@@ -44,36 +45,16 @@ func accountKey(forgeHost, username string) string {
 	return NormalizeUsername(username) + "@" + NormalizeHost(forgeHost)
 }
 
-func newAccountsStore(settingsFile string, forgesStore ForgesStore) AccountStore {
+func accountKeyOf(a Account) string {
+	return accountKey(a.ForgeHost, a.Username)
+}
+
+func newAccountsStore(settingsFile string, onChange func([]Account) error) AccountsStore {
 	return xstore.NewKeyedSliceStore(xstore.KeyedSliceStoreOpts[Account]{
-		Name:  "forge account",
-		Store: store.SectionStore[[]Account](settingsFile, accountsSection),
-		KeyOf: func(a Account) string { return accountKey(a.ForgeHost, a.Username) },
-		NormalizeWithExists: func(a Account, exist *Account) (Account, error) {
-			a.ForgeHost = NormalizeHost(a.ForgeHost)
-			a.Username = NormalizeUsername(a.Username)
-			if a.ForgeHost == "" {
-				return a, fmt.Errorf("account 所属 forge host 不得为空")
-			}
-			if a.Username == "" {
-				return a, fmt.Errorf("account username 不得为空")
-			}
-
-			if a.Token == TokenMasked {
-				if exist == nil {
-					return a, fmt.Errorf("account %s@%s 不存在，token 不能提交掩码占位值", a.Username, a.ForgeHost)
-				}
-				a.Token = exist.Token
-			}
-
-			f, ok := forgesStore.Find(a.ForgeHost)
-			if !ok {
-				return a, fmt.Errorf("account 所属 forge 未配置: %s", a.ForgeHost)
-			}
-			if f.Kind == KindGeneric {
-				return a, fmt.Errorf("forge %s 是 generic 类型（无 API），不支持配置 account", a.ForgeHost)
-			}
-			return a, nil
-		},
+		Name:      "forge account",
+		Store:     store.SectionStore[[]Account](settingsFile, accountsSection),
+		KeyOf:     accountKeyOf,
+		Normalize: normalizeAccount,
+		OnChange:  onChange,
 	})
 }

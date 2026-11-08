@@ -9,7 +9,10 @@ package forge
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+
+	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/domain/icons"
 	"cube/pkg/git"
@@ -86,3 +89,43 @@ const TokenMasked = "••••••"
 
 // NormalizeUsername 归一化用户名：去首尾空白。保留大小写（部分平台用户名大小写敏感）。
 func NormalizeUsername(username string) string { return strings.TrimSpace(username) }
+
+func normalizeAccount(a Account) (Account, error) {
+	a.ForgeHost = NormalizeHost(a.ForgeHost)
+	a.Username = NormalizeUsername(a.Username)
+	if a.ForgeHost == "" {
+		return a, fmt.Errorf("account 所属 forge host 不得为空")
+	}
+	if a.Username == "" {
+		return a, fmt.Errorf("account username 不得为空")
+	}
+	return a, nil
+}
+
+func normalizeAccountOnSave(a Account, exists []Account, forges []Forge) (Account, error) {
+	var err error
+
+	a, err = normalizeAccount(a)
+	if err != nil {
+		return a, err
+	}
+
+	// 传入 token 掩码时，保留原数据
+	if a.Token == TokenMasked {
+		oldIndex := xslices.IndexBy(exists, a, accountKeyOf)
+		if oldIndex < 0 {
+			return a, fmt.Errorf("account %s@%s 不存在，token 不能提交掩码占位值", a.Username, a.ForgeHost)
+		}
+		a.Token = exists[oldIndex].Token
+	}
+
+	// 校验 forge
+	forgeIndex := slices.IndexFunc(forges, func(f Forge) bool { return f.Host == a.ForgeHost })
+	if forgeIndex < 0 {
+		return a, fmt.Errorf("account 所属 forge 未配置: %s", a.ForgeHost)
+	}
+	if forges[forgeIndex].Kind == KindGeneric {
+		return a, fmt.Errorf("forge %s 是 generic 类型（无 API），不支持配置 account", a.ForgeHost)
+	}
+	return a, nil
+}

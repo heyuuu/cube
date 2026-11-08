@@ -17,8 +17,8 @@ type clientFactory func(kind, host, token string) (gitapi.Client, error)
 // 1044 起 namespace 模型移除，拉取以 account 为唯一维度。
 type Service struct {
 	// settings
-	forgesStore  ForgesStore
-	accountStore AccountStore
+	forgesStore   ForgesStore
+	accountsStore AccountsStore
 	// 拉取结果缓存（内存 + 落盘 cache/forge-repos.json）
 	repoCache *repoCache
 
@@ -27,13 +27,27 @@ type Service struct {
 
 // NewService 由 Config 装配 Service（DI 注入用），拉取缓存落 cache/forge-repos.json。
 func NewService(cfg *config.Config) *Service {
-	forgesStore := newForgesStore(cfg.SettingsFile())
-	accountsStore := newAccountsStore(cfg.SettingsFile(), forgesStore)
+	repoCache := newRepoCache(filepath.Join(cfg.CacheDir(), "forge-repos.json"))
+	accountsStore := newAccountsStore(cfg.SettingsFile(), func(accounts []Account) error {
+		live := make(map[string]bool, len(accounts))
+		for _, a := range accounts {
+			live[accountKey(a.ForgeHost, a.Username)] = true
+		}
+		repoCache.retain(func(key string) bool { return live[key] })
+		return nil
+	})
+	forgesStore := newForgesStore(cfg.SettingsFile(), func(forges []Forge) error {
+		hosts := make(map[string]bool, len(forges))
+		for _, f := range forges {
+			hosts[f.Host] = true
+		}
+		return accountsStore.Retain(func(a Account) bool { return hosts[a.ForgeHost] })
+	})
 
 	return &Service{
-		forgesStore:  forgesStore,
-		accountStore: accountsStore,
-		repoCache:    newRepoCache(filepath.Join(cfg.CacheDir(), "forge-repos.json")),
+		forgesStore:   forgesStore,
+		accountsStore: accountsStore,
+		repoCache:     repoCache,
 	}
 }
 
@@ -49,53 +63,53 @@ func (s *Service) SaveForge(f Forge) error {
 }
 
 // SaveAllForges 以提交清单整节覆盖 forges 节（顺序即展示序，1042 forge 页沿用）。
-// 逐项校验 + host 查重，任一失败整体不落盘；被移除 forge 下的 account 级联清理（同 DeleteForge）。
+// 逐项校验 + host 查重，任一失败整体不落盘。被移除 forge 下的 account 经 OnChange 级联清理。
 func (s *Service) SaveAllForges(forges []Forge) error {
-	if err := s.forgesStore.SaveAll(forges); err != nil {
-		return err
-	}
-
-	return s.purgeAccounts()
+	return s.forgesStore.SaveAll(forges)
 }
 
 // DeleteForge 按唯一键（归一化 host）删除一条 forge，并级联清理该 host 下的 account
 // （孤挂配置对任何功能都不可见，留了就是脏数据）；不存在时返回中文错误。
 func (s *Service) DeleteForge(f Forge) error {
-	if err := s.forgesStore.Delete(f); err != nil {
-		return err
-	}
-
-	return s.purgeAccounts()
+	return s.forgesStore.Delete(f)
 }
 
 // --- account（1041，1044 起是 forge 下唯一的关联配置） ---
 
 // Accounts 读全部 account（含 token 原文，供拉取取凭证；对外展示的打码在出口层做）。
-func (s *Service) Accounts() []Account { return s.accountStore.All() }
+func (s *Service) Accounts() []Account { return s.accountsStore.All() }
 
 // SaveAccount 新增或按 forgeHost+username 替换一条 account。
 // token 提交掩码值（TokenMasked）视为「未修改」沿用旧值——前端表单掩码展示的配套语义。
-func (s *Service) SaveAccount(a Account) error {
-	return s.accountStore.Save(a)
+func (s *Service) SaveAccount(a Account) (err error) {
+	// 校验数据
+	a, err = normalizeAccountOnSave(a, s.Accounts(), s.Forges())
+	if err != nil {
+		return err
+	}
+
+	return s.accountsStore.Save(a)
 }
 
 // SaveAllAccounts 以提交清单整节覆盖 accounts 节（顺序即 forge 页展示序）。
 // 逐项校验（含掩码 token 按唯一键回填旧值）+ 唯一键查重，任一失败整体不落盘。
-func (s *Service) SaveAllAccounts(accounts []Account) error {
-	if err := s.accountStore.SaveAll(accounts); err != nil {
-		return err
+func (s *Service) SaveAllAccounts(accounts []Account) (err error) {
+	// 批量校验数据
+	oldAccounts := s.Accounts()
+	forges := s.Forges()
+	for i, a := range accounts {
+		accounts[i], err = normalizeAccountOnSave(a, oldAccounts, forges)
+		if err != nil {
+			return err
+		}
 	}
-	s.purgeRepoCache()
-	return nil
+
+	return s.accountsStore.SaveAll(accounts)
 }
 
 // DeleteAccount 按唯一键（forgeHost+username）删除一条 account；未命中幂等成功。
 func (s *Service) DeleteAccount(a Account) error {
-	if err := s.accountStore.Delete(a); err != nil {
-		return err
-	}
-	s.purgeRepoCache()
-	return nil
+	return s.accountsStore.Delete(a)
 }
 
 // --- 拉取与对账（account 维度） ---
@@ -106,7 +120,7 @@ func (s *Service) DeleteAccount(a Account) error {
 func (s *Service) FetchAccount(forgeHost, username string, force bool) ([]gitapi.RemoteRepo, error) {
 	key := accountKey(forgeHost, username)
 
-	a, ok := s.accountStore.Find(key)
+	a, ok := s.accountsStore.Find(key)
 	if !ok {
 		return nil, fmt.Errorf("未找到指定 account: %s", key)
 	}
@@ -140,33 +154,6 @@ func (s *Service) Overview(local []LocalRepo) *Overview {
 }
 
 // --- 私有辅助 ---
-
-// purgeAccounts 级联清理所属 forge 已不存在的 account，连带其拉取缓存。
-func (s *Service) purgeAccounts() error {
-	existHosts := make(map[string]bool)
-	for _, f := range s.Forges() {
-		existHosts[f.Host] = true
-	}
-
-	if err := s.accountStore.Retain(func(a Account) bool {
-		return existHosts[a.ForgeHost]
-	}); err != nil {
-		return err
-	}
-
-	s.purgeRepoCache()
-	return nil
-}
-
-// purgeRepoCache 剔除已不存在 account 的拉取缓存。在所有移除 account 的写路径上调用，
-// 避免缓存文件随账号增删只增不减。
-func (s *Service) purgeRepoCache() {
-	live := make(map[string]bool)
-	for _, a := range s.Accounts() {
-		live[accountKey(a.ForgeHost, a.Username)] = true
-	}
-	s.repoCache.retain(func(key string) bool { return live[key] })
-}
 
 // factory 返回客户端工厂（未注入时用真实实现，httpClient 默认）。
 func (s *Service) factory() clientFactory {

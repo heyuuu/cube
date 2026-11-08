@@ -22,11 +22,11 @@ type KeyedSliceStoreOpts[T any] struct {
 	KeyOf func(T) string
 	// Normalize 格式化并校验数据项
 	Normalize func(new T) (T, error)
-	// NormalizeWithExists 格式化并校验数据项, 依赖旧数据
-	// NormalizeWithExists 不为 nil 时，Normalize 失效
-	NormalizeWithExists func(new T, old *T) (T, error)
 	// ConflictCheck 校验新元素和已有元素是否冲突
 	ConflictCheck func(new T, exists T) error
+	// OnChange 数据集成功落盘后回调（入参为落盘后的数据集），用于级联维护依赖它的数据；
+	// 同步执行，错误透传给触发写入的调用方。未发生实际写入（幂等删除未命中、Retain 无删动）时不触发
+	OnChange func(values []T) error
 }
 
 // KeyedSliceStore 可被索引的数据结合
@@ -39,8 +39,9 @@ type KeyedSliceStore[T any] struct {
 	name          string
 	store         store.Store[[]T]
 	keyOf         func(T) string
-	normalize     func(new T, old *T) (T, error)
+	normalize     func(T) (T, error)
 	conflictCheck func(new T, exists T) error
+	onChange      func(values []T) error
 }
 
 func NewKeyedSliceStore[T any](opts KeyedSliceStoreOpts[T]) *KeyedSliceStore[T] {
@@ -54,35 +55,34 @@ func NewKeyedSliceStore[T any](opts KeyedSliceStoreOpts[T]) *KeyedSliceStore[T] 
 		panic("keyOf is nil")
 	}
 
-	var normalize func(new T, old *T) (T, error)
-	if opts.NormalizeWithExists != nil {
-		normalize = opts.NormalizeWithExists
-	} else if opts.Normalize != nil {
-		normalize = func(new T, old *T) (T, error) {
-			return opts.Normalize(new)
-		}
-	}
-
 	return &KeyedSliceStore[T]{
 		name:          opts.Name,
 		store:         opts.Store,
 		keyOf:         opts.KeyOf,
-		normalize:     normalize,
+		normalize:     opts.Normalize,
 		conflictCheck: opts.ConflictCheck,
+		onChange:      opts.OnChange,
 	}
 }
 
+// save 所有写盘的唯一出口：落盘成功后触发 OnChange，保证任何写路径都不会漏掉级联。
+func (s *KeyedSliceStore[T]) save(values []T) error {
+	if err := s.store.Save(values); err != nil {
+		return err
+	}
+	if s.onChange != nil {
+		return s.onChange(values)
+	}
+	return nil
+}
+
 // append 把 item 规范化后并入 exists（同键原位替换，否则追加到尾部），成功返回 (新数据集, nil)；
-// 失败返回 (exists, 错误信息)。olds 是 NormalizeWithExists 同键旧值的查找来源：Save / All 即
-// exists 自身；SaveAll 必须传落盘中的当前数据集——新清单逐项累积，在它里面永远查不到旧值。
-func (s *KeyedSliceStore[T]) append(exists []T, item T, olds []T) ([]T, error) {
+// 失败返回 (exists, 错误信息)。
+func (s *KeyedSliceStore[T]) append(exists []T, item T) ([]T, error) {
+	// 先规范化数据项
 	if s.normalize != nil {
-		var old *T
-		if i := s.indexOf(olds, s.keyOf(item)); i >= 0 {
-			old = &olds[i]
-		}
 		var err error
-		if item, err = s.normalize(item, old); err != nil {
+		if item, err = s.normalize(item); err != nil {
 			return exists, err
 		}
 	}
@@ -90,6 +90,7 @@ func (s *KeyedSliceStore[T]) append(exists []T, item T, olds []T) ([]T, error) {
 	// 键在规范化之后计算：KeyOf 未必对规范化不变（如 scan 规则 path 的 Clean）
 	existsIndex := s.indexOf(exists, s.keyOf(item))
 
+	// 校验数据集冲突
 	if s.conflictCheck != nil {
 		for i, exist := range exists {
 			if i == existsIndex {
@@ -101,6 +102,7 @@ func (s *KeyedSliceStore[T]) append(exists []T, item T, olds []T) ([]T, error) {
 		}
 	}
 
+	// 更新数据
 	if existsIndex >= 0 {
 		exists[existsIndex] = item
 		return exists, nil
@@ -122,7 +124,7 @@ func (s *KeyedSliceStore[T]) All() []T {
 	result := make([]T, 0, len(raw))
 	for i, item := range raw {
 		var err error
-		result, err = s.append(result, item, result)
+		result, err = s.append(result, item)
 
 		// 加载配置时，忽略错误项，仅记录日志
 		if err != nil {
@@ -141,17 +143,17 @@ func (s *KeyedSliceStore[T]) Retain(f func(T) bool) error {
 	if len(rest) == len(raw) {
 		return nil
 	}
-	return s.store.Save(rest)
+	return s.save(rest)
 }
 
 // Save 命中唯一键原位替换，否则追加到末尾。
 func (s *KeyedSliceStore[T]) Save(v T) (err error) {
 	values := s.All()
-	values, err = s.append(values, v, values)
+	values, err = s.append(values, v)
 	if err != nil {
 		return err
 	}
-	return s.store.Save(values)
+	return s.save(values)
 }
 
 // Delete 按 v 的唯一键删除条目（只按键匹配，不比对其他字段）。
@@ -163,16 +165,15 @@ func (s *KeyedSliceStore[T]) Delete(v T) error {
 	if !removed {
 		return nil
 	}
-	return s.store.Save(rest)
+	return s.save(rest)
 }
 
 // SaveAll 以 values 整体覆盖（顺序即落盘序）。逐项 normalize + 冲突校验，任一失败
 // 整体不落盘；重复键违反「key 在数据集中唯一」的假设，整体拒绝而非静默合并。
 func (s *KeyedSliceStore[T]) SaveAll(values []T) (err error) {
-	current := s.All()
 	normalized := make([]T, 0, len(values))
 	for _, item := range values {
-		next, err := s.append(normalized, item, current)
+		next, err := s.append(normalized, item)
 		if err != nil {
 			return err
 		}
@@ -182,7 +183,7 @@ func (s *KeyedSliceStore[T]) SaveAll(values []T) (err error) {
 		}
 		normalized = next
 	}
-	return s.store.Save(normalized)
+	return s.save(normalized)
 }
 
 // Find 按唯一键查找条目。
@@ -191,6 +192,7 @@ func (s *KeyedSliceStore[T]) Find(key string) (T, bool) {
 	if i := s.indexOf(values, key); i >= 0 {
 		return values[i], true
 	}
+
 	var zero T
 	return zero, false
 }
