@@ -35,10 +35,7 @@ func TestSearchProjects_PathQueryCwd(t *testing.T) {
 
 	// 项目根：query="." 命中
 	t.Chdir(repo)
-	projs, err := cmdutil.SearchProjects(s, ".")
-	if err != nil {
-		t.Fatalf("searchProjects(\".\") 出错: %v", err)
-	}
+	projs := cmdutil.SearchProjects(s, ".")
 	if len(projs) != 1 || projs[0].Path() != repo {
 		t.Fatalf("searchProjects(\".\") 应命中 %s，实际 %v", repo, projs)
 	}
@@ -46,10 +43,7 @@ func TestSearchProjects_PathQueryCwd(t *testing.T) {
 	// 项目子目录：query="." 只向下搜索，落空（不向上标定）
 	sub := ws.Mkdir(path.Join("root", "proj", "sub"))
 	t.Chdir(sub)
-	projs, err = cmdutil.SearchProjects(s, ".")
-	if err != nil {
-		t.Fatalf("searchProjects(\".\") 出错: %v", err)
-	}
+	projs = cmdutil.SearchProjects(s, ".")
 	if len(projs) != 0 {
 		t.Fatalf("searchProjects(\".\") 在子目录不应向上命中，实际 %v", projs)
 	}
@@ -100,19 +94,13 @@ func TestSearchProjects_QueryModes(t *testing.T) {
 	s := newCmdServiceAt(t, root, "g1", 5)
 
 	// name query：不走路径分支
-	projs, err := cmdutil.SearchProjects(s, "proj")
-	if err != nil {
-		t.Fatalf("searchProjects(name) 出错: %v", err)
-	}
+	projs := cmdutil.SearchProjects(s, "proj")
 	if len(projs) != 1 {
 		t.Fatalf("name 搜索应命中 1 个，实际 %d", len(projs))
 	}
 
 	// ~user 不满足路径形态：按名字搜索，自然落空为空列表
-	projs, err = cmdutil.SearchProjects(s, "~user/x")
-	if err != nil {
-		t.Fatalf("searchProjects(~user/x) 出错: %v", err)
-	}
+	projs = cmdutil.SearchProjects(s, "~user/x")
 	if len(projs) != 0 {
 		t.Fatalf("~user/x 应按名字搜索落空，实际命中 %d", len(projs))
 	}

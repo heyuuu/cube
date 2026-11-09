@@ -42,12 +42,11 @@ func AsPathQuery(query string) (string, bool) {
 
 // SearchProjects 搜索项目列表
 // - query 为路径时（IsPathQuery 判断）列出该路径之下的项目; 否则, query 作为项目名模糊搜索
-func SearchProjects(service *project.Service, query string) ([]*project.Project, error) {
+func SearchProjects(service *project.Service, query string) []*project.Project {
 	if absPath, ok := AsPathQuery(query); ok {
-		return service.SearchInPath(absPath), nil
+		return service.SearchInPath(absPath)
 	}
-
-	return service.SearchByName(query), nil
+	return service.SearchByName(query)
 }
 
 // PickProject 根据关键词匹配项目：精确匹配直接返回，多项匹配则交互选择
