@@ -1,7 +1,6 @@
 package project
 
 import (
-	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -397,9 +396,6 @@ func (s *Service) Refresh() (total int, collected int, err error) {
 	projects := s.scanCache.Reload()
 
 	paths := xslices.Map(projects, (*Project).Path)
-	if s.snapshotCache == nil {
-		return len(paths), 0, errors.New("项目快照缓存未初始化")
-	}
 	if err := s.snapshotCache.Refresh(paths); err != nil {
 		return len(paths), 0, err
 	}
