@@ -64,7 +64,7 @@ func TestBuildRef(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := BuildRef(tc.in)
+			got, err := buildRef(tc.in)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("应报错: %+v", got)
@@ -75,7 +75,7 @@ func TestBuildRef(t *testing.T) {
 				t.Fatalf("不应报错: %v", err)
 			}
 			if got != tc.want {
-				t.Errorf("BuildRef = %+v，期望 %+v", got, tc.want)
+				t.Errorf("buildRef = %+v，期望 %+v", got, tc.want)
 			}
 			switch {
 			case tc.kind == "local" && !got.IsLocal():
@@ -130,6 +130,90 @@ func TestRefs_NonRepo(t *testing.T) {
 	}
 	if refs.Locals != nil || refs.Remotes != nil || refs.Tags != nil {
 		t.Fatalf("非仓库应返回零值: %+v", refs)
+	}
+}
+
+// TestRefs_UpstreamTrack Refs 单进程顺带取回本地分支的 upstream 跟踪信息：
+// 分叉分支的 ahead/behind、同步分支零值、upstream 指向已删远端分支的 gone。
+func TestRefs_UpstreamTrack(t *testing.T) {
+	ws := newTestWorkspace(t)
+	dir := ws.MakeGitRepoWith("repo", GitRepoSpec{Branch: "main"})
+	directAddRemote(t, dir, "origin", "/tmp/nonexistent.git")
+
+	// main 与 origin/main 分叉：本地领先 1（"local ahead"），远端独有 1（"remote ahead"）
+	directGit(t, dir, "update-ref", "refs/remotes/origin/main", "refs/heads/main")
+	directGit(t, dir, "branch", "-u", "origin/main", "main")
+	directGit(t, dir, "branch", "tmpbase")
+	directGit(t, dir, "commit", "--allow-empty", "-m", "local ahead")
+	directGit(t, dir, "checkout", "tmpbase")
+	directGit(t, dir, "commit", "--allow-empty", "-m", "remote ahead")
+	directGit(t, dir, "update-ref", "refs/remotes/origin/main", "HEAD")
+	directGit(t, dir, "checkout", "main")
+	directGit(t, dir, "branch", "-D", "tmpbase")
+
+	// synced：upstream 跟踪 ref 停在自身同一 commit → ahead/behind 全 0
+	directGit(t, dir, "branch", "synced")
+	directGit(t, dir, "update-ref", "refs/remotes/origin/synced", "refs/heads/synced")
+	directGit(t, dir, "branch", "-u", "origin/synced", "synced")
+
+	// orphan：upstream 指向不存在的跟踪 ref——branch -u 对不存在的 ref 会拒绝，只能 config 手工配
+	directGit(t, dir, "branch", "orphan")
+	directGit(t, dir, "config", "branch.orphan.remote", "origin")
+	directGit(t, dir, "config", "branch.orphan.merge", "refs/heads/deleted-on-remote")
+
+	refs, err := Refs(dir)
+	if err != nil {
+		t.Fatalf("Refs 出错: %v", err)
+	}
+	byBranch := make(map[string]Ref)
+	for _, r := range refs.Locals {
+		byBranch[r.Branch] = r
+	}
+
+	main := byBranch["main"]
+	if main.Upstream != "refs/remotes/origin/main" || main.Ahead != 1 || main.Behind != 1 || main.Gone {
+		t.Fatalf("main = %+v，期望 upstream=origin/main 且 ahead/behind = 1/1", main)
+	}
+	synced := byBranch["synced"]
+	if synced.Upstream != "refs/remotes/origin/synced" || synced.Ahead != 0 || synced.Behind != 0 || synced.Gone {
+		t.Fatalf("synced = %+v，期望 in-sync（upstream 指向、0/0、非 gone）", synced)
+	}
+	orphan := byBranch["orphan"]
+	if orphan.Upstream != "refs/remotes/origin/deleted-on-remote" || !orphan.Gone || orphan.Ahead != 0 || orphan.Behind != 0 {
+		t.Fatalf("orphan = %+v，期望 gone（upstream 指向、ahead/behind 无意义为 0）", orphan)
+	}
+
+	// 末行是 refs/remotes/origin/synced（refname 排序在最后）：曾因整体 TrimSpace
+	// 咬掉末行尾随分隔符导致其 Upstream 错位，断言 remote ref 一律不带 upstream 信息
+	for _, r := range refs.Remotes {
+		if r.Upstream != "" || r.Ahead != 0 || r.Behind != 0 || r.Gone {
+			t.Fatalf("remote ref %s 不应带 upstream 信息: %+v", r.Name, r)
+		}
+	}
+}
+
+// TestParseUpstreamTrack 解析 %(upstream:track) 的输出形态；坏数据降级零值。
+func TestParseUpstreamTrack(t *testing.T) {
+	cases := []struct {
+		in     string
+		ahead  int
+		behind int
+		gone   bool
+	}{
+		{"", 0, 0, false}, // 已同步或未配置 upstream
+		{"[ahead 2]", 2, 0, false},
+		{"[behind 3]", 0, 3, false},
+		{"[ahead 2, behind 3]", 2, 3, false},
+		{"[gone]", 0, 0, true},
+		{"garbage", 0, 0, false},   // 无法识别 → 零值
+		{"[ahead x]", 0, 0, false}, // 非数字 → 零值
+	}
+	for _, c := range cases {
+		ahead, behind, gone := parseUpstreamTrack(c.in)
+		if ahead != c.ahead || behind != c.behind || gone != c.gone {
+			t.Errorf("parseUpstreamTrack(%q) = (%d,%d,%v)，期望 (%d,%d,%v)",
+				c.in, ahead, behind, gone, c.ahead, c.behind, c.gone)
+		}
 	}
 }
 

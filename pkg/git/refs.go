@@ -24,6 +24,15 @@ type Ref struct {
 	ShortName string `json:"shortName"` // Short Name，省略 refs/xxx/ 前缀；注意 remote 的 ShortName 含 remote 名
 	Remote    string `json:"remote"`    // Remote，仅 refs/remotes/* 有效，远端 remote 名 (例如 origin)
 	Branch    string `json:"branch"`    // 分支名，在 refs/heads/* 及 refs/remotes/* 时有效，分支名 (例如 master)
+
+	// 以下 upstream 跟踪信息仅本地分支（refs/heads/*）可能非零，由 Refs 的
+	// for-each-ref 单进程顺带取回（免去调用方逐分支再跑 rev-list）。
+	// Ahead/Behind 基于本地已有的跟踪 ref 比对（不 fetch），口径同 AheadBehindRemote
+	// ——未 fetch 过的数据可能不准。
+	Upstream string `json:"upstream,omitempty"` // 上游跟踪 ref 全名（refs/remotes/<remote>/<branch>）；空 = 未配置 upstream
+	Ahead    int    `json:"ahead,omitempty"`    // 相对 upstream 领先 commit 数（待推送）；未配置或 Gone 时为 0
+	Behind   int    `json:"behind,omitempty"`   // 相对 upstream 落后 commit 数（待拉取）；未配置或 Gone 时为 0
+	Gone     bool   `json:"gone,omitempty"`     // upstream 已配置但跟踪 ref 已不存在（远端分支被删）；此时 Ahead/Behind 无意义
 }
 
 // IsLocal 是本地分支（refs/heads/*）。
@@ -41,8 +50,8 @@ func (r Ref) IsTag() bool {
 	return r.Branch == ""
 }
 
-// BuildRef 构建 Ref 实例
-func BuildRef(refName string) (Ref, error) {
+// buildRef 把规范全名解析为 Ref 值对象（分组判定依赖其错误口径做跳过）。
+func buildRef(refName string) (Ref, error) {
 	refName = strings.TrimSpace(refName)
 	switch {
 	case strings.HasPrefix(refName, RefHeadsPrefix):
@@ -85,12 +94,18 @@ type RefsResult struct {
 	Tags    []Ref `json:"tags"`
 }
 
-// BuildRefs 构建 Refs 结果，暴露以供构造测试数据
-func BuildRefs(refNames []string) *RefsResult {
+// refLineSep for-each-ref 输出行里各字段的分隔符。ref 名与 upstream ref 名按
+// check-ref-format 规则不含空格，" | " 不会与字段内容产生歧义。
+const refLineSep = " | "
+
+// BuildRefs 构建 Refs 结果，暴露以供构造测试数据。入参是 for-each-ref 的输出行
+// （"refname | upstream | track"，同 Refs 的 format）；裸 refname 行同样接受
+// （等价于无 upstream 信息），测试给名字列表即可。无法解析的行跳过。
+func BuildRefs(lines []string) *RefsResult {
 	result := &RefsResult{}
-	for _, refName := range refNames {
-		ref, err := BuildRef(refName)
-		if err != nil {
+	for _, line := range lines {
+		ref, ok := parseRefLine(line)
+		if !ok {
 			continue
 		}
 		if ref.IsLocal() {
@@ -104,7 +119,54 @@ func BuildRefs(refNames []string) *RefsResult {
 	return result
 }
 
-// Refs 一次 for-each-ref 拉全 refs/ 树，按 namespace 前缀分组返回规范全名。
+// parseRefLine 解析 Refs 输出的一行 "refname | upstream | track"，
+// 裸 refname 行同样接受（等价于无 upstream 信息）。无法解析返回 false，调用方跳过。
+func parseRefLine(line string) (Ref, bool) {
+	parts := strings.SplitN(line, refLineSep, 3)
+	ref, err := buildRef(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return Ref{}, false
+	}
+	if len(parts) > 1 {
+		ref.Upstream = strings.TrimSpace(parts[1])
+	}
+	if len(parts) > 2 {
+		ref.Ahead, ref.Behind, ref.Gone = parseUpstreamTrack(parts[2])
+	}
+	return ref, true
+}
+
+// parseUpstreamTrack 解析 %(upstream:track) 的输出（git 默认带方括号）：
+// ""（已同步或未配置 upstream）/ "[ahead N]" / "[behind N]" / "[ahead N, behind M]" /
+// "[gone]"（upstream 已配置但跟踪 ref 已不存在——远端分支被删）。
+// 无法识别的内容降级为零值——track 是附加信息，不应让整个 Refs 失败。
+func parseUpstreamTrack(s string) (ahead, behind int, gone bool) {
+	s = strings.TrimSpace(strings.Trim(strings.TrimSpace(s), "[]"))
+	if s == "gone" {
+		return 0, 0, true
+	}
+	for _, part := range strings.Split(s, ",") {
+		kind, num, ok := strings.Cut(strings.TrimSpace(part), " ")
+		if !ok {
+			continue
+		}
+		n, err := strconv.Atoi(num)
+		if err != nil {
+			continue
+		}
+		switch kind {
+		case "ahead":
+			ahead = n
+		case "behind":
+			behind = n
+		}
+	}
+	return ahead, behind, false
+}
+
+// Refs 一次 for-each-ref 拉全 refs/ 树，按 namespace 前缀分组返回规范全名；
+// 本地分支顺带带上 upstream 跟踪信息（Upstream / Ahead / Behind / Gone）——
+// ahead/behind 计数由 git 在同一进程内完成，调用方不必再逐分支跑 rev-list。
 // 只回答「仓库有哪些 ref」；「当前检出在哪个 ref」是 HEAD 状态，用 HeadRef。
 // 规范全名的拼装收敛在此（workbench 的 TreeSource ref id 直接透传，不在调用方拼前缀）；
 // refs/stash 等其他子树不分组不返回（现有消费方只消费三类）。
@@ -114,12 +176,15 @@ func Refs(path string) (*RefsResult, error) {
 		return &RefsResult{}, nil
 	}
 
-	out, err := runOut(path, "for-each-ref", "--format=%(refname)")
+	format := "--format=%(refname)" + refLineSep + "%(upstream)" + refLineSep + "%(upstream:track)"
+	out, err := runOut(path, "for-each-ref", format)
 	if err != nil {
 		return nil, err
 	}
 
-	result := BuildRefs(strings.Split(strings.TrimSpace(out), "\n"))
+	// 只剥行结束符、不做 TrimSpace：空字段时每行以尾随 " | " 结尾，
+	// 整体 TrimSpace 会把末行的分隔符一起咬掉，造成末行字段错位
+	result := BuildRefs(strings.Split(strings.TrimRight(out, "\n"), "\n"))
 	return result, nil
 }
 
@@ -163,9 +228,9 @@ func DefaultBranch(path string) (string, error) {
 		return "", nil
 	}
 	// origin/HEAD 未设置时 symbolic-ref 报错（非 0 退出），走 fallback。
-	// 不带 --short 取全名（形如 refs/remotes/origin/master），BuildRef 才能拆出分支名
+	// 不带 --short 取全名（形如 refs/remotes/origin/master），buildRef 才能拆出分支名
 	if out, err := runOut(path, "symbolic-ref", RefRemotesPrefix+"origin/HEAD"); err == nil {
-		if ref, err := BuildRef(strings.TrimSpace(out)); err == nil {
+		if ref, err := buildRef(strings.TrimSpace(out)); err == nil {
 			return ref.Branch, nil
 		}
 	}
