@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Workspace 一个可作为打开入口的子目录（显式声明或探测推导而来）。
