@@ -25,7 +25,7 @@ func newPathCmd(a *app.App) *cobra.Command {
 			query := xslices.Get(args, 0)
 
 			// 匹配项目（与 open 一致）
-			proj, err := PickProject(a.ProjectService(), query, a.Local())
+			proj, err := pickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}
