@@ -2,13 +2,11 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 
 	"github.com/heyuuu/x/di"
 
 	"cube/internal/config"
-	"cube/internal/logger"
 	"cube/internal/server"
 )
 
@@ -17,9 +15,7 @@ import (
 // 内部只持有冻结后的 di 容器，其余成员经 di.Get 按需解析。
 type App struct {
 	hasInit   bool
-	cfgFile   string // 配置文件路径（--config 或默认值）
-	debug     bool   // --debug：只影响 logger 初始化
-	local     bool   // --local：query 缺省的命令以 cwd 定位项目（cmd/helpers.go pickProject 消费）
+	local     bool // --local 模式，cmd 支持缺省使用 pwd 作为路径参数
 	container *di.Container
 }
 
@@ -28,20 +24,11 @@ func New() *App {
 	return &App{}
 }
 
-// Init 加载配置并完成组装；成功后不可再次调用。
-func (a *App) Init(cfgFile string, debug bool, local bool) error {
+// Init 完成初始化，成功后不可再次调用。
+func (a *App) Init(cfg *config.Config, local bool) error {
 	if a.hasInit {
 		return errors.New("app 已初始化过，不可重复初始化")
 	}
-
-	// 初始化配置
-	cfg, err := config.Load(cfgFile)
-	if err != nil {
-		return fmt.Errorf("加载配置文件失败: %w", err)
-	}
-
-	// 尽量在其他行为前初始化 Logger
-	logger.Init(cfg.LogDir(), debug)
 
 	// 初始化 DI 容器
 	// 业务单例都在此注册，方便自动注入
@@ -61,8 +48,6 @@ func (a *App) Init(cfgFile string, debug bool, local bool) error {
 	}
 
 	// 设置参数
-	a.cfgFile = cfgFile
-	a.debug = debug
 	a.local = local
 	a.container = c
 	a.hasInit = true

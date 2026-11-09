@@ -20,6 +20,8 @@ import (
 	"cube/internal/cmd/tpl"
 	"cube/internal/cmd/ui"
 	"cube/internal/cmd/workspace"
+	"cube/internal/config"
+	"cube/internal/logger"
 	"cube/internal/version"
 )
 
@@ -67,12 +69,20 @@ func newRootCmd(a *app.App) *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			// PersistentPreRunE 之前发生的输入类错误仍附 usage；运行期错误不再附 usage
 			cmd.SilenceUsage = true
-			// 展开 cfgFile 路径
+			// 初始化配置
 			absCfgFile, err := cmdutil.ExtendPath(cfgFile)
 			if err != nil {
 				return fmt.Errorf("解析 config 路径失败: %w", err)
 			}
-			return a.Init(absCfgFile, debug, local)
+			cfg, err := config.Load(absCfgFile)
+			if err != nil {
+				return fmt.Errorf("加载配置文件失败: %w", err)
+			}
+
+			// 尽量在其他行为前初始化 Logger
+			logger.Init(cfg.LogDir(), debug)
+
+			return a.Init(cfg, local)
 		},
 	}
 
