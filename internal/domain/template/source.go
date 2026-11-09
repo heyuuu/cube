@@ -9,7 +9,6 @@ import (
 	"github.com/heyuuu/x/xstd/xos"
 
 	"cube/pkg/git"
-	"cube/pkg/pathkit"
 )
 
 // DefaultSource 缺省模板源名（免配置即可 create 的体验兜底）。
@@ -79,7 +78,7 @@ func LoadSourceTemplates(sourcePath string) (map[string]string, error) {
 	// 多模板 source (默认 templates/* 为各模板地址)
 	tplRoot := filepath.Join(sourcePath, "templates")
 	if !xos.IsDir(tplRoot) {
-		return nil, fmt.Errorf("%s 不是合法模板来源：根目录无 template.yaml，也无 templates/ 子目录", pathkit.PrettyPath(sourcePath))
+		return nil, fmt.Errorf("%s 不是合法模板来源：根目录无 template.yaml，也无 templates/ 子目录", sourcePath)
 	}
 
 	// 读取子目录

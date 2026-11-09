@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/project"
 	"cube/pkg/git"
-	"cube/pkg/pathkit"
 	"cube/pkg/tui"
 )
 
@@ -130,7 +130,7 @@ func printDoctorFindings(c doctorCheck, findings []doctorFinding) {
 	rows := make([][]string, 0, len(findings))
 	for _, f := range findings {
 		rows = append(rows, []string{
-			pathkit.PrettyPath(f.path),
+			cmdutil.PrettyPath(f.path),
 			f.problem,
 			f.detail,
 		})

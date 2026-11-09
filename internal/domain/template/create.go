@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"cube/pkg/pathkit"
 	"cube/pkg/tui"
 )
 
@@ -45,7 +44,7 @@ func Create(sourcePath string, tplName string, targetPath string, cliVars map[st
 		return err
 	}
 
-	fmt.Printf("已生成 %d 个文件到 %s\n", count, pathkit.PrettyPath(targetPath))
+	fmt.Printf("已生成 %d 个文件到 %s\n", count, targetPath)
 	return nil
 }
 
@@ -54,14 +53,14 @@ func Create(sourcePath string, tplName string, targetPath string, cliVars map[st
 func validateTarget(targetPath string) error {
 	if info, err := os.Stat(targetPath); err == nil {
 		if !info.IsDir() {
-			return fmt.Errorf("目标路径已存在且不是目录: %s", pathkit.PrettyPath(targetPath))
+			return fmt.Errorf("目标路径已存在且不是目录: %s", targetPath)
 		}
 		entries, err := os.ReadDir(targetPath)
 		if err != nil {
 			return fmt.Errorf("读取目标目录失败: %w", err)
 		}
 		if len(entries) > 0 {
-			return fmt.Errorf("目标目录非空，拒绝覆盖: %s", pathkit.PrettyPath(targetPath))
+			return fmt.Errorf("目标目录非空，拒绝覆盖: %s", targetPath)
 		}
 	}
 	return nil

@@ -9,7 +9,6 @@ import (
 	"cube/internal/app"
 	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/project"
-	"cube/pkg/pathkit"
 	"cube/pkg/tui"
 )
 
@@ -79,8 +78,8 @@ func checkCloneRules(service *project.Service) {
 		if ok && p.Path() != localPath {
 			rows = append(rows, []string{
 				p.Name(),
-				pathkit.PrettyPath(p.Path()),
-				pathkit.PrettyPath(localPath),
+				cmdutil.PrettyPath(p.Path()),
+				cmdutil.PrettyPath(localPath),
 				repoURL,
 			})
 		}

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/heyuuu/x/xstd/xfilepath"
 	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/config"
@@ -13,7 +14,6 @@ import (
 	"cube/pkg/easycache"
 	"cube/pkg/fuzzy"
 	"cube/pkg/git"
-	"cube/pkg/pathkit"
 )
 
 // Service project 领域服务：scan/clone 规则管理 + 项目列表查询（列表走 easycache 惰性缓存）。
@@ -177,7 +177,7 @@ func (s *Service) SearchInPath(path string) []*Project {
 
 	var result []*Project
 	for _, proj := range s.Projects() {
-		if pathkit.IsUnder(proj.Path(), path) {
+		if xfilepath.HasPrefix(proj.Path(), path) {
 			result = append(result, proj)
 		}
 	}

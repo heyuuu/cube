@@ -8,7 +8,6 @@ import (
 	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/domain/project"
-	"cube/pkg/pathkit"
 	"cube/pkg/tui"
 )
 
@@ -104,7 +103,7 @@ func ShowProjects(service *project.Service, projects []*project.Project) {
 			}
 			return []string{
 				p.Name(),
-				pathkit.PrettyPath(p.Path()),
+				PrettyPath(p.Path()),
 				repoURL,
 			}
 		}),

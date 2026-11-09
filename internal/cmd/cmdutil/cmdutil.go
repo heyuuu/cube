@@ -48,6 +48,35 @@ func ExtendPath(p string) (string, error) {
 	return filepath.Join(wd, p), nil
 }
 
+// PrettyPath 把 home 下的绝对路径美化为 ~ 缩写形式，其余规范化后原样返回。
+func PrettyPath(path string) string {
+	if path == "" {
+		return ""
+	}
+	// 规范化冗余分隔符 / . / ..，保证后续比较稳定
+	path = filepath.Clean(path)
+	if !filepath.IsAbs(path) {
+		return path
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+
+	rel, err := filepath.Rel(home, path)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return path
+	}
+
+	// path 即 home 本身（rel 为 "."），标准化为 "~"
+	if rel == "." {
+		return "~"
+	}
+
+	return "~/" + rel
+}
+
 // PrettyTime 把时间格式化为「x秒前 / x分钟前 / x小时前 ...」等相对形式。
 //
 // 过去时间以「前」结尾，未来时间以「后」结尾（如「30秒后」）。
