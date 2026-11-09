@@ -38,11 +38,27 @@ func applyDefaultStyle(t *table.Table) {
 		})
 }
 
+// fitWidth 给表格套终端限宽。
+//
+// 不设 Width 时表格按内容自然宽度渲染，窄终端下由终端硬换行折断边框（表格变形）。
+// 限宽后超宽内容交由 lipgloss resize 收敛：按各列宽与中位数的差收缩列
+// （每列有最小宽度保底），Wrap(false) 让被压窄的单元格尾部 … 截断、保持单行，
+// 而非折成多行单元格（默认 wrap=true，那是另一种变形）。
+// FitContent 把 Width 当上限而非目标——窄表保持内容宽，不被拉伸到整屏宽。
+func fitWidth(t *table.Table, w int) {
+	if w <= 0 {
+		return
+	}
+	t.Width(w).FitContent().Wrap(false)
+}
+
 // buildTable 构造一个填好数据的 lipgloss table
-// 默认套用 applyDefaultStyle（圆角彩色边框 + 加粗表头 + 内边距），opts 在此之上增量覆盖。行长度短于表头的列以空串补齐。
+// 默认套用 applyDefaultStyle（圆角彩色边框 + 加粗表头 + 内边距）+ 终端限宽（见 fitWidth），
+// opts 在此之上增量覆盖。行长度短于表头的列以空串补齐。
 func buildTable(headers []string, rows [][]string, opts ...TableOption) *table.Table {
 	t := table.New()
 	applyDefaultStyle(t)
+	fitWidth(t, StdoutWidth())
 	for _, opt := range opts {
 		if opt != nil {
 			opt(t)
