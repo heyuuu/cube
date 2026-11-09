@@ -30,11 +30,12 @@ func (e *WorktreeRemoveDenied) Error() string {
 	return "存在以下未保存内容，需 force 才能删除: " + strings.Join(e.Reasons, "；")
 }
 
-// mainRootOf 返回 root 所属仓库的主目录（root 是 linked worktree 时定位主仓库，
-// 否则即自身）。项目快照按主项目路径 key，写后定向刷新必须用它。
+// mainRootOf 返回 root 所属仓库的主工作区目录（linked worktree 归并主仓库，普通仓库即自身；
+// 非 git 目录原样返回——调用方传入的都是已验证的仓库根）。项目快照按主项目路径 key，
+// 写后定向刷新必须用它。
 func mainRootOf(root string) string {
-	if m := git.WorktreeMain(root); m != "" {
-		return m
+	if main, ok := git.FindMainRoot(root); ok {
+		return main
 	}
 	return root
 }

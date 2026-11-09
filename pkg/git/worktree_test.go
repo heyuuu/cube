@@ -90,6 +90,47 @@ func TestWorktreeList(t *testing.T) {
 	}
 }
 
+// FindMainRoot 归并到主工作区根：普通仓库（含子目录）返回仓库根，
+// linked worktree（含子目录）返回主仓库目录，非 git 目录 ok=false。
+func TestFindMainRoot(t *testing.T) {
+	ws := newTestWorkspace(t)
+	repo := ws.MakeGitRepo("repo")
+	wtDir := ws.MakeWorktree(repo, "wt-feat", "feat")
+	sub := filepath.Join(repo, "pkg", "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatalf("建子目录失败: %v", err)
+	}
+	wtSub := filepath.Join(wtDir, "inner")
+	if err := os.Mkdir(wtSub, 0o755); err != nil {
+		t.Fatalf("建 worktree 子目录失败: %v", err)
+	}
+
+	// 普通仓库原样返回传入口径；worktree 归并路径来自 git 写入 .git 文件的内容
+	// （符号链接规范化后的路径，macOS 上 /var → /private/var），两种口径分开断言
+	canonicalRepo, err := filepath.EvalSymlinks(repo)
+	if err != nil {
+		t.Fatalf("解析真实路径失败: %v", err)
+	}
+
+	cases := []struct {
+		dir  string
+		root string
+		ok   bool
+	}{
+		{repo, repo, true},
+		{sub, repo, true},
+		{wtDir, canonicalRepo, true},
+		{wtSub, canonicalRepo, true},
+		{ws.Join("plain"), "", false},
+	}
+	for _, c := range cases {
+		root, ok := FindMainRoot(c.dir)
+		if ok != c.ok || root != c.root {
+			t.Errorf("FindMainRoot(%s) = (%s, %v), want (%s, %v)", c.dir, root, ok, c.root, c.ok)
+		}
+	}
+}
+
 // 从 worktree 目录内调用应得到与主目录一致的列表（1032 归并链路依赖：
 // 命中 worktree 目录时顺藤定位主仓库、枚举全部目标）。
 func TestWorktreeListFromWorktreeDir(t *testing.T) {

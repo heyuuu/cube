@@ -192,13 +192,10 @@ func (s *Service) ResolveProject(path string) *Project {
 		return nil
 	}
 
-	// linked worktree 归并到主仓库目录；普通工作区向上取仓库根——
-	// WorktreeMain 只认 .git 为文件的 linked worktree，两种形态各自探测
-	root := git.WorktreeMain(path)
-	if root == "" {
-		if root, ok = git.FindGitRoot(path); !ok {
-			return nil
-		}
+	// 归并到仓库主工作区根（linked worktree 顺藤到主仓库，普通工作区即仓库根）
+	root, ok := git.FindMainRoot(path)
+	if !ok {
+		return nil
 	}
 
 	return s.FindByPath(root)

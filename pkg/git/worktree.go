@@ -35,6 +35,25 @@ func WorktreeMain(dir string) string {
 	if !ok {
 		return ""
 	}
+	return worktreeMainOfRoot(root)
+}
+
+// FindMainRoot 向上探测 dir 所属 git 仓库并归并到主工作副本目录：dir（或其祖先）是
+// linked worktree 时返回主仓库目录，否则返回仓库根本身；非 git 目录 ok=false。
+// 「目录 → 所属仓库主工作区」的归并原语，调用方不再手拼 WorktreeMain + 自身兜底的两段式。
+func FindMainRoot(dir string) (root string, ok bool) {
+	root, ok = FindGitRoot(dir)
+	if !ok {
+		return "", false
+	}
+	if main := worktreeMainOfRoot(root); main != "" {
+		return main, true
+	}
+	return root, true
+}
+
+// worktreeMainOfRoot root（已确认是 git 根）为 linked worktree 时返回主仓库目录，否则空串。
+func worktreeMainOfRoot(root string) string {
 	gitPath := filepath.Join(root, ".git")
 	info, err := os.Stat(gitPath)
 	if err != nil || !info.Mode().IsRegular() {
