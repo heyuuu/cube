@@ -114,6 +114,21 @@ func (s *Service) Projects() []*Project {
 	return s.scanCache.Get()
 }
 
+// FindByName 按名称精确查找项目
+func (s *Service) FindByName(name string) *Project {
+	for _, proj := range s.Projects() {
+		if proj.Name() == name {
+			return proj
+		}
+	}
+	return nil
+}
+
+// SearchByName 按名称模糊搜索项目列表
+func (s *Service) SearchByName(query string) []*Project {
+	return fuzzy.MatchBy(query, s.Projects(), (*Project).Name, nil)
+}
+
 // cleanAbsPath 路径入参的统一预处理：仅接受绝对路径（相对路径视为调用方传错，
 // 按未找到处理而非报错，与「查无此项目」语义一致），返回清理后的路径。
 // ~ / 相对路径的展开是出口层职责（cmd 用 ExtendPath）。
@@ -124,7 +139,7 @@ func cleanAbsPath(path string) (string, bool) {
 	return filepath.Clean(path), true
 }
 
-// FindByPath 按绝对路径查项目，未命中返回 nil（相对路径视为未找到）。
+// FindByPath 按绝对路径精确匹配项目，未命中返回 nil（相对路径视为未找到）。
 func (s *Service) FindByPath(path string) *Project {
 	path, ok := cleanAbsPath(path)
 	if !ok {
@@ -153,9 +168,40 @@ func (s *Service) FindByPath(path string) *Project {
 	return nil
 }
 
-// SearchByName 按名称模糊搜索项目列表。
-func (s *Service) SearchByName(query string) []*Project {
-	return fuzzy.MatchBy(query, s.Projects(), (*Project).Name, nil)
+// SearchInPath 搜索 path 路径下的所有项目列表（含 path 本身项目）
+func (s *Service) SearchInPath(path string) []*Project {
+	path, ok := cleanAbsPath(path)
+	if !ok {
+		return nil
+	}
+
+	var result []*Project
+	for _, proj := range s.Projects() {
+		if pathkit.IsUnder(proj.Path(), path) {
+			result = append(result, proj)
+		}
+	}
+	return result
+}
+
+// ResolveProject 查找目录所属项目
+// 参数目录可以是 git 工作区的根目录或子目录，或 git worktree 的根目录或子目录
+func (s *Service) ResolveProject(path string) *Project {
+	path, ok := cleanAbsPath(path)
+	if !ok {
+		return nil
+	}
+
+	// linked worktree 归并到主仓库目录；普通工作区向上取仓库根——
+	// WorktreeMain 只认 .git 为文件的 linked worktree，两种形态各自探测
+	root := git.WorktreeMain(path)
+	if root == "" {
+		if root, ok = git.FindGitRoot(path); !ok {
+			return nil
+		}
+	}
+
+	return s.FindByPath(root)
 }
 
 // OpenTargets 返回项目的打开目标列表（1032 根目录 + worktrees；1030 主/worktree 的 workspaces）。
@@ -176,81 +222,6 @@ func (s *Service) OpenTargets(path string) []OpenTarget {
 		}
 	}
 	return targets
-}
-
-// OwnsDir 判断 dir 是否位于项目领地内：主根或其子目录、任一 linked worktree（快照内）
-// 或其子目录。供 Web 打开接口做目标归属校验——前端目录树可从任意子目录发起打开，
-// 不限于 OpenTarget 精确集合；worktree 归属只读快照，不现场跑 git。
-func (s *Service) OwnsDir(path, dir string) bool {
-	proj := s.FindByPath(path)
-	if proj == nil {
-		return false
-	}
-	if pathkit.IsUnder(dir, proj.Path()) {
-		return true
-	}
-	info, _ := s.Snapshot(proj.Path())
-	if info == nil {
-		return false
-	}
-	for _, wt := range info.Worktrees {
-		if pathkit.IsUnder(dir, wt.Path) {
-			return true
-		}
-	}
-	return false
-}
-
-// ResolveProject 把目标目录归并到所属主项目（「向上找当前项目」，与 SearchByPath 的
-// 「向下列项目」方向相对）：目录是某项目根或其任意子目录直接命中；否则走 worktree
-// 归并（ResolveMainProject）。workspace 成员是主根直系子目录，同样被第一步覆盖。
-// 所有「拿一个实际目录反查项目」的出口（PickProject / alfred project-open /
-// usage 路径归一）统一走这里，不要在调用方手拼 FindByPath + ResolveMainProject 的两段式。
-func (s *Service) ResolveProject(path string) *Project {
-	path, ok := cleanAbsPath(path)
-	if !ok {
-		return nil
-	}
-
-	// 逐项目查找
-	for _, proj := range s.Projects() {
-		// 判断要查找的目录是否为项目目录或子目录
-		if pathkit.IsUnder(path, proj.Path()) {
-			return proj
-		}
-	}
-
-	// 尝试按 git worktree 目录反向找主项目
-	return s.ResolveMainProject(path)
-}
-
-// ResolveMainProject 把任意目录归并到主项目（1032 路径归并链路）：
-// 目录（或其祖先）是 linked worktree 时，顺着 .git 文件定位主仓库并返回对应项目；
-// 非 worktree 或主仓库未收录（不在任何 scan-rule 下）返回 nil。
-// 只做文件系统探测 + 列表查找，不跑 git 子进程。
-func (s *Service) ResolveMainProject(dir string) *Project {
-	main := git.WorktreeMain(dir)
-	if main == "" {
-		return nil
-	}
-	return s.FindByPath(main)
-}
-
-// SearchByPath 通过路径搜索项目列表（「向下列项目」，与 ResolveProject 的
-// 「向上找当前项目」方向相对）：返回位于 path 之下（含 path 本身）的项目。
-func (s *Service) SearchByPath(path string) []*Project {
-	path, ok := cleanAbsPath(path)
-	if !ok {
-		return nil
-	}
-
-	var result []*Project
-	for _, proj := range s.Projects() {
-		if pathkit.IsUnder(proj.Path(), path) {
-			result = append(result, proj)
-		}
-	}
-	return result
 }
 
 // --- scan 相关 ---

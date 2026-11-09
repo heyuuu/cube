@@ -170,7 +170,7 @@ func (h *ProjectHandler) projectOpen(input ProjectOpenInput) (map[string]any, er
 		if _, err := os.Stat(input.Body.Dir); err != nil {
 			return nil, errors.New("目标目录不存在: " + input.Body.Dir)
 		}
-		if !h.projectService.OwnsDir(proj.Path(), input.Body.Dir) {
+		if dirProj := h.projectService.ResolveProject(input.Body.Dir); dirProj == nil || dirProj.Path() != proj.Path() {
 			return nil, errors.New("目标目录不属于该项目（须位于项目根或其 worktree 内）: " + input.Body.Dir)
 		}
 		target = input.Body.Dir

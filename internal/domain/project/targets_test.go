@@ -211,33 +211,6 @@ func TestOpenTargets(t *testing.T) {
 	}
 }
 
-// TestResolveMainProject worktree 目录（含子目录）归并到主项目；主仓库未收录/非 worktree 返回 nil。
-func TestResolveMainProject(t *testing.T) {
-	ws := testfixture.NewWorkspace(t)
-	root := ws.Mkdir("root")
-	repo := ws.MakeProjectDir(filepath.Join("root", "repo"))
-	wtDir := ws.MakeWorktree(repo, "wt-out", "feat") // worktree 位于 scan root 之外
-
-	s := newServiceWithRules(t, ws, []ScanRule{{Group: "g", Path: root, MaxDepth: 3}}, nil)
-
-	// worktree 根目录与其子目录都归并到主项目
-	if p := s.ResolveMainProject(wtDir); p == nil || p.Path() != repo {
-		t.Fatalf("worktree 应归并到主项目 %s, got %+v", repo, p)
-	}
-	sub := ws.Mkdir(filepath.Join("wt-out", "sub"))
-	if p := s.ResolveMainProject(sub); p == nil || p.Path() != repo {
-		t.Fatalf("worktree 子目录应归并到主项目 %s, got %+v", repo, p)
-	}
-	// 主仓库目录自身不是 worktree，返回 nil
-	if p := s.ResolveMainProject(repo); p != nil {
-		t.Fatalf("主仓库目录应返回 nil, got %+v", p)
-	}
-	// 普通目录返回 nil
-	if p := s.ResolveMainProject(ws.Join("plain")); p != nil {
-		t.Fatalf("普通目录应返回 nil, got %+v", p)
-	}
-}
-
 // TestResolveProject 项目根与任意子目录直接命中（向上标定当前项目）；
 // worktree / 主根 workspace 成员归并主项目；项目外目录与相对路径返回 nil。
 func TestResolveProject(t *testing.T) {
@@ -279,46 +252,5 @@ func TestResolveProject(t *testing.T) {
 	}
 	if p := s.ResolveProject("relative/sub"); p != nil {
 		t.Fatalf("相对路径应按未找到处理, got %+v", p)
-	}
-}
-
-// TestOwnsDir 归属判定：主根/其子目录/快照内 worktree 及其子目录属于项目，
-// 项目外目录与未采集 worktree 不属于。
-func TestOwnsDir(t *testing.T) {
-	ws := testfixture.NewWorkspace(t)
-	root := ws.Mkdir("root")
-	repo := ws.MakeProjectDir(filepath.Join("root", "repo"))
-	ws.Mkdir(filepath.Join("repo", "apps", "web"))
-	ws.MakeWorktree(repo, "wt-out", "feat")
-	ws.Mkdir(filepath.Join("wt-out", "sub"))
-	// 快照内 worktree 路径经符号链接规范化（macOS /var → /private/var），测试侧同样取真实路径
-	wtDir, err := filepath.EvalSymlinks(ws.Join("wt-out"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	s := newServiceWithRules(t, ws, []ScanRule{{Group: "g", Path: root, MaxDepth: 3}}, nil)
-	if _, _, err := s.Refresh(); err != nil {
-		t.Fatal(err)
-	}
-
-	cases := []struct {
-		dir  string
-		want bool
-	}{
-		{repo, true},
-		{filepath.Join(repo, "apps", "web"), true},
-		{wtDir, true},
-		{filepath.Join(wtDir, "sub"), true},
-		{ws.Join("plain"), false},
-		{ws.Dir, false}, // 项目根的父目录不算领地
-	}
-	for _, c := range cases {
-		if got := s.OwnsDir(repo, c.dir); got != c.want {
-			t.Errorf("OwnsDir(%s) = %v, want %v", c.dir, got, c.want)
-		}
-	}
-	if s.OwnsDir("/nonexistent", repo) {
-		t.Error("未收录项目应返回 false")
 	}
 }

@@ -35,7 +35,7 @@ func SearchProjects(service *project.Service, query string) ([]*project.Project,
 			return nil, fmt.Errorf("解析路径 query 失败: query=%s err=%w", query, err)
 		}
 
-		return service.SearchByPath(absPath), nil
+		return service.SearchInPath(absPath), nil
 	}
 	return service.SearchByName(query), nil
 }

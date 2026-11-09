@@ -24,7 +24,7 @@ func newCmdServiceAt(t *testing.T, scanRoot, group string, maxDepth int) *projec
 
 // TestSearchProjects_PathQueryCwd 验证路径 query 的 cwd 解析发生在 cmd 层：
 // query="." 基于当前目录解析后向下搜索（复现 cube project list . 的完整链路）。
-// domain 的 SearchByPath 已不收相对路径，此测试守住出口层的解析职责不回退。
+// domain 的 SearchInPath 已不收相对路径，此测试守住出口层的解析职责不回退。
 // 子目录向上标定是 PickProject 的职责（见 TestPickProject_LocalMode）。
 func TestSearchProjects_PathQueryCwd(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
