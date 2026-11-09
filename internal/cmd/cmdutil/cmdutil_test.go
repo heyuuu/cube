@@ -69,7 +69,7 @@ func TestPrettyPath(t *testing.T) {
 		{"home 下双斜杠折叠", filepath.Join(home, "code") + "//app", "~/code/app"},
 		{"home 下 . 段清理", filepath.Join(home, "code", ".", "app"), "~/code/app"},
 		{"home 下 .. 回退", filepath.Join(home, "code", "sub", "..", "app"), "~/code/app"},
-		{"home 下 .. 回退", filepath.Join(home, "..", "code"), filepath.Clean(filepath.Join(home, "..", "code"))},
+		{"home 之上 .. 回退不转 ~", filepath.Join(home, "..", "code"), filepath.Clean(filepath.Join(home, "..", "code"))},
 		{"home 外双斜杠折叠", "/usr//local/bin", "/usr/local/bin"},
 		{"home 外 . 段清理", "/usr/./local/bin", "/usr/local/bin"},
 		{"home 外 .. 回退", "/usr/local/../bin", "/usr/bin"},
