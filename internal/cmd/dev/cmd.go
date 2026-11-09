@@ -21,6 +21,6 @@ func NewCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(newTuiCmd())
 	cmd.AddCommand(newCommandsCmd())
 	cmd.AddCommand(newLoggerCmd())
-	cmd.AddCommand(newRefreshGitCacheCmd(a))
+	cmd.AddCommand(newRefreshSnapshotCmd(a))
 	return cmd
 }

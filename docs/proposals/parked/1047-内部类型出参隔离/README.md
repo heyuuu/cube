@@ -14,7 +14,7 @@
 
 Web API 的出参应只含**基础类型（含 slice/map）+ handlers 包内定义的类型**。实际盘点（2026-11-08，42 个端点全量扫描）发现 17 个端点的响应类型整体是内部类型直通：domain 实体、pkg 类型、甚至基础设施层类型直接进 OpenAPI schema 和前端。
 
-首例已修复验证：project list 的快照字段（时名 `gitInfo`）原直通 `projcache.Entry`，已隔离为 handlers 内的 DTO（现名 `ProjectSnapshotDTO`，json 字段 `snapshot`）+ 嵌套 `RemoteDTO`/`WorktreeDTO`（commit `4454781`）——json tag 与原 wire 格式逐字段一致，前端无感；projcache 此后可自由演化字段（如删 Branches/Detached）不再冲击 API。本提案把该模式铺到其余端点。
+首例已修复验证：project list 的快照字段（时名 `gitInfo`）原直通 `projcache.Entry`（该包现名 snapshot），已隔离为 handlers 内的 DTO（现名 `ProjectSnapshotDTO`，json 字段 `snapshot`）+ 嵌套 `RemoteDTO`/`WorktreeDTO`（commit `4454781`）——json tag 与原 wire 格式逐字段一致，前端无感；snapshot 此后可自由演化字段（如删 Branches/Detached）不再冲击 API。本提案把该模式铺到其余端点。
 
 ## 问题清单（盘点快照）
 
@@ -24,7 +24,7 @@ Web API 的出参应只含**基础类型（含 slice/map）+ handlers 包内定�
 |---|---|---|---|
 | forge | GET `/api/forge/list` | `ListResult[forge.Forge]` | 含 `*icons.Icon` 字段 |
 | forge | GET `/api/forge/account/list` | `ListResult[forge.Account]` | **含 Token 字段**，靠 handler 手动打码（forge_handler.go accountList）——类型带 token 上 API 面，未来新端点忘打码即泄漏 |
-| forge | GET `/api/forge/overview` | `*forge.Overview` | 三层嵌套：`RepoRow` → `gitapi.RemoteRepo` + `*LocalRepo`（后者又嵌 projcache 字段）、`AcctMeta` |
+| forge | GET `/api/forge/overview` | `*forge.Overview` | 三层嵌套：`RepoRow` → `gitapi.RemoteRepo` + `*LocalRepo`（后者又嵌 snapshot 字段）、`AcctMeta` |
 | workbench | info / refs / remotes / commits / commit / worktrees / tree / file / diff / worktree/add（10 端点） | `workbench.Info/Refs/RemoteEntry/CommitsPageResult/WorktreeStatus/TreeListResult/FileResult/DiffTreesResult/WorktreeCreated` | 且嵌 pkg 与兄弟 domain 类型：commits → `[]git.CommitEntry`、commit → `*git.CommitDetail`、worktrees → `[]workspace.Workspace` |
 | project | GET `/api/project/scan-rules` | `ListResult[project.ScanRule]` | 含 `*icons.Icon`；**入参侧已有 Item 转换，出参侧漏了** |
 | project | GET `/api/project/clone-rules` | `ListResult[project.CloneRule]` | 同上 |

@@ -1,13 +1,14 @@
-// Package projcache 提供项目状态快照的本地缓存（git 信息 + worktree 枚举 + workspace 成员）。
+// Package snapshot 提供项目状态快照的本地缓存（git 信息 + worktree 枚举 + workspace 成员）。
 //
 // 对几十个 git 项目的全量采集是 IO 密集型操作，每次都跑会明显卡顿。
-// 本包把采集结果缓存到 ~/.config/cube/cache/projcache.json：
+// 本包把采集结果缓存到 ~/.config/cube/cache/snapshot.json：
 //   - CLI（短命进程）启动时 Load 一次快照到内存，只读不刷新；
-//   - 常驻 server 进程内 goroutine 定时 Refresh 采集，写内存 + flush projcache.json。
+//   - 常驻 server 进程内 goroutine 定时 Refresh 采集，写内存 + flush snapshot.json。
 //
-// projcache.json 的角色是「跨重启持久化缓存」：server 重启后秒恢复，CLI 读最近一次落盘。
-// 原名 gitcache/git.json，v3 起快照含 workspace 信息更名 projcache，v4 起文件同步更名。
-package projcache
+// snapshot.json 的角色是「跨重启持久化缓存」：server 重启后秒恢复，CLI 读最近一次落盘。
+// 更名史：gitcache/git.json →（v3 含 workspace）projcache/projcache.json → snapshot/snapshot.json
+// （本轮包与文件同步更名，快照格式未变、cacheVersion 不 bump；旧文件残留在缓存目录，可整体删除）。
+package snapshot
 
 import (
 	"cmp"
@@ -30,7 +31,7 @@ import (
 // 版本号只在「上一版格式被真实使用过」后才递增——开发期连续演进不逐次 bump。
 // v2：worktree 归并为项目打开目标（1032）——移除 WorktreeMain（worktree 不再是独立项目），
 // 新增 Worktrees（主项目附带枚举 linked worktree）。
-// v3：包更名 projcache + workspace 字段（1030）——Entry/WorktreeInfo 各增 Workspaces。
+// v3：包更名 projcache（原 gitcache）+ workspace 字段（1030）——Entry/WorktreeInfo 各增 Workspaces。
 // v4：主工作区拆出为独立 Main 值字段（恒存在，类型强制），Worktrees 只含 linked worktree；
 // 移除 Entry 顶级 RepoURL/CurrentBranch/Workspaces/Dirty（改经 OriginURL/Main 取用，
 // dirty 迁入 WorktreeInfo 按工作区采集）；采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
@@ -39,7 +40,7 @@ import (
 const cacheVersion = 5
 
 // 缓存文件名（位于缓存目录 dir 下）。
-const cacheFileName = "projcache.json"
+const cacheFileName = "snapshot.json"
 
 // Entry 单个项目的状态快照。
 type Entry struct {
@@ -117,7 +118,7 @@ type cacheFile struct {
 // Cache 内存态缓存。读多写少，用 RWMutex 保护 entries map。
 //
 // 并发模型（单写者）：
-//   - 常驻 server 是 projcache.json 的唯一写方，CLI 只读不写，无跨进程并发写问题。
+//   - 常驻 server 是 snapshot.json 的唯一写方，CLI 只读不写，无跨进程并发写问题。
 //   - 进程内：RWMutex 保护 map 读写；Refresh 每次整表重建（全新 map 覆盖 c.entries）。
 //   - 落盘在 Save() 的锁内串行执行：进程内 ticker 的 Refresh 与 HTTP handler 的
 //     RefreshOne 会并发调 Save，锁外写文件会出现旧快照后落覆盖新快照（盘上 stale）；
@@ -183,7 +184,7 @@ func (c *Cache) Size() int {
 	return len(c.entries)
 }
 
-// Save 落盘 projcache.json（store.SaveJSON：Deterministic 字节稳定 + 缩进 + 尾换行 + 原子写）。
+// Save 落盘 snapshot.json（store.SaveJSON：Deterministic 字节稳定 + 缩进 + 尾换行 + 原子写）。
 // 写盘在锁内：落盘低频且文件小，换来 Refresh / RefreshOne 两个写路径的落盘串行化
 // （见 Cache 并发模型注释）。
 func (c *Cache) Save() error {
@@ -209,7 +210,7 @@ func (c *Cache) Save() error {
 // 刻意不保留失败项目的旧 entry：避免某个项目长期异常、旧快照却一直存在而不被发现。
 //
 // 入参用 []string（项目绝对路径）而非 []*project.Project，刻意解耦对 project 包的依赖，
-// 避免 project → projcache → project 的循环 import。
+// 避免 project → snapshot → project 的循环 import。
 //
 // 并发模型：固定 defaultWorkers 个 worker 从 tasks channel 抢活——worker 数即并发上限
 // （采集是子进程 + IO 密集型，过高并发会与系统其他 IO 抢资源），无需额外信号量。
@@ -244,7 +245,7 @@ func (c *Cache) Refresh(paths []string) error {
 func (c *Cache) RefreshOne(path string) error {
 	entry, err := collectEntry(path)
 	if err != nil {
-		return fmt.Errorf("定向刷新 projcache 快照失败: %w", err)
+		return fmt.Errorf("定向刷新项目快照失败: %w", err)
 	}
 	c.mu.Lock()
 	c.entries[path] = entry

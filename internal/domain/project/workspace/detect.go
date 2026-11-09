@@ -2,7 +2,7 @@
 //
 // 数据来源两级：.cube/cube.json 的显式声明（人的、跟仓库走，文件格式见 project/cubefile）
 // 优先；字段缺失时按 workspaceScanRule（或程序默认规则）探测标准 monorepo 声明文件
-// （机器推导）。本包只做解析与推导——持久化的是声明文件本身，推导结果由 projcache
+// （机器推导）。本包只做解析与推导——持久化的是声明文件本身，推导结果由 snapshot
 // 采集侧带入快照。
 package workspace
 

@@ -5,17 +5,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"cube/internal/domain/project/projcache"
+	"cube/internal/domain/project/snapshot"
 	"cube/internal/domain/project/workspace"
 	"cube/internal/testfixture"
 )
 
-func entryFixture() *projcache.Entry {
-	return &projcache.Entry{
-		Main: projcache.WorktreeInfo{Path: "/x/main", Branch: "main", Workspaces: []workspace.Workspace{
+func entryFixture() *snapshot.Entry {
+	return &snapshot.Entry{
+		Main: snapshot.WorktreeInfo{Path: "/x/main", Branch: "main", Workspaces: []workspace.Workspace{
 			{Name: "server", Path: "server"}, {Name: "web", Path: "web"},
 		}},
-		Worktrees: []projcache.WorktreeInfo{
+		Worktrees: []snapshot.WorktreeInfo{
 			{Path: "/x/wt-hot", Branch: "hotfix"},
 			{Path: "/x/wt-detached", Branch: "", Detached: true},
 			{Path: "/x/wt-a", Branch: "feat"},
@@ -78,9 +78,9 @@ func TestTargetEntriesWorktreeWorkspaces(t *testing.T) {
 	wtRoot := ws.Mkdir("wt")
 	ws.Mkdir(filepath.Join("wt", "app"))
 
-	got := targetEntries("/main", &projcache.Entry{
-		Main: projcache.WorktreeInfo{Path: "/main", Branch: "main"},
-		Worktrees: []projcache.WorktreeInfo{{
+	got := targetEntries("/main", &snapshot.Entry{
+		Main: snapshot.WorktreeInfo{Path: "/main", Branch: "main"},
+		Worktrees: []snapshot.WorktreeInfo{{
 			Path:       wtRoot,
 			Branch:     "feat",
 			Workspaces: []workspace.Workspace{{Name: "app", Path: "app"}},
@@ -107,12 +107,12 @@ func TestTargetEntriesLabelDedup(t *testing.T) {
 		ws.Mkdir(sub)
 	}
 
-	got := targetEntries(ws.Dir, &projcache.Entry{
-		Main: projcache.WorktreeInfo{Path: ws.Dir, Branch: "main", Workspaces: []workspace.Workspace{
+	got := targetEntries(ws.Dir, &snapshot.Entry{
+		Main: snapshot.WorktreeInfo{Path: ws.Dir, Branch: "main", Workspaces: []workspace.Workspace{
 			{Name: "server", Path: "server"},
 			{Name: "server", Path: "web/server"},
 		}},
-		Worktrees: []projcache.WorktreeInfo{
+		Worktrees: []snapshot.WorktreeInfo{
 			{Path: ws.Join("wt-feat"), Branch: "feat", Workspaces: []workspace.Workspace{{Name: "app", Path: "app"}}},
 		},
 	})
@@ -137,9 +137,9 @@ func TestTargetEntriesLabelDedupMultiWorktrees(t *testing.T) {
 		ws.Mkdir(sub)
 	}
 
-	got := targetEntries(ws.Dir, &projcache.Entry{
-		Main: projcache.WorktreeInfo{Path: ws.Dir, Branch: "main"},
-		Worktrees: []projcache.WorktreeInfo{
+	got := targetEntries(ws.Dir, &snapshot.Entry{
+		Main: snapshot.WorktreeInfo{Path: ws.Dir, Branch: "main"},
+		Worktrees: []snapshot.WorktreeInfo{
 			{Path: ws.Join("f1-x"), Branch: "f1", Workspaces: []workspace.Workspace{{Name: "s1", Path: "s1"}}},
 			{Path: ws.Join("f2-x"), Branch: "f2", Workspaces: []workspace.Workspace{
 				{Name: "s", Path: "a"}, {Name: "s", Path: "b"},

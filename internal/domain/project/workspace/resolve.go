@@ -17,7 +17,7 @@ import (
 //  2. 否则探测：cube.json 的 workspaceScanRule（无则 DefaultScanRule）按序第一个命中生效；
 //  3. cube.json 不存在或坏 JSON → 等价于无声明，走探测。
 //
-// 本函数供采集侧调用（读文件系统），读路径不应调用——读 projcache 快照。
+// 本函数供采集侧调用（读文件系统），读路径不应调用——读侧走快照。
 func Resolve(root string) []Workspace {
 	if f, ok := cubefile.Load(root); ok {
 		if f.WorkspacesSet {

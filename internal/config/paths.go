@@ -26,5 +26,5 @@ func (c *Config) StateDir() string { return filepath.Join(c.DataDir, stateDirNam
 // UsageFile 打开记录文件 usage.jsonl 的完整路径（state/ 下）。
 func (c *Config) UsageFile() string { return filepath.Join(c.StateDir(), usageFileName) }
 
-// CacheDir 纯缓存目录（如 projcache.json）：可整体删除且 app 行为不变差，随时可重建。
+// CacheDir 纯缓存目录（如 snapshot.json）：可整体删除且 app 行为不变差，随时可重建。
 func (c *Config) CacheDir() string { return filepath.Join(c.DataDir, cacheDirName) }

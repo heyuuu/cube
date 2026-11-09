@@ -10,7 +10,7 @@ import (
 	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/config"
-	"cube/internal/domain/project/projcache"
+	"cube/internal/domain/project/snapshot"
 	"cube/pkg/easycache"
 	"cube/pkg/fuzzy"
 	"cube/pkg/git"
@@ -25,7 +25,7 @@ type Service struct {
 	// 项目扫描的内存缓存
 	scanCache *easycache.Item[[]*Project]
 	// 项目状态快照 (项目 git 信息 / worktree 信息 / workspace 信息等)
-	projCache *projcache.Cache
+	snapshotCache *snapshot.Cache
 	// 定时刷新（仅常驻 server 启用，CLI 不启用）
 	stopCh chan struct{} // nil = 未启用；非 nil = 定时器在跑
 }
@@ -33,7 +33,7 @@ type Service struct {
 // NewService 构造 Service：加载项目快照缓存（失败降级空缓存）并挂载项目扫描缓存。
 func NewService(cfg *config.Config) *Service {
 	// 加载项目状态快照（降级优先：失败返回空缓存，不报错）
-	projCache := projcache.Load(cfg.CacheDir())
+	snapshotCache := snapshot.Load(cfg.CacheDir())
 
 	// stores
 	scanRulesStore := newScanRulesStore(cfg.SettingsFile())
@@ -58,7 +58,7 @@ func NewService(cfg *config.Config) *Service {
 	return &Service{
 		scanRulesStore:  scanRulesStore,
 		cloneRulesStore: cloneRulesStore,
-		projCache:       projCache,
+		snapshotCache:   snapshotCache,
 		scanCache:       scanCache,
 	}
 }
@@ -161,7 +161,7 @@ func (s *Service) SearchByName(query string) []*Project {
 
 // OpenTargets 返回项目的打开目标列表（1032 根目录 + worktrees；1030 主/worktree 的 workspaces）。
 // 排序定稿：主项目根 > 主项目 workspaces > 每个 worktree 根 > 该 worktree 的 workspaces。
-// 只读 projcache 快照，不现场跑 git、不读 cube.json（遵守「读路径不得阻塞采集」）；项目未找到返回 nil。
+// 只读项目快照，不现场跑 git、不读 cube.json（遵守「读路径不得阻塞采集」）；项目未找到返回 nil。
 func (s *Service) OpenTargets(path string) []OpenTarget {
 	proj := s.FindByPath(path)
 	if proj == nil {
@@ -269,15 +269,15 @@ func (s *Service) MatchCloneRule(repoURL string) (rule CloneRule, localPath stri
 	return MatchCloneRule(repoURL, s.CloneRules())
 }
 
-// --- 项目快照（projcache）相关 ---
+// --- 项目快照（snapshot）相关 ---
 
 // Snapshot 读取单个项目的状态快照条目；未命中返回 (nil, false)。
 // 不阻塞、不触发采集 —— 调用方读取的是当前快照（可能 stale）。
-func (s *Service) Snapshot(path string) (*projcache.Entry, bool) {
-	if s.projCache == nil {
+func (s *Service) Snapshot(path string) (*snapshot.Entry, bool) {
+	if s.snapshotCache == nil {
 		return nil, false
 	}
-	return s.projCache.Get(path)
+	return s.snapshotCache.Get(path)
 }
 
 // RefreshSnapshot 定向刷新单个项目的快照并落盘（workbench 写操作后即时可见，
@@ -286,36 +286,36 @@ func (s *Service) Snapshot(path string) (*projcache.Entry, bool) {
 // 外来仓库进快照后会在下轮整表重建时被删掉（白采一次全量），快照也短暂混入
 // 无消费者的外来条目。
 func (s *Service) RefreshSnapshot(path string) error {
-	if s.projCache == nil {
+	if s.snapshotCache == nil {
 		return nil
 	}
 	if s.FindByPath(path) == nil {
 		return nil
 	}
-	return s.projCache.RefreshOne(path)
+	return s.snapshotCache.RefreshOne(path)
 }
 
 // ScanUpdatedAt 返回项目列表最近一次扫描完成时间；从未扫描过返回零值。
-// 委托缓存的计算时间戳——数据与新鲜度由 scanCache 单点维护（对称：SnapshotUpdatedAt 委托 projCache）。
+// 委托缓存的计算时间戳——数据与新鲜度由 scanCache 单点维护（对称：SnapshotUpdatedAt 委托 snapshotCache）。
 func (s *Service) ScanUpdatedAt() time.Time { return s.scanCache.UpdatedAt() }
 
 // SnapshotUpdatedAt 返回项目快照的整表新鲜度（全部项目中最旧的 Entry.UpdatedAt）；
 // 无缓存返回零值。取「最旧项目」口径：任一项目过期即整表过期，单项目定向刷新
 // （RefreshOne）不再给整表「续命」——前端展示与 TTL 调度同用此口径。
 func (s *Service) SnapshotUpdatedAt() time.Time {
-	if s.projCache == nil {
+	if s.snapshotCache == nil {
 		return time.Time{}
 	}
-	return s.projCache.EarlyUpdatedAt()
+	return s.snapshotCache.EarlyUpdatedAt()
 }
 
-// maxExpireTime 缓存可容忍的最大过期时间：任一时间戳（scanCache / projCache 的
+// maxExpireTime 缓存可容忍的最大过期时间：任一时间戳（scanCache / snapshotCache 的
 // UpdatedAt）距今超过它就触发刷新。定性约束「数据最多旧 5 分钟」，取代固定周期。
 const maxExpireTime = 5 * time.Minute
 
 // StartRefreshTicker 启动后台刷新 goroutine（仅常驻 server 调用）。重复调用安全：已在跑则直接返回。
 //
-// 刷新节奏由数据新旧决定：每轮取两类时间戳（scanCache / projCache 的 UpdatedAt）
+// 刷新节奏由数据新旧决定：每轮取两类时间戳（scanCache / snapshotCache 的 UpdatedAt）
 // 中更过期者计算下次时机，保证距今不超过 maxExpireTime——
 //   - 冷启动（从未扫描/采集）：时间戳零值，立即刷新一次，避免空窗；
 //   - 热重载（两时间戳均新鲜，如 air 重启进程）：自然算出整周期等待，不重复全量重采；
@@ -326,7 +326,7 @@ const maxExpireTime = 5 * time.Minute
 //
 // CLI 不调用此方法（CLI 短命，只读启动时 Load 的快照）。
 func (s *Service) StartRefreshTicker() {
-	if s.projCache == nil || s.stopCh != nil {
+	if s.snapshotCache == nil || s.stopCh != nil {
 		return // 无缓存或已在跑
 	}
 
@@ -343,7 +343,7 @@ func (s *Service) StartRefreshTicker() {
 		failed := false // 上轮刷新是否失败（失败退避整周期）
 		for {
 			now := time.Now()
-			staleness := max(now.Sub(s.scanCache.UpdatedAt()), now.Sub(s.projCache.EarlyUpdatedAt()))
+			staleness := max(now.Sub(s.scanCache.UpdatedAt()), now.Sub(s.snapshotCache.EarlyUpdatedAt()))
 			delay := max(maxExpireTime-staleness, 0)
 			if failed {
 				delay = maxExpireTime
@@ -390,7 +390,7 @@ func (s *Service) refresh() error {
 }
 
 // Refresh 立即完整刷新 project 视图：重扫项目列表 → 整表采集 git 信息
-// （写内存 + 落盘 projcache.json）。返回 (项目总数, 采集成功数, 错误)。
+// （写内存 + 落盘 snapshot.json）。返回 (项目总数, 采集成功数, 错误)。
 //
 // 与 server 定时刷新同一逻辑。CLI 平时只读缓存不写（单写者模型：server 是唯一写方），
 // 本方法仅供 dev 调试命令手动触发，用于开发期实测全量采集的时间成本。
@@ -398,11 +398,11 @@ func (s *Service) Refresh() (total int, collected int, err error) {
 	projects := s.scanCache.Reload()
 
 	paths := xslices.Map(projects, (*Project).Path)
-	if s.projCache == nil {
-		return len(paths), 0, errors.New("projcache 未初始化")
+	if s.snapshotCache == nil {
+		return len(paths), 0, errors.New("项目快照缓存未初始化")
 	}
-	if err := s.projCache.Refresh(paths); err != nil {
+	if err := s.snapshotCache.Refresh(paths); err != nil {
 		return len(paths), 0, err
 	}
-	return len(paths), s.projCache.Size(), nil
+	return len(paths), s.snapshotCache.Size(), nil
 }

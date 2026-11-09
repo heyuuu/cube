@@ -2,7 +2,7 @@ package project
 
 // 打开目标（提案 1032 + 1030）：project = git 仓库身份，
 // 打开目标 = { 根目录, 主项目 workspaces…, 各 worktree 根及其 workspaces… }。
-// worktree / workspace 的可见性都来自主项目 projcache 快照的枚举（读路径不跑 git、不读声明文件）。
+// worktree / workspace 的可见性都来自主项目快照的枚举（读路径不跑 git、不读声明文件）。
 //
 // OpenTargets 是 CLI 专用出口（cube open 的交互选择、alfred 的平铺展开、
 // Web project/open 的目录归属校验）；Web 前端不消费它（无对应 HTTP 端点），
@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"cube/internal/domain/project/projcache"
+	"cube/internal/domain/project/snapshot"
 	"cube/internal/domain/project/workspace"
 )
 
@@ -51,7 +51,7 @@ func (t OpenTarget) IsWorkspace() bool { return t.Flags&FlagWorkspace != 0 }
 // 恒带归属前缀「worktree 标签 · 名字」；前缀后仍撞名（跨 worktree 同名、或与
 // worktree 根/主 workspace 撞名）的 workspace 追加相对路径后缀；worktree 根靠
 // 分支名/目录名本身已可区分，不追加。
-func targetEntries(root string, info *projcache.Entry) []OpenTarget {
+func targetEntries(root string, info *snapshot.Entry) []OpenTarget {
 	if info == nil {
 		return nil
 	}

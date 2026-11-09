@@ -14,7 +14,7 @@ import (
 	"cube/internal/domain/opener"
 	"cube/internal/domain/project"
 	"cube/internal/domain/project/cubefile"
-	"cube/internal/domain/project/projcache"
+	"cube/internal/domain/project/snapshot"
 	"cube/internal/domain/project/workspace"
 	"cube/internal/domain/usage"
 	"cube/internal/server"
@@ -32,8 +32,8 @@ type ProjectDTO struct {
 	LastUsedAt *time.Time          `json:"lastUsedAt,omitempty"` // 最近使用时间（置顶排序信号，未用过为 nil）
 }
 
-// ProjectSnapshotDTO 项目快照的对外形态：隔离内部 projcache.Entry（存储格式与 API
-// 从此解耦，projcache 字段演化不再自动冲击前端）。字段是前端消费盘点后的子集，
+// ProjectSnapshotDTO 项目快照的对外形态：隔离内部 snapshot.Entry（存储格式与 API
+// 从此解耦，snapshot 字段演化不再自动冲击前端）。字段是前端消费盘点后的子集，
 // 省略未消费项（branches 仅 CLI 用、worktree 的 detached 经 branch 为空表达）。
 type ProjectSnapshotDTO struct {
 	RepoURL       string               `json:"repoUrl"`       // origin remote URL
@@ -64,19 +64,19 @@ type WorktreeDTO struct {
 // newProjectSnapshotDTO 把内部快照转为对外形态；nil（未采集）透传为 nil。
 // 主工作区信息（Entry.Main）升位到 DTO 顶级字段；快照 Worktrees
 // 只含 linked worktree，作为 worktree 目标下发（前端「主目录」目标由固定首位承载）。
-func newProjectSnapshotDTO(e *projcache.Entry) *ProjectSnapshotDTO {
+func newProjectSnapshotDTO(e *snapshot.Entry) *ProjectSnapshotDTO {
 	if e == nil {
 		return nil
 	}
 	return &ProjectSnapshotDTO{
 		RepoURL:       e.OriginURL(),
-		Remotes:       xslices.Map(e.Remotes, func(r projcache.RemoteInfo) RemoteDTO { return RemoteDTO{Name: r.Name, URL: r.URL} }),
+		Remotes:       xslices.Map(e.Remotes, func(r snapshot.RemoteInfo) RemoteDTO { return RemoteDTO{Name: r.Name, URL: r.URL} }),
 		CurrentBranch: e.Main.Branch,
 		DefaultBranch: e.DefaultBranch,
 		Ahead:         e.DefaultBranchAhead(),
 		Behind:        e.DefaultBranchBehind(),
 		Dirty:         e.Main.Dirty,
-		Worktrees: xslices.Map(e.Worktrees, func(wt projcache.WorktreeInfo) WorktreeDTO {
+		Worktrees: xslices.Map(e.Worktrees, func(wt snapshot.WorktreeInfo) WorktreeDTO {
 			return WorktreeDTO{Path: wt.Path, Branch: wt.Branch, Workspaces: workspaceMemberDTOs(wt.Workspaces)}
 		}),
 		Workspaces:  workspaceMemberDTOs(e.Main.Workspaces),
@@ -333,7 +333,7 @@ func workspaceMemberDTOs(ws []workspace.Workspace) []WorkspaceMemberDTO {
 }
 
 // WorkspaceStateResult workspace/get 返回：编辑视图所需的三块信息。
-// Effective 读 projcache 快照（读路径不读声明文件、不探测）；Declared/Detected 是
+// Effective 读项目快照（读路径不读声明文件、不探测）；Declared/Detected 是
 // 编辑场景的一次性现算（编辑场景可以严格，与「读路径纯快照」纪律不冲突）。
 type WorkspaceStateResult struct {
 	Effective   []WorkspaceMemberDTO `json:"effective"`   // 当前生效清单（显式声明或探测结果）

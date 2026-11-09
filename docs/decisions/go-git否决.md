@@ -16,7 +16,7 @@
 | `f194884` | vendored 补全局忽略规则 | Status 不加载全局忽略链 → dirty 误报，得在 vendor 层修 |
 | `acbfe19` | 读操作全部迁回原生子进程，移除依赖 | 双轨维护成本 + 大仓库性能不可接受，终局裁决 |
 
-projcache 异步采集（快照 + 8 worker 并发）落地后，「避免 fork 开销」的原始动机已消失——spawn 成本被摊平到后台，读路径零感知。
+snapshot 异步采集（快照 + 8 worker 并发）落地后，「避免 fork 开销」的原始动机已消失——spawn 成本被摊平到后台，读路径零感知。
 
 ## 2026-11-08 实测数据
 
@@ -46,7 +46,7 @@ projcache 异步采集（快照 + 8 worker 并发）落地后，「避免 fork �
 |---|---|
 | 分支/refs/remotes/默认分支/HEAD | 8/8 仓库一致 ✓ |
 | **dirty 判定** | **2/8 误报**：只被全局忽略链（`~/.gitignore_global`）覆盖的 `.idea/`、`.zcode/`、`.DS_Store` 被报 untracked → dirty 判错 |
-| **linked worktree 枚举** | **无 API**（v5.19.3 全包无任何 worktree 枚举能力），projcache 1032 的硬需求无法覆盖 |
+| **linked worktree 枚举** | **无 API**（v5.19.3 全包无任何 worktree 枚举能力），snapshot 1032 的硬需求无法覆盖 |
 | untracked 语义 | 不做目录折叠：git normal 模式整目录报 1 项，go-git 逐文件列出（dirty 布尔不受影响，但口径不同） |
 | ahead/behind | 无 `rev-list` 等价物。复测时自实现的第一版染色算法就在公共祖先剪枝上把 behind 多算（1/3、300/359）——佐证正确性风险真实存在，`rev-list` 久经考验 |
 
@@ -77,7 +77,7 @@ wt.Excludes = ps // excludeIgnoredChanges 里 patterns = append(patterns, w.Excl
 
 - go-git 唯一成立的优势场景：**工作区文件数少**的仓库元数据 + status 快 ~15x（2~3.5ms vs ~53ms）；在典型前端项目（node_modules 巨大）上反向慢 1~2 个数量级。
 - 修掉全局忽略（3 行注入）只解决正确性：大仓库 status 仍 3.4s vs git 52ms（65x），worktree 缺口仍在，untracked 口径差仍在。
-- 子进程方案耗时平坦、与仓库规模解耦，spawn 开销已被 projcache 异步采集摊平——**维持原生子进程，本项目不做双轨**（双轨维护坑见 [references/gitbatch.md](../references/gitbatch.md)；模板规范同步定为「系统 git 单轨」，见 [misc/project-template-spec.md](../misc/project-template-spec.md)）。
+- 子进程方案耗时平坦、与仓库规模解耦，spawn 开销已被 snapshot 异步采集摊平——**维持原生子进程，本项目不做双轨**（双轨维护坑见 [references/gitbatch.md](../references/gitbatch.md)；模板规范同步定为「系统 git 单轨」，见 [misc/project-template-spec.md](../misc/project-template-spec.md)）。
 - 若未来要压采集耗时：方向是减少命令条数（如 `status --branch` 已含 branch.head/up/ab，可替代两条 `symbolic-ref`），不是换库。
 
 ## 复核条件（何时才重新评估）

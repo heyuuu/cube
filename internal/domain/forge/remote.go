@@ -10,7 +10,7 @@ import (
 	"cube/pkg/gitapi"
 )
 
-// LocalRepo 对账用的本地仓库快照（取自 projcache，由调用方从 project 领域映射）。
+// LocalRepo 对账用的本地仓库快照（取自 snapshot，由调用方从 project 领域映射）。
 type LocalRepo struct {
 	Name    string `json:"name"`    // 项目名
 	Path    string `json:"path"`    // 项目绝对路径

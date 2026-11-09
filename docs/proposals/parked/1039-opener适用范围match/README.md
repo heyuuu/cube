@@ -89,7 +89,7 @@ settings.json 增有序规则节（first-match-wins），规则 = `{match, role,
 
 ## 语言判定的数据来源（无论 A/B 都需要）
 
-- 语言来自 **projcache 采集侧**：扫 `go.mod` / `package.json` / `Cargo.toml` 等声明文件（规则格式可类比 `workspaceScanRule` 的 `|`+`+`），结果作为快照字段写 projcache.json——读路径零探测（架构纪律：读路径不得阻塞采集）。
+- 语言来自 **snapshot 采集侧**：扫 `go.mod` / `package.json` / `Cargo.toml` 等声明文件（规则格式可类比 `workspaceScanRule` 的 `|`+`+`），结果作为快照字段写 snapshot.json——读路径零探测（架构纪律：读路径不得阻塞采集）。
 - 粒度到 workspace / worktree（见已定结论），主根与子目录各自带语言。
 - 文件后缀不需要采集，pathkit 现算。
 

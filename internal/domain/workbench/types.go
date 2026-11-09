@@ -60,7 +60,7 @@ type WorktreeStatus struct {
 	Untracked int    `json:"untracked"` // 未跟踪文件数
 
 	// 该副本根的 workspace 成员（1030；Path 相对副本根）。工作台 git 信息本就走实时
-	// 读取（不走 projcache 快照），workspace 解析同样实时——直接 import project/workspace
+	// 读取（不走 snapshot），workspace 解析同样实时——直接 import project/workspace
 	// 纯函数包（叶子包，无反向依赖，不同于经 app 注入的 cacheRefresh 回调）
 	Workspaces []workspace.Workspace `json:"workspaces"`
 }

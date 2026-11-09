@@ -122,7 +122,7 @@ internal/domain/<domain>/
   <主题>.go            // 复杂逻辑内聚的主题文件（如 scan.go / clone.go / diff.go），包级函数暴露
   helpers.go           // 跨主题复用的内部小工具
   <domain>_test.go     // 表驱动测试
-  <子包>/              // 重的子能力下沉为子包（如 projcache/）
+  <子包>/              // 重的子能力下沉为子包（如 snapshot/）
 ```
 
 ---

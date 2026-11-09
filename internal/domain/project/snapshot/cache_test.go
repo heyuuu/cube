@@ -1,4 +1,4 @@
-package projcache
+package snapshot
 
 import (
 	"fmt"
@@ -26,14 +26,14 @@ func TestLoad_EmptyDir(t *testing.T) {
 	}
 }
 
-// TestLoad_FileMissing projcache.json 不存在 → 空缓存（冷启动降级）。
+// TestLoad_FileMissing snapshot.json 不存在 → 空缓存（冷启动降级）。
 func TestLoad_FileMissing(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	dir := ws.Mkdir("cache")
 
 	c := Load(dir)
 	if _, ok := c.Get("/any"); ok {
-		t.Fatalf("无 projcache.json 时应返回空缓存")
+		t.Fatalf("无 snapshot.json 时应返回空缓存")
 	}
 }
 
@@ -66,7 +66,7 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestLoad_CorruptFile 损坏的 projcache.json 当文件不存在丢弃（降级空缓存，不备份）。
+// TestLoad_CorruptFile 损坏的 snapshot.json 当文件不存在丢弃（降级空缓存，不备份）。
 func TestLoad_CorruptFile(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	dir := ws.Mkdir("cache")
@@ -78,7 +78,7 @@ func TestLoad_CorruptFile(t *testing.T) {
 	}
 }
 
-// TestLoad_VersionMismatch 版本不符的 projcache.json 当文件不存在丢弃（不备份、不 lenient 混入）。
+// TestLoad_VersionMismatch 版本不符的 snapshot.json 当文件不存在丢弃（不备份、不 lenient 混入）。
 // 老数据按新结构反序列化会得到缺字段全零值的部分数据，比空缓存更糟。
 func TestLoad_VersionMismatch(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
@@ -295,9 +295,9 @@ func TestRefresh_RealRepo(t *testing.T) {
 		t.Fatalf("Refresh 采集主工作区分支 = %q，期望 develop", e.Main.Branch)
 	}
 
-	// projcache.json 应已落盘
+	// snapshot.json 应已落盘
 	if _, err := os.Stat(filepath.Join(cacheDir, cacheFileName)); err != nil {
-		t.Fatalf("Refresh 后 projcache.json 应存在: %v", err)
+		t.Fatalf("Refresh 后 snapshot.json 应存在: %v", err)
 	}
 }
 
