@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/heyuuu/x/xstd/xslices"
@@ -9,6 +10,7 @@ import (
 	"cube/internal/app"
 	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/project"
+	"cube/pkg/tui"
 )
 
 // newListCmd `cube project list` 命令。
@@ -40,14 +42,33 @@ query 支持两种搜索模式：
 				})
 			}
 
-			// 展示项目列表（最近使用的项目置顶）
-			latest := a.UsageService().LatestByProject()
-			projects = project.SortByRecentUsage(projects, latest, 10)
-			cmdutil.ShowProjects(a.ProjectService(), projects)
+			// 展示项目列表
+			showProjects(a.ProjectService(), projects)
 
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&group, "group", "g", "", "限定分组 group")
 	return cmd
+}
+
+func showProjects(service *project.Service, projects []*project.Project) {
+	tui.PrintTable(
+		[]string{
+			fmt.Sprintf("项目(%d)", len(projects)),
+			"Path",
+			"RepoUrl",
+		},
+		xslices.Map(projects, func(p *project.Project) []string {
+			repoURL := ""
+			if info, ok := service.Snapshot(p.Path()); ok {
+				repoURL = info.OriginURL()
+			}
+			return []string{
+				p.Name(),
+				cmdutil.PrettyPath(p.Path()),
+				repoURL,
+			}
+		}),
+	)
 }
