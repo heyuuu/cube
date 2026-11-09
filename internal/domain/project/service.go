@@ -2,7 +2,6 @@ package project
 
 import (
 	"errors"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -23,9 +22,9 @@ type Service struct {
 	// settings
 	scanRulesStore  ScanRulesStore
 	cloneRulesStore CloneRulesStore
-	// scan
-	scanCache *easycache.Item[[]*Project] // 项目扫描的缓存（新鲜度时间戳由缓存自身维护，见 UpdatedAt）
-	// 项目状态快照（projcache：git/worktree/workspace，落盘 cache/projcache.json）
+	// 项目扫描的内存缓存
+	scanCache *easycache.Item[[]*Project]
+	// 项目状态快照 (项目 git 信息 / worktree 信息 / workspace 信息等)
 	projCache *projcache.Cache
 	// 定时刷新（仅常驻 server 启用，CLI 不启用）
 	stopCh chan struct{} // nil = 未启用；非 nil = 定时器在跑
@@ -34,10 +33,7 @@ type Service struct {
 // NewService 构造 Service：加载 git 缓存（失败降级空缓存）并挂载项目扫描缓存。
 func NewService(cfg *config.Config) *Service {
 	// 加载项目状态快照（降级优先：失败返回空缓存，不报错）
-	projCache, err := projcache.Load(cfg.CacheDir())
-	if err != nil {
-		log.Printf("加载 git 缓存失败: %v", err)
-	}
+	projCache := projcache.Load(cfg.CacheDir())
 
 	// stores
 	scanRulesStore := newScanRulesStore(cfg.SettingsFile())

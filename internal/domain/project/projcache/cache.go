@@ -131,7 +131,7 @@ type Cache struct {
 // Load 从 dir 加载缓存。
 // 行为约定（降级优先，绝不因缓存问题阻塞 CLI）：
 //   - 文件缺失 / 解析失败 / 版本不符：一律当文件不存在，返回空缓存。
-func Load(dir string) (*Cache, error) {
+func Load(dir string) *Cache {
 	c := &Cache{
 		cacheFile: filepath.Join(dir, cacheFileName),
 		entries:   make(map[string]*Entry),
@@ -140,7 +140,7 @@ func Load(dir string) (*Cache, error) {
 	// 尝试读取缓存文件，读取失败直接丢弃
 	file, err := store.LoadJSON[cacheFile](c.cacheFile)
 	if err != nil || file.Version != cacheVersion {
-		return c, nil
+		return c
 	}
 
 	c.mu.Lock()
@@ -149,7 +149,7 @@ func Load(dir string) (*Cache, error) {
 	}
 	c.mu.Unlock()
 
-	return c, nil
+	return c
 }
 
 // EarlyUpdatedAt 返回全部项目的最早更新时间——整表新鲜度取「最旧项目」口径，
@@ -265,6 +265,7 @@ func collectEntries(paths []string) map[string]*Entry {
 		path  string
 		entry *Entry
 	}
+
 	tasks := make(chan string)
 	results := make(chan result, len(paths))
 

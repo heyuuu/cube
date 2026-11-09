@@ -16,10 +16,7 @@ func TestLoad_EmptyDir(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	dir := ws.Join("not-exist-yet")
 
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatalf("Load 出错: %v", err)
-	}
+	c := Load(dir)
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Fatalf("Load 不应创建目录: %v", err)
 	}
@@ -34,10 +31,7 @@ func TestLoad_FileMissing(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	dir := ws.Mkdir("cache")
 
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatalf("Load 出错: %v", err)
-	}
+	c := Load(dir)
 	if _, ok := c.Get("/any"); ok {
 		t.Fatalf("无 projcache.json 时应返回空缓存")
 	}
@@ -49,7 +43,7 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	dir := ws.Mkdir("cache")
 
 	// 写入
-	c1, _ := Load(dir)
+	c1 := Load(dir)
 	c1.entries["/proj/a"] = &Entry{
 		Remotes:       []RemoteInfo{{Name: "origin", URL: "git@x:a"}},
 		DefaultBranch: "main",
@@ -61,7 +55,7 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	}
 
 	// 重新 Load
-	c2, _ := Load(dir)
+	c2 := Load(dir)
 	got, ok := c2.Get("/proj/a")
 	if !ok {
 		t.Fatalf("Save 后 Load 应命中")
@@ -78,10 +72,7 @@ func TestLoad_CorruptFile(t *testing.T) {
 	dir := ws.Mkdir("cache")
 	ws.WriteFile(filepath.Join("cache", cacheFileName), []byte("{not valid json"))
 
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatalf("损坏文件 Load 不应报错（降级）: %v", err)
-	}
+	c := Load(dir)
 	if _, ok := c.Get("/any"); ok {
 		t.Fatalf("损坏文件应返回空缓存")
 	}
@@ -95,10 +86,7 @@ func TestLoad_VersionMismatch(t *testing.T) {
 	old := `{"version":` + fmt.Sprintf("%d", cacheVersion-1) + `,"entries":{"/p/a":{"repoUrl":"x","currentBranch":"main"}}}`
 	ws.WriteFile(filepath.Join("cache", cacheFileName), []byte(old))
 
-	c, err := Load(dir)
-	if err != nil {
-		t.Fatalf("版本不符 Load 不应报错: %v", err)
-	}
+	c := Load(dir)
 	if _, ok := c.Get("/p/a"); ok {
 		t.Fatal("旧版本数据应被整体丢弃")
 	}
@@ -112,7 +100,7 @@ func TestLoad_VersionMismatch(t *testing.T) {
 // TestCache_Get 内存态 Get 命中/未命中。
 func TestCache_Get(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
-	c, _ := Load(ws.Mkdir("cache"))
+	c := Load(ws.Mkdir("cache"))
 
 	c.entries["/p"] = &Entry{DefaultBranch: "x", Branches: []LocalBranchInfo{{ShortName: "x", Ahead: 1}}}
 	if e, ok := c.Get("/p"); !ok || e.DefaultBranchAhead() != 1 {
@@ -295,7 +283,7 @@ func TestRefresh_RealRepo(t *testing.T) {
 	cacheDir := ws.Mkdir("cache")
 	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "develop"})
 
-	c, _ := Load(cacheDir)
+	c := Load(cacheDir)
 	if err := c.Refresh([]string{repo}); err != nil {
 		t.Fatalf("Refresh 失败: %v", err)
 	}
@@ -316,7 +304,7 @@ func TestRefresh_RealRepo(t *testing.T) {
 // TestRefresh_EmptyPaths 空路径列表也成功（整表清空 + 落盘）。
 func TestRefresh_EmptyPaths(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
-	c, _ := Load(ws.Mkdir("cache"))
+	c := Load(ws.Mkdir("cache"))
 	if err := c.Refresh(nil); err != nil {
 		t.Fatalf("空 Refresh 不应报错: %v", err)
 	}
@@ -327,7 +315,7 @@ func TestRefreshOne(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := ws.MakeGitRepo("repo")
 	other := ws.MakeGitRepo("other")
-	c, _ := Load(ws.Mkdir("cache"))
+	c := Load(ws.Mkdir("cache"))
 
 	if err := c.RefreshOne(repo); err != nil {
 		t.Fatalf("RefreshOne 报错: %v", err)
