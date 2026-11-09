@@ -31,7 +31,7 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 			query := xslices.Get(args, 0)
 
 			// 匹配项目
-			proj, err := cmdutil.PickProject(a.ProjectService(), query, a.Local())
+			proj, err := PickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}

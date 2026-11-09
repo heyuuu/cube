@@ -51,7 +51,7 @@ query 支持两种搜索模式：
 			query := xslices.Get(args, 0)
 
 			// 匹配项目
-			proj, err := cmdutil.PickProject(a.ProjectService(), query, a.Local())
+			proj, err := PickProject(a.ProjectService(), query, a.Local())
 			if err != nil {
 				return err
 			}
