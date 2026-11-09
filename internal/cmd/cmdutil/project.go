@@ -3,6 +3,7 @@ package cmdutil
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/heyuuu/x/xstd/xslices"
@@ -23,46 +24,46 @@ func IsPathQuery(query string) bool {
 	return prefix == "." || prefix == ".." || prefix == "~" || prefix == ""
 }
 
-// SearchProjects 搜索项目列表（向下列项目）：query 默认按项目名模糊搜索；
-// 为路径时（IsPathQuery 判断）列出该路径之下的项目。
-// 路径 query 在本层用 ExtendPath 基于 cwd 解析为绝对路径后再传入 domain——
-// cwd 依赖属于出口层职责，domain 只接受绝对路径/~ 前缀。
-func SearchProjects(service *project.Service, query string) ([]*project.Project, error) {
-	if IsPathQuery(query) {
-		absPath, err := ExtendPath(query)
-		if err != nil {
-			return nil, fmt.Errorf("解析路径 query 失败: query=%s err=%w", query, err)
-		}
+// AsPathQuery 尝试作为路径 query 参数，成功返回 (绝对路径, true)
+func AsPathQuery(query string) (string, bool) {
+	if !IsPathQuery(query) {
+		return "", false
+	}
 
+	// 用 ExtendPath 而非 filepath.Abs：~ 前缀需展开为 home，domain 只接受绝对路径
+	abs, err := ExtendPath(query)
+	if err != nil {
+		slog.Warn("尝试解析 query 路径失败", "query", query, "err", err)
+		return "", false
+	}
+
+	return abs, true
+}
+
+// SearchProjects 搜索项目列表
+// - query 为路径时（IsPathQuery 判断）列出该路径之下的项目; 否则, query 作为项目名模糊搜索
+func SearchProjects(service *project.Service, query string) ([]*project.Project, error) {
+	if absPath, ok := AsPathQuery(query); ok {
 		return service.SearchInPath(absPath), nil
 	}
+
 	return service.SearchByName(query), nil
 }
 
-// PickProject 根据关键词匹配项目：精确匹配直接返回，多项匹配则交互选择。
-//
-// 非交互环境不支持多项选择，会报错提示使用精确名称或路径。
-// --local 模式（p --local 模式）下 query 缺省视作 "."，以 cwd 为起点定位项目；
-// 显式给了 query 则不干预，--local 对其无效果。
-//
-// 路径 query 向上归并到所属项目，统一走 ResolveProject（项目根/子目录/worktree，
-// 1032：pull / push / info 等在 worktree 内执行等同于操作主仓库根目录）。
+// PickProject 根据关键词匹配项目：精确匹配直接返回，多项匹配则交互选择
+// - query 为路径时（IsPathQuery 判断）返回目录处于哪个项目之中; 否则, query 作为项目名模糊搜索
+// - 非交互环境不支持多项选择，会报错提示使用精确名称或路径
+// - --local 模式下 query 缺省视作 "."，以 cwd 为起点定位项目; 显式给了 query 则不干预，--local 对其无效果。
 func PickProject(service *project.Service, query string, localMode bool) (*project.Project, error) {
 	if localMode && query == "" {
 		query = "."
 	}
 
 	// 按路径查找项目
-	if IsPathQuery(query) {
-		absPath, err := ExtendPath(query)
-		if err != nil {
-			return nil, fmt.Errorf("解析路径 query 失败: query=%s err=%w", query, err)
-		}
-
+	if absPath, ok := AsPathQuery(query); ok {
 		if proj := service.ResolveProject(absPath); proj != nil {
 			return proj, nil
 		}
-
 		return nil, fmt.Errorf("未找到匹配的 project: query=`%s`", query)
 	}
 

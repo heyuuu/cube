@@ -63,15 +63,13 @@ query 支持两种搜索模式：
 
 			// 路径 query 命中 worktree 时注明当前所属（1032 归并：项目身份是主仓库，
 			// 但用户在 worktree 目录里执行，需指出实际所在副本）
-			if cmdutil.IsPathQuery(query) {
-				if absPath, err := cmdutil.ExtendPath(query); err == nil {
-					if root, ok := git.FindGitRoot(absPath); ok && root != proj.Path() {
-						branch := git.CurrentBranch(root)
-						if branch != "" {
-							branch = " (" + branch + ")"
-						}
-						printInfoKV("worktree", root+infoDimStyle.Render(branch))
+			if absPath, ok := cmdutil.AsPathQuery(query); ok {
+				if root, ok := git.FindGitRoot(absPath); ok && root != proj.Path() {
+					branch := git.CurrentBranch(root)
+					if branch != "" {
+						branch = " (" + branch + ")"
 					}
+					printInfoKV("worktree", root+infoDimStyle.Render(branch))
 				}
 			}
 

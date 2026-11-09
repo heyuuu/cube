@@ -35,11 +35,6 @@ func ExtendPath(p string) (string, error) {
 		return filepath.Join(home, strings.TrimPrefix(p, "~")), nil
 	}
 
-	// ~user 形态（他人 home）不支持展开，也不得当作相对路径静默拼 cwd——显式报错
-	if strings.HasPrefix(p, "~") {
-		return "", fmt.Errorf("不支持 ~user 形式的路径（仅支持 ~/ 指向 home）: %s", p)
-	}
-
 	// 支持相对路径
 	wd, err := os.Getwd()
 	if err != nil {
