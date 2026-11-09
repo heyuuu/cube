@@ -274,7 +274,8 @@ func (s *Service) MatchCloneRule(repoURL string) (rule CloneRule, localPath stri
 // Snapshot 读取单个项目的状态快照条目；未命中返回 (nil, false)。
 // 不阻塞、不触发采集 —— 调用方读取的是当前快照（可能 stale）。
 func (s *Service) Snapshot(path string) (*snapshot.Entry, bool) {
-	if s.snapshotCache == nil {
+	path, ok := cleanAbsPath(path)
+	if !ok {
 		return nil, false
 	}
 	return s.snapshotCache.Get(path)
@@ -286,7 +287,8 @@ func (s *Service) Snapshot(path string) (*snapshot.Entry, bool) {
 // 外来仓库进快照后会在下轮整表重建时被删掉（白采一次全量），快照也短暂混入
 // 无消费者的外来条目。
 func (s *Service) RefreshSnapshot(path string) error {
-	if s.snapshotCache == nil {
+	path, ok := cleanAbsPath(path)
+	if !ok {
 		return nil
 	}
 	if s.FindByPath(path) == nil {
@@ -303,9 +305,6 @@ func (s *Service) ScanUpdatedAt() time.Time { return s.scanCache.UpdatedAt() }
 // 无缓存返回零值。取「最旧项目」口径：任一项目过期即整表过期，单项目定向刷新
 // （RefreshOne）不再给整表「续命」——前端展示与 TTL 调度同用此口径。
 func (s *Service) SnapshotUpdatedAt() time.Time {
-	if s.snapshotCache == nil {
-		return time.Time{}
-	}
 	return s.snapshotCache.EarlyUpdatedAt()
 }
 
@@ -326,7 +325,7 @@ const maxExpireTime = 5 * time.Minute
 //
 // CLI 不调用此方法（CLI 短命，只读启动时 Load 的快照）。
 func (s *Service) StartRefreshTicker() {
-	if s.snapshotCache == nil || s.stopCh != nil {
+	if s.stopCh != nil {
 		return // 无缓存或已在跑
 	}
 
