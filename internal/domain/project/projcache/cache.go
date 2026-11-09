@@ -34,27 +34,37 @@ import (
 // v4：主工作区拆出为独立 Main 值字段（恒存在，类型强制），Worktrees 只含 linked worktree；
 // 移除 Entry 顶级 RepoURL/CurrentBranch/Workspaces/Dirty（改经 OriginURL/Main 取用，
 // dirty 迁入 WorktreeInfo 按工作区采集）；采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
-const cacheVersion = 4
+// v5：Branches 从短名字符串列表改为 LocalBranchInfo（含 upstream/ahead/behind，随 git.Refs
+// 单进程顺带采集），移除顶级 Ahead/Behind（改经 DefaultBranchAhead/Behind 派生）。
+const cacheVersion = 5
 
 // 缓存文件名（位于缓存目录 dir 下）。
 const cacheFileName = "projcache.json"
 
 // Entry 单个项目的 git 信息快照。
 type Entry struct {
-	Remotes       []RemoteInfo   `json:"remotes"`       // 全部 remote（无则空数组；origin 地址经 OriginURL 派生）
-	DefaultBranch string         `json:"defaultBranch"` // 默认主分支名（master/main/...）
-	Branches      []string       `json:"branches"`      // 本地+远程分支短名列表
-	Ahead         int            `json:"ahead"`         // 默认分支相对 origin 的领先 commit 数
-	Behind        int            `json:"behind"`        // 落后的 commit 数
-	Main          WorktreeInfo   `json:"main"`          // 主工作区信息
-	Worktrees     []WorktreeInfo `json:"worktrees"`     // 各工作区信息(linked worktree)
-	UpdatedAt     time.Time      `json:"updatedAt"`     // 本次采集时间
+	Remotes       []RemoteInfo      `json:"remotes"`       // 全部 remote（无则空数组；origin 地址经 OriginURL 派生）
+	DefaultBranch string            `json:"defaultBranch"` // 默认主分支名（master/main/...）
+	Branches      []LocalBranchInfo `json:"branches"`      // 本地分支信息列表
+	Main          WorktreeInfo      `json:"main"`          // 主工作区信息
+	Worktrees     []WorktreeInfo    `json:"worktrees"`     // 各工作区信息(linked worktree)
+	UpdatedAt     time.Time         `json:"updatedAt"`     // 本次采集时间
 }
 
 // RemoteInfo 快照中的单个 remote（多 remote 项目的 forge 匹配需要全部 host，1042 修）。
 type RemoteInfo struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
+}
+
+// LocalBranchInfo 快照中的单个本地分支，含 upstream 跟踪状态
+// （ahead/behind 由 git.Refs 的 for-each-ref 单进程顺带采集，基于本地跟踪 ref 比对、不 fetch）。
+type LocalBranchInfo struct {
+	Name      string `json:"name"`      // 分支规范全名 refs/heads/xxx
+	ShortName string `json:"shortName"` // 分支短名
+	Upstream  string `json:"upstream"`  // 上游跟踪 ref 全名；空 = 未配置
+	Ahead     int    `json:"ahead"`     // 相对 upstream 领先 commit 数
+	Behind    int    `json:"behind"`    // 相对 upstream 落后 commit 数
 }
 
 // WorktreeInfo 单个工作区信息(主项目根或单个 linked worktree)
@@ -74,6 +84,26 @@ func (e *Entry) OriginURL() string {
 		}
 	}
 	return ""
+}
+
+// DefaultBranchAhead 默认分支相对 upstream 的领先 commit 数（默认分支不在列表时 0）。
+func (e *Entry) DefaultBranchAhead() int {
+	for _, b := range e.Branches {
+		if b.ShortName == e.DefaultBranch {
+			return b.Ahead
+		}
+	}
+	return 0
+}
+
+// DefaultBranchBehind 默认分支相对 upstream 的落后 commit 数（默认分支不在列表时 0）。
+func (e *Entry) DefaultBranchBehind() int {
+	for _, b := range e.Branches {
+		if b.ShortName == e.DefaultBranch {
+			return b.Behind
+		}
+	}
+	return 0
 }
 
 // cacheFile 缓存文件的磁盘序列化结构。
@@ -298,16 +328,19 @@ func collectEntry(path string) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	branches := xslices.Map(refs.Locals, func(r git.Ref) string { return r.ShortName })
-	defaultBranch := calcDefaultBranch(branches)
-
-	// ahead/behind 用仓库的默认分支（master/main/...）做本地 vs 远程比较——
-	// 刻意不用 LoadRepoStatus 的 branch.ab：那是「当前检出分支 vs 其 upstream」，
-	// 在 feature 分支上时与列表页要的口径不同
-	var ahead, behind int
-	if defaultBranch != "" {
-		ahead, behind, _ = git.AheadBehindRemote(path, defaultBranch, "origin", defaultBranch)
-	}
+	localBranches := xslices.Map(refs.Locals, func(r git.Ref) LocalBranchInfo {
+		// 此处刻意忽略了对 git.Ref.Gone 的判断
+		// 当前场景很难判断 Gone 为 false 时是否应该保留 Upstream，暂时按全部保留处理后续再看
+		return LocalBranchInfo{
+			Name:      r.Name,
+			ShortName: r.ShortName,
+			Upstream:  r.Upstream,
+			Ahead:     r.Ahead,
+			Behind:    r.Behind,
+		}
+	})
+	localBranches = sortLocalBranches(localBranches)
+	defaultBranch := calcDefaultBranch(localBranches)
 
 	// 收集各工作区信息（dirty 按工作区各自探测，主区与 linked 同路径）
 	worktrees, err := collectWorktrees(path)
@@ -321,9 +354,7 @@ func collectEntry(path string) (*Entry, error) {
 	return &Entry{
 		Remotes:       remotes,
 		DefaultBranch: defaultBranch,
-		Branches:      branches,
-		Ahead:         ahead,
-		Behind:        behind,
+		Branches:      localBranches,
 		Main:          worktrees[0],
 		Worktrees:     worktrees[1:],
 		UpdatedAt:     time.Now(),
@@ -362,11 +393,32 @@ func collectWorktrees(path string) ([]WorktreeInfo, error) {
 // calcDefaultBranch 从本地分支清单推断默认分支：master/main 优先（覆盖绝大多数仓库），
 // 都不存在返回空（ahead/behind 放弃比较、前端展示回退）。比远端探测（git.DefaultBranch
 // 再起一个子进程）省一次调用，代价是 develop 等非惯例默认分支的仓库拿不到该数据。
-func calcDefaultBranch(branches []string) string {
+func calcDefaultBranch(branches []LocalBranchInfo) string {
+	names := xslices.Map(branches, func(r LocalBranchInfo) string { return r.ShortName })
 	for _, branch := range []string{"master", "main"} {
-		if slices.Contains(branches, branch) {
+		if slices.Contains(names, branch) {
 			return branch
 		}
 	}
 	return ""
+}
+
+// sortLocalBranches 本地分支排序：master/main/develop 置前（惯例的默认/集成分支，
+// 列表页第一眼要看到），其余按短名字典序。
+func sortLocalBranches(branches []LocalBranchInfo) []LocalBranchInfo {
+	priority := map[string]int{"master": 0, "main": 1, "develop": 2}
+	slices.SortFunc(branches, func(a, b LocalBranchInfo) int {
+		pa, aPrio := priority[a.ShortName]
+		pb, bPrio := priority[b.ShortName]
+		switch {
+		case aPrio && bPrio:
+			return pa - pb
+		case aPrio:
+			return -1
+		case bPrio:
+			return 1
+		}
+		return cmp.Compare(a.ShortName, b.ShortName)
+	})
+	return branches
 }

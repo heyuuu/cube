@@ -51,9 +51,10 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	// 写入
 	c1, _ := Load(dir)
 	c1.entries["/proj/a"] = &Entry{
-		Remotes: []RemoteInfo{{Name: "origin", URL: "git@x:a"}},
-		Main:    WorktreeInfo{Path: "/proj/a", Branch: "main"},
-		Ahead:   3,
+		Remotes:       []RemoteInfo{{Name: "origin", URL: "git@x:a"}},
+		DefaultBranch: "main",
+		Branches:      []LocalBranchInfo{{Name: "refs/heads/main", ShortName: "main", Ahead: 3, Behind: 1}},
+		Main:          WorktreeInfo{Path: "/proj/a", Branch: "main"},
 	}
 	if err := c1.Save(); err != nil {
 		t.Fatalf("Save 失败: %v", err)
@@ -65,7 +66,8 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	if !ok {
 		t.Fatalf("Save 后 Load 应命中")
 	}
-	if got.OriginURL() != "git@x:a" || got.Main.Branch != "main" || got.Ahead != 3 {
+	if got.OriginURL() != "git@x:a" || got.Main.Branch != "main" ||
+		got.DefaultBranchAhead() != 3 || got.DefaultBranchBehind() != 1 {
 		t.Fatalf("读回数据异常: %+v", got)
 	}
 }
@@ -112,12 +114,32 @@ func TestCache_Get(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	c, _ := Load(ws.Mkdir("cache"))
 
-	c.entries["/p"] = &Entry{Ahead: 1}
-	if e, ok := c.Get("/p"); !ok || e.Ahead != 1 {
+	c.entries["/p"] = &Entry{DefaultBranch: "x", Branches: []LocalBranchInfo{{ShortName: "x", Ahead: 1}}}
+	if e, ok := c.Get("/p"); !ok || e.DefaultBranchAhead() != 1 {
 		t.Fatalf("Get 命中异常: %+v ok=%v", e, ok)
 	}
 	if _, ok := c.Get("/missing"); ok {
 		t.Fatalf("未命中 Get 应返回 ok=false")
+	}
+}
+
+// TestSortLocalBranches master/main/develop 置前，其余按短名字典序。
+func TestSortLocalBranches(t *testing.T) {
+	branch := func(name string) LocalBranchInfo {
+		return LocalBranchInfo{Name: "refs/heads/" + name, ShortName: name}
+	}
+	got := sortLocalBranches([]LocalBranchInfo{
+		branch("zeta"), branch("develop"), branch("main"),
+		branch("alpha"), branch("master"), branch("feature/x"),
+	})
+	want := []string{"master", "main", "develop", "alpha", "feature/x", "zeta"}
+	if len(got) != len(want) {
+		t.Fatalf("排序结果长度异常: %v", got)
+	}
+	for i, b := range got {
+		if b.ShortName != want[i] {
+			t.Fatalf("排序结果 = %v，期望 %v", got, want)
+		}
 	}
 }
 

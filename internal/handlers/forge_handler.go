@@ -182,8 +182,8 @@ func (h *ForgeHandler) localRepos() []forge.LocalRepo {
 		if gi, ok := h.projectService.GitInfo(p.Path()); ok {
 			info.RepoURL = gi.OriginURL()
 			info.Dirty = gi.Main.Dirty
-			info.Ahead = gi.Ahead
-			info.Behind = gi.Behind
+			info.Ahead = gi.DefaultBranchAhead()
+			info.Behind = gi.DefaultBranchBehind()
 		}
 		locals = append(locals, info)
 	}

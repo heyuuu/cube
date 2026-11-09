@@ -93,7 +93,7 @@ query 支持两种搜索模式：
 				printInfoKV("branch", branch)
 				if info.DefaultBranch != "" {
 					// ahead/behind 是默认分支相对 origin 的差异
-					printInfoKV("default", info.DefaultBranch+" "+cmdutil.FormatAheadBehind(info.Ahead, info.Behind))
+					printInfoKV("default", info.DefaultBranch+" "+cmdutil.FormatAheadBehind(info.DefaultBranchAhead(), info.DefaultBranchBehind()))
 				}
 				printInfoKV("dirty", boolToCnColored(info.Main.Dirty))
 				printInfoKV("branches", fmt.Sprintf("%d 个", len(info.Branches)))

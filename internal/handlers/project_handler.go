@@ -74,8 +74,8 @@ func newProjectInfoDTO(e *projcache.Entry) *ProjectInfoDTO {
 		Remotes:       xslices.Map(e.Remotes, func(r projcache.RemoteInfo) RemoteDTO { return RemoteDTO{Name: r.Name, URL: r.URL} }),
 		CurrentBranch: e.Main.Branch,
 		DefaultBranch: e.DefaultBranch,
-		Ahead:         e.Ahead,
-		Behind:        e.Behind,
+		Ahead:         e.DefaultBranchAhead(),
+		Behind:        e.DefaultBranchBehind(),
 		Dirty:         e.Main.Dirty,
 		Worktrees: xslices.Map(e.Worktrees, func(wt projcache.WorktreeInfo) WorktreeDTO {
 			return WorktreeDTO{Path: wt.Path, Branch: wt.Branch, Workspaces: workspaceMemberDTOs(wt.Workspaces)}

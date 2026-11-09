@@ -106,19 +106,21 @@ func checkGitDirty(service *project.Service) {
 			return false
 		}
 
+		// 工作区 dirty
+		if info.Main.Dirty {
+			return true
+		}
+
 		// 分支不对
 		if info.Main.Branch != info.DefaultBranch {
 			return true
 		}
 
 		// 与 remote 有差异
-		if info.Ahead != 0 || info.Behind != 0 {
-			return true
-		}
-
-		// 工作区 dirty
-		if info.Main.Dirty {
-			return true
+		for _, branch := range info.Branches {
+			if branch.Ahead != 0 || branch.Behind != 0 {
+				return true
+			}
 		}
 
 		return false
