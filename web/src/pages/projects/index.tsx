@@ -130,7 +130,7 @@ export function ProjectsPage() {
   );
   // 多 remote 项目可命中多个 forge——全部返回，逐个渲染 icon（1042 修）
   const forgeOf = (p: Project) =>
-    repoHostsOf(p.gitInfo)
+    repoHostsOf(p.snapshot)
       .map((host) => ({ host, icon: forgeIcons.get(host) }))
       .filter((m): m is { host: string; icon: IconDecl } => Boolean(m.icon));
   const tags = [...new Set(projects.flatMap((p) => p.tags ?? []))].sort();
@@ -149,7 +149,7 @@ export function ProjectsPage() {
     if (tagFilter !== 'all' && !(p.tags ?? []).includes(tagFilter)) {
       return false;
     }
-    if (wtFilter && (p.gitInfo?.worktrees?.length ?? 0) === 0) {
+    if (wtFilter && (p.snapshot?.worktrees?.length ?? 0) === 0) {
       return false;
     }
     if (wsFilter && countWorkspaces(p) === 0) {
@@ -157,7 +157,7 @@ export function ProjectsPage() {
     }
     if (
       !matchForgeFilter(
-        repoHostsOf(p.gitInfo),
+        repoHostsOf(p.snapshot),
         forgeFilter,
         forgeList.map((f) => f.host),
       )
@@ -277,8 +277,8 @@ export function ProjectsPage() {
           <div>
             项目列表：
             <span title={formatDateTime(list.data?.scanUpdatedAt)}>{prettyTime(list.data?.scanUpdatedAt)}</span>
-            {' ｜ '}git 状态：
-            <span title={formatDateTime(list.data?.gitUpdatedAt)}>{prettyTime(list.data?.gitUpdatedAt)}</span>
+            {' ｜ '}项目快照：
+            <span title={formatDateTime(list.data?.snapshotUpdatedAt)}>{prettyTime(list.data?.snapshotUpdatedAt)}</span>
           </div>
         }
         actions={

@@ -30,7 +30,7 @@ type Service struct {
 	stopCh chan struct{} // nil = 未启用；非 nil = 定时器在跑
 }
 
-// NewService 构造 Service：加载 git 缓存（失败降级空缓存）并挂载项目扫描缓存。
+// NewService 构造 Service：加载项目快照缓存（失败降级空缓存）并挂载项目扫描缓存。
 func NewService(cfg *config.Config) *Service {
 	// 加载项目状态快照（降级优先：失败返回空缓存，不报错）
 	projCache := projcache.Load(cfg.CacheDir())
@@ -168,7 +168,7 @@ func (s *Service) OpenTargets(path string) []OpenTarget {
 		return nil
 	}
 	targets := []OpenTarget{{Path: proj.Path(), Label: rootLabel}}
-	info, _ := s.GitInfo(proj.Path())
+	info, _ := s.Snapshot(proj.Path())
 	// 存在性兜底过滤：采集侧已过滤，但目录在两次采集之间被删时快照仍残留，
 	// 打开目标必须是真实可打开的目录（os.Stat 廉价，不违反读路径不跑 git 的纪律）
 	for _, t := range targetEntries(proj.Path(), info) {
@@ -190,7 +190,7 @@ func (s *Service) OwnsDir(path, dir string) bool {
 	if pathkit.IsUnder(dir, proj.Path()) {
 		return true
 	}
-	info, _ := s.GitInfo(proj.Path())
+	info, _ := s.Snapshot(proj.Path())
 	if info == nil {
 		return false
 	}
@@ -269,23 +269,23 @@ func (s *Service) MatchCloneRule(repoURL string) (rule CloneRule, localPath stri
 	return MatchCloneRule(repoURL, s.CloneRules())
 }
 
-// --- git 缓存相关 ---
+// --- 项目快照（projcache）相关 ---
 
-// GitInfo 读取项目的 git 信息缓存条目；未命中返回 (nil, false)。
-// 不阻塞、不触发采集 —— 调用方读取的是当前缓存快照（可能 stale）。
-func (s *Service) GitInfo(path string) (*projcache.Entry, bool) {
+// Snapshot 读取单个项目的状态快照条目；未命中返回 (nil, false)。
+// 不阻塞、不触发采集 —— 调用方读取的是当前快照（可能 stale）。
+func (s *Service) Snapshot(path string) (*projcache.Entry, bool) {
 	if s.projCache == nil {
 		return nil, false
 	}
 	return s.projCache.Get(path)
 }
 
-// RefreshGitInfo 定向刷新单个项目的 git 快照并落盘（workbench 写操作后即时可见，
+// RefreshSnapshot 定向刷新单个项目的快照并落盘（workbench 写操作后即时可见，
 // 提案 1031）。经 app 装配点以方法值注入 workbench，避免 workbench 反向依赖 project。
 // 归属校验：workbench 以任意 git 目录为输入，非本服务收录项目的仓库直接跳过——
 // 外来仓库进快照后会在下轮整表重建时被删掉（白采一次全量），快照也短暂混入
 // 无消费者的外来条目。
-func (s *Service) RefreshGitInfo(path string) error {
+func (s *Service) RefreshSnapshot(path string) error {
 	if s.projCache == nil {
 		return nil
 	}
@@ -296,13 +296,13 @@ func (s *Service) RefreshGitInfo(path string) error {
 }
 
 // ScanUpdatedAt 返回项目列表最近一次扫描完成时间；从未扫描过返回零值。
-// 委托缓存的计算时间戳——数据与新鲜度由 scanCache 单点维护（对称：GitUpdatedAt 委托 projCache）。
+// 委托缓存的计算时间戳——数据与新鲜度由 scanCache 单点维护（对称：SnapshotUpdatedAt 委托 projCache）。
 func (s *Service) ScanUpdatedAt() time.Time { return s.scanCache.UpdatedAt() }
 
-// GitUpdatedAt 返回 git 快照的整表新鲜度（全部项目中最旧的 Entry.UpdatedAt）；
+// SnapshotUpdatedAt 返回项目快照的整表新鲜度（全部项目中最旧的 Entry.UpdatedAt）；
 // 无缓存返回零值。取「最旧项目」口径：任一项目过期即整表过期，单项目定向刷新
 // （RefreshOne）不再给整表「续命」——前端展示与 TTL 调度同用此口径。
-func (s *Service) GitUpdatedAt() time.Time {
+func (s *Service) SnapshotUpdatedAt() time.Time {
 	if s.projCache == nil {
 		return time.Time{}
 	}
@@ -382,7 +382,7 @@ func (s *Service) StopRefreshTicker() {
 func (s *Service) refresh() error {
 	total, collected, err := s.Refresh()
 	if err != nil {
-		slog.Warn("刷新 git 缓存失败", "err", err, "projects", total)
+		slog.Warn("刷新项目快照失败", "err", err, "projects", total)
 		return err
 	}
 	slog.Debug("project 视图刷新完成", "projects", total, "collected", collected)
@@ -399,7 +399,7 @@ func (s *Service) Refresh() (total int, collected int, err error) {
 
 	paths := xslices.Map(projects, (*Project).Path)
 	if s.projCache == nil {
-		return len(paths), 0, errors.New("git 缓存未初始化")
+		return len(paths), 0, errors.New("projcache 未初始化")
 	}
 	if err := s.projCache.Refresh(paths); err != nil {
 		return len(paths), 0, err

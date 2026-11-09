@@ -24,19 +24,18 @@ import (
 
 // ProjectDTO project/list 返回的单个项目快照（含 git 状态与最近使用时间）。
 type ProjectDTO struct {
-	Name       string          `json:"name"`
-	Group      string          `json:"group"`
-	Path       string          `json:"path"`
-	Tags       []string        `json:"tags"`
-	GitInfo    *ProjectInfoDTO `json:"gitInfo"`              // git 状态快照，可能为 nil（未采集）
-	LastUsedAt *time.Time      `json:"lastUsedAt,omitempty"` // 最近使用时间（置顶排序信号，未用过为 nil）
+	Name       string              `json:"name"`
+	Group      string              `json:"group"`
+	Path       string              `json:"path"`
+	Tags       []string            `json:"tags"`
+	Snapshot   *ProjectSnapshotDTO `json:"snapshot"`             // 项目快照，可能为 nil（未采集）
+	LastUsedAt *time.Time          `json:"lastUsedAt,omitempty"` // 最近使用时间（置顶排序信号，未用过为 nil）
 }
 
-// ProjectInfoDTO git 状态快照的对外形态：隔离内部 projcache.Entry（存储格式与 API
+// ProjectSnapshotDTO 项目快照的对外形态：隔离内部 projcache.Entry（存储格式与 API
 // 从此解耦，projcache 字段演化不再自动冲击前端）。字段是前端消费盘点后的子集，
-// 省略未消费项（branches 仅 CLI 用、worktree 的 detached 经 branch 为空表达）；
-// json tag 与原 wire 格式逐字段一致，前端无感。
-type ProjectInfoDTO struct {
+// 省略未消费项（branches 仅 CLI 用、worktree 的 detached 经 branch 为空表达）。
+type ProjectSnapshotDTO struct {
 	RepoURL       string               `json:"repoUrl"`       // origin remote URL
 	Remotes       []RemoteDTO          `json:"remotes"`       // 全部 remote（forge 匹配需全部 host）
 	CurrentBranch string               `json:"currentBranch"` // 当前检出分支短名，detached 为空
@@ -62,14 +61,14 @@ type WorktreeDTO struct {
 	Workspaces []WorkspaceMemberDTO `json:"workspaces"` // 该 worktree 根的 workspace 成员
 }
 
-// newProjectInfoDTO 把内部快照转为对外形态；nil（未采集）透传为 nil。
-// 主工作区信息（Entry.Main）升位到 DTO 顶级字段（wire 格式不变）；快照 Worktrees
+// newProjectSnapshotDTO 把内部快照转为对外形态；nil（未采集）透传为 nil。
+// 主工作区信息（Entry.Main）升位到 DTO 顶级字段；快照 Worktrees
 // 只含 linked worktree，作为 worktree 目标下发（前端「主目录」目标由固定首位承载）。
-func newProjectInfoDTO(e *projcache.Entry) *ProjectInfoDTO {
+func newProjectSnapshotDTO(e *projcache.Entry) *ProjectSnapshotDTO {
 	if e == nil {
 		return nil
 	}
-	return &ProjectInfoDTO{
+	return &ProjectSnapshotDTO{
 		RepoURL:       e.OriginURL(),
 		Remotes:       xslices.Map(e.Remotes, func(r projcache.RemoteInfo) RemoteDTO { return RemoteDTO{Name: r.Name, URL: r.URL} }),
 		CurrentBranch: e.Main.Branch,
@@ -87,9 +86,9 @@ func newProjectInfoDTO(e *projcache.Entry) *ProjectInfoDTO {
 
 // ProjectListResult 列表接口返回结构：含项目列表 + 两类刷新时间。
 type ProjectListResult struct {
-	List          []*ProjectDTO `json:"list"`
-	ScanUpdatedAt time.Time     `json:"scanUpdatedAt"` // 项目列表最近一次重扫完成时间（零值=未刷新过）
-	GitUpdatedAt  time.Time     `json:"gitUpdatedAt"`  // git 缓存最近一次落盘时间（零值=无缓存）
+	List              []*ProjectDTO `json:"list"`
+	ScanUpdatedAt     time.Time     `json:"scanUpdatedAt"`     // 项目列表最近一次重扫完成时间（零值=未刷新过）
+	SnapshotUpdatedAt time.Time     `json:"snapshotUpdatedAt"` // 项目快照最近一次落盘时间（零值=无缓存）
 }
 
 // --- handler ---
@@ -139,9 +138,9 @@ func (h *ProjectHandler) projectList(_ struct{}) (ProjectListResult, error) {
 		return dto
 	})
 	return ProjectListResult{
-		List:          list,
-		ScanUpdatedAt: h.projectService.ScanUpdatedAt(),
-		GitUpdatedAt:  h.projectService.GitUpdatedAt(),
+		List:              list,
+		ScanUpdatedAt:     h.projectService.ScanUpdatedAt(),
+		SnapshotUpdatedAt: h.projectService.SnapshotUpdatedAt(),
 	}, nil
 }
 
@@ -198,13 +197,13 @@ func (h *ProjectHandler) toProjectDTO(entity *project.Project) *ProjectDTO {
 		return nil
 	}
 
-	info, _ := h.projectService.GitInfo(entity.Path())
+	info, _ := h.projectService.Snapshot(entity.Path())
 	return &ProjectDTO{
-		Name:    entity.Name(),
-		Group:   entity.Group(),
-		Path:    entity.Path(),
-		Tags:    entity.CollectTags(),
-		GitInfo: newProjectInfoDTO(info),
+		Name:     entity.Name(),
+		Group:    entity.Group(),
+		Path:     entity.Path(),
+		Tags:     entity.CollectTags(),
+		Snapshot: newProjectSnapshotDTO(info),
 	}
 }
 
@@ -354,7 +353,7 @@ func (h *ProjectHandler) workspaceGet(input struct {
 	root := proj.Path()
 	result := WorkspaceStateResult{Effective: []WorkspaceMemberDTO{}, Declared: []WorkspaceMemberDTO{}, Detected: []WorkspaceMemberDTO{}}
 	// 生效清单读主工作区（Entry.Main）的 workspace 成员
-	if info, ok := h.projectService.GitInfo(root); ok && info != nil {
+	if info, ok := h.projectService.Snapshot(root); ok && info != nil {
 		result.Effective = workspaceMemberDTOs(info.Main.Workspaces)
 	}
 	if cf, ok := cubefile.Load(root); ok {
@@ -405,7 +404,7 @@ func (h *ProjectHandler) workspaceSave(input WorkspaceSaveInput) (map[string]any
 	if err := workspace.Save(root, validated); err != nil {
 		return nil, err
 	}
-	if err := h.projectService.RefreshGitInfo(root); err != nil {
+	if err := h.projectService.RefreshSnapshot(root); err != nil {
 		slog.Warn("workspace 保存后刷新快照失败（等下次采集自愈）", "err", err)
 	}
 	return map[string]any{"ok": true}, nil

@@ -31,7 +31,7 @@ export const gitFilters: { value: GitStatus | 'all'; label: string }[] = [
 
 // workspace 总数：主根 + 各 worktree 下的 workspace 成员合计（列表快照字段，读路径零探测）
 export function countWorkspaces(p: Project): number {
-  const g = p.gitInfo;
+  const g = p.snapshot;
   if (!g) {
     return 0;
   }
@@ -49,7 +49,7 @@ export function timeOf(iso: string | null | undefined): number {
 // 谓词式匹配（非互斥分桶）：项目可能同时 dirty + ahead，
 // 筛 ahead 应包含所有 ahead > 0 的项目，而不是被 dirty 优先级吞掉。
 export function matchGitFilter(p: Project, filter: GitStatus | 'all'): boolean {
-  const g = p.gitInfo;
+  const g = p.snapshot;
   if (filter === 'all') {
     return true;
   }

@@ -162,7 +162,7 @@ export function TargetKindIcon({ kind }: { kind: TargetKind }) {
 // worktree 计数徽标（多目标项目的行内提示，1032）。
 // 紫罗兰专属配色：与 tag 徽标（default/outline）和 git 状态徽标视觉区分
 export function WorktreeCountBadge({ p }: { p: Project }) {
-  const n = p.gitInfo?.worktrees?.length ?? 0;
+  const n = p.snapshot?.worktrees?.length ?? 0;
   if (n === 0) {
     return null;
   }

@@ -22,7 +22,7 @@ export interface ProjectTarget {
 // label 去歧义：worktree 下的 workspace 恒带归属前缀「分支 · 名字」；前缀后仍撞名
 // （跨 worktree 同名、或与 worktree 根/主 workspace 撞名）的条目追加相对路径后缀。
 export function projectTargets(p: Project): ProjectTarget[] {
-  const g = p.gitInfo;
+  const g = p.snapshot;
   const wts = g?.worktrees ?? [];
   const branchCount = new Map<string, number>();
   for (const w of wts) {

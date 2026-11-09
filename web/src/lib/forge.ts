@@ -13,24 +13,24 @@ export function repoHostOf(raw: string | null | undefined): string {
   return m ? m[1].toLowerCase().replace(/\.$/, '') : '';
 }
 
-// 项目 git 快照中参与 forge 匹配的 remote 形态（ProjectDTO.gitInfo 的子结构）。
+// 项目快照中参与 forge 匹配的 remote 形态（ProjectDTO.snapshot 的子结构）。
 interface GitRemoteLike {
   name?: string;
   url: string;
 }
 
-interface GitInfoLike {
+interface SnapshotLike {
   repoUrl?: string | null;
   remotes?: GitRemoteLike[] | null;
 }
 
 // 项目的全部 forge host（1042 修：多 remote 项目同时匹配多个 forge）——
 // repoUrl（origin）在前，其余 remotes 按序去重；无法解析的 URL 产生空串由调用方忽略。
-export function repoHostsOf(gitInfo: GitInfoLike | null | undefined): string[] {
-  if (!gitInfo) {
+export function repoHostsOf(snapshot: SnapshotLike | null | undefined): string[] {
+  if (!snapshot) {
     return [];
   }
-  const urls = [gitInfo.repoUrl, ...(gitInfo.remotes ?? []).map((r) => r.url)];
+  const urls = [snapshot.repoUrl, ...(snapshot.remotes ?? []).map((r) => r.url)];
   const hosts: string[] = [];
   for (const u of urls) {
     const h = repoHostOf(u);
@@ -45,7 +45,7 @@ export function repoHostsOf(gitInfo: GitInfoLike | null | undefined): string[] {
 //   - 'all'：全部；
 //   - 具体 forge host：项目任一 remote host 等于该 forge；
 //   - 'other'：有 remote 但没有任何 host 命中已配置 forge（含无法解析的 URL）；
-//   - 'none'：无 remote（含未采集 gitInfo）。
+//   - 'none'：无 remote（含未采集 snapshot）。
 export function matchForgeFilter(hosts: readonly string[], filter: string, forgeHosts: readonly string[]): boolean {
   if (filter === 'all') {
     return true;

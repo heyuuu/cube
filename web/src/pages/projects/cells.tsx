@@ -36,7 +36,7 @@ export function ClickBadge({
 }
 
 export function GitCell({ p, onFilter }: { p: Project; onFilter: (s: GitStatus) => void }) {
-  const g = p.gitInfo;
+  const g = p.snapshot;
   if (!g) {
     return (
       <ClickBadge variant="outline" title="筛选 git：未采集" onClick={() => onFilter('none')}>

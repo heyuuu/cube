@@ -14,7 +14,7 @@
 
 Web API 的出参应只含**基础类型（含 slice/map）+ handlers 包内定义的类型**。实际盘点（2026-11-08，42 个端点全量扫描）发现 17 个端点的响应类型整体是内部类型直通：domain 实体、pkg 类型、甚至基础设施层类型直接进 OpenAPI schema 和前端。
 
-首例已修复验证：project list 的 `gitInfo` 原直通 `projcache.Entry`，已隔离为 handlers 内的 `ProjectInfoDTO` + 嵌套 `RemoteDTO`/`WorktreeDTO`（commit `4454781`）——json tag 与原 wire 格式逐字段一致，前端无感；projcache 此后可自由演化字段（如删 Branches/Detached）不再冲击 API。本提案把该模式铺到其余端点。
+首例已修复验证：project list 的快照字段（时名 `gitInfo`）原直通 `projcache.Entry`，已隔离为 handlers 内的 DTO（现名 `ProjectSnapshotDTO`，json 字段 `snapshot`）+ 嵌套 `RemoteDTO`/`WorktreeDTO`（commit `4454781`）——json tag 与原 wire 格式逐字段一致，前端无感；projcache 此后可自由演化字段（如删 Branches/Detached）不再冲击 API。本提案把该模式铺到其余端点。
 
 ## 问题清单（盘点快照）
 

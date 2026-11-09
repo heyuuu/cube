@@ -40,9 +40,9 @@ func TestStartRefreshTicker_StaleCacheTriggersStartupRefresh(t *testing.T) {
 	}
 }
 
-// TestRefreshGitInfoOwnership 定向刷新只服务收录项目：scan 外的仓库不进快照
+// TestRefreshSnapshotOwnership 定向刷新只服务收录项目：scan 外的仓库不进快照
 // （workbench 以任意 git 目录为输入，外来仓库进了快照也会被整表重建删掉——白采）。
-func TestRefreshGitInfoOwnership(t *testing.T) {
+func TestRefreshSnapshotOwnership(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	root := ws.Mkdir("root")
 	repo := ws.MakeProjectDir(filepath.Join("root", "repo"))
@@ -50,17 +50,17 @@ func TestRefreshGitInfoOwnership(t *testing.T) {
 
 	s := newServiceWithRules(t, ws, []ScanRule{{Group: "g", Path: root, MaxDepth: 3}}, nil)
 
-	if err := s.RefreshGitInfo(repo); err != nil {
+	if err := s.RefreshSnapshot(repo); err != nil {
 		t.Fatalf("收录项目应可定向刷新: %v", err)
 	}
-	if _, ok := s.GitInfo(repo); !ok {
+	if _, ok := s.Snapshot(repo); !ok {
 		t.Fatal("收录项目刷新后应有快照")
 	}
 
-	if err := s.RefreshGitInfo(foreign); err != nil {
+	if err := s.RefreshSnapshot(foreign); err != nil {
 		t.Fatalf("外来仓库跳过不应报错: %v", err)
 	}
-	if _, ok := s.GitInfo(foreign); ok {
+	if _, ok := s.Snapshot(foreign); ok {
 		t.Fatal("外来仓库不应进快照")
 	}
 }

@@ -1789,35 +1789,20 @@ export interface components {
       time: string;
     };
     ProjectDTO: {
-      gitInfo: components['schemas']['ProjectInfoDTO'];
       group: string;
       /** Format: date-time */
       lastUsedAt?: string;
       name: string;
       path: string;
+      snapshot: components['schemas']['ProjectSnapshotDTO'];
       tags: string[] | null;
     };
-    ProjectInfoDTO: {
-      /** Format: int64 */
-      ahead: number;
-      /** Format: int64 */
-      behind: number;
-      /** Format: date-time */
-      collectedAt: string;
-      currentBranch: string;
-      defaultBranch: string;
-      dirty: boolean;
-      remotes: components['schemas']['RemoteDTO'][] | null;
-      repoUrl: string;
-      workspaces: components['schemas']['WorkspaceMemberDTO'][] | null;
-      worktrees: components['schemas']['WorktreeDTO'][] | null;
-    };
     ProjectListResult: {
-      /** Format: date-time */
-      gitUpdatedAt: string;
       list: components['schemas']['ProjectDTO'][] | null;
       /** Format: date-time */
       scanUpdatedAt: string;
+      /** Format: date-time */
+      snapshotUpdatedAt: string;
     };
     ProjectOpenInputBody: {
       /**
@@ -1832,6 +1817,21 @@ export interface components {
       opener: string;
       /** @description 项目绝对路径 */
       path: string;
+    };
+    ProjectSnapshotDTO: {
+      /** Format: int64 */
+      ahead: number;
+      /** Format: int64 */
+      behind: number;
+      /** Format: date-time */
+      collectedAt: string;
+      currentBranch: string;
+      defaultBranch: string;
+      dirty: boolean;
+      remotes: components['schemas']['RemoteDTO'][] | null;
+      repoUrl: string;
+      workspaces: components['schemas']['WorkspaceMemberDTO'][] | null;
+      worktrees: components['schemas']['WorktreeDTO'][] | null;
     };
     Refs: {
       head: string;

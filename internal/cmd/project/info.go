@@ -75,8 +75,8 @@ query 支持两种搜索模式：
 				}
 			}
 
-			// git 缓存快照（branch/dirty 等基础字段）；remote 列表走本地实时读
-			info, hasCache := a.ProjectService().GitInfo(proj.Path())
+			// 项目快照（branch/dirty 等基础字段）；remote 列表走本地实时读
+			info, hasCache := a.ProjectService().Snapshot(proj.Path())
 			cacheURL := ""
 			if hasCache {
 				cacheURL = info.OriginURL()

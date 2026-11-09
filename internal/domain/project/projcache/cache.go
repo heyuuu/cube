@@ -1,4 +1,4 @@
-// Package projcache 提供项目状态快照的本地缓存（git 信息 + 打开目标元数据）。
+// Package projcache 提供项目状态快照的本地缓存（git 信息 + worktree 枚举 + workspace 成员）。
 //
 // 对几十个 git 项目的全量采集是 IO 密集型操作，每次都跑会明显卡顿。
 // 本包把采集结果缓存到 ~/.config/cube/cache/projcache.json：
@@ -41,7 +41,7 @@ const cacheVersion = 5
 // 缓存文件名（位于缓存目录 dir 下）。
 const cacheFileName = "projcache.json"
 
-// Entry 单个项目的 git 信息快照。
+// Entry 单个项目的状态快照。
 type Entry struct {
 	Remotes       []RemoteInfo      `json:"remotes"`       // 全部 remote（无则空数组；origin 地址经 OriginURL 派生）
 	DefaultBranch string            `json:"defaultBranch"` // 默认主分支名（master/main/...）
@@ -200,7 +200,7 @@ func (c *Cache) Save() error {
 	return nil
 }
 
-// Refresh 用给定的项目路径列表并发采集 git 信息，整表重建后写回内存 + 落盘。
+// Refresh 用给定的项目路径列表并发采集项目快照，整表重建后写回内存 + 落盘。
 //
 // 整表重建语义：以本次采集结果为准，旧 entries 被完全覆盖——
 //   - 采集成功的项目写入新 entry；
@@ -226,7 +226,7 @@ func (c *Cache) Refresh(paths []string) error {
 	// 采集汇总日志：排查「缓存为何没更新 / 采集耗时异常」时直接查这一条。
 	// 失败数 = 项目数 - 成功数（失败项目另有逐条 Warn 日志）。
 	// 耗时用 String() 而非 time.Duration 原值：JSON handler 会把 Duration 序列化成纳秒整数，不可读。
-	slog.Info("git 缓存采集完成",
+	slog.Info("项目快照采集完成",
 		"项目数", len(paths),
 		"成功", len(entries),
 		"失败", len(paths)-len(entries),
@@ -244,7 +244,7 @@ func (c *Cache) Refresh(paths []string) error {
 func (c *Cache) RefreshOne(path string) error {
 	entry, err := collectEntry(path)
 	if err != nil {
-		return fmt.Errorf("定向刷新 git 缓存失败: %w", err)
+		return fmt.Errorf("定向刷新 projcache 快照失败: %w", err)
 	}
 	c.mu.Lock()
 	c.entries[path] = entry
@@ -308,7 +308,7 @@ func collectEntries(paths []string) map[string]*Entry {
 	return entries
 }
 
-// collectEntry 采集单个项目的 git 信息。全有或全无：任一 git 子命令失败即整体失败
+// collectEntry 采集单个项目的快照。全有或全无：任一 git 子命令失败即整体失败
 // （返回 error，调用方丢弃该条目），不接受残缺数据——残缺快照在消费侧（打开目标、
 // forge 对账）比没有快照更糟。业务空值（无 remote、detached 等）不是失败，落零值。
 func collectEntry(path string) (*Entry, error) {

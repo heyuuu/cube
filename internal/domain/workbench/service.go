@@ -35,9 +35,9 @@ type Service struct {
 	ptyCancels map[int]context.CancelFunc
 }
 
-// NewService di 装配入口：注入 project.Service 的 git 信息定向刷新能力。
+// NewService di 装配入口：注入 project.Service 的项目快照定向刷新能力。
 func NewService(projectService *project.Service) *Service {
-	return newServiceEx(projectService.RefreshGitInfo)
+	return newServiceEx(projectService.RefreshSnapshot)
 }
 
 // newServiceEx 构造 Service（cacheRefresh 为 nil 表示无刷新能力，跳过）。
@@ -52,7 +52,7 @@ func (s *Service) refreshCache(mainRoot string) {
 		return
 	}
 	if err := s.cacheRefresh(mainRoot); err != nil {
-		slog.Warn("写操作后定向刷新 git 缓存失败，等待 TTL 自愈", "path", mainRoot, "err", err)
+		slog.Warn("写操作后定向刷新项目快照失败，等待 TTL 自愈", "path", mainRoot, "err", err)
 	}
 }
 

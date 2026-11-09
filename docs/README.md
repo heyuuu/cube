@@ -32,13 +32,13 @@
 - [`1043-独立diff页/`](proposals/parked/1043-独立diff页/) — Beyond Compare 式独立 diff 页（多源：本地目录/sftp/git commit+子目录；渐进式懒对比；文件对比与监听）：是否独立成单独工具、sftp 是否进 v1 均未定，解挂时先定场景与架构归属
 - [`parked/1039-opener适用范围match/`](proposals/parked/1039-opener适用范围match/) — opener 适用范围谓词（仓库根 vs 普通目录 / 文件后缀 / 项目语言）：已定不进 role、open-path 按普通目录、语言粒度到 workspace；intent 拆分已随 1038 落地，match 本体挂起——且方向可能转为「调用点按目标属性选更细 intent」，解挂时先重估前提
 - [`1037-desktop薄壳重新评估/`](proposals/parked/1037-desktop薄壳重新评估/) — 壳需求重新成立（快捷键与浏览器冲突为硬需求，pty 保持已由超时独立解决）；前提收敛为自用/macOS 独占/薄壳（连已有 server，不动 1036 生命周期）；wails v2 功能不匹配（全局快捷键/多窗口系 v3 独有）、对 wails 整体持保留意见，候选路线对比已定倾向：**Swift 原生通用参数化壳**（`--url --hotkey`，零 cube 逻辑、独立仓库，与个人 Swift 工具线合流；Swift > Tauri ≈ Wails v3 > Electron）；解挂主条件为 Swift 工具线推进到成熟
-- [`1047-内部类型出参隔离/`](proposals/parked/1047-内部类型出参隔离/) — API 出参收敛为「基础类型 + handlers 包内类型」：42 端点盘点出 17 处内部类型直通（forge 含 token 的 Account、workbench 全家 10 端点、config.Config 等），修复模式已由 project gitInfo → ProjectInfoDTO（4454781）验证；解挂条件：动到对应 domain 结构时顺手做、或 API 出现前端之外的第二消费者时必须先做
+- [`1047-内部类型出参隔离/`](proposals/parked/1047-内部类型出参隔离/) — API 出参收敛为「基础类型 + handlers 包内类型」：42 端点盘点出 17 处内部类型直通（forge 含 token 的 Account、workbench 全家 10 端点、config.Config 等），修复模式已由 project 快照出参隔离（现 `ProjectSnapshotDTO`，4454781）验证；解挂条件：动到对应 domain 结构时顺手做、或 API 出现前端之外的第二消费者时必须先做
 
 #### [proposals/archived/](proposals/archived/) — 已完成提案归档
 
 已实现的需求总结（从 proposals 顶层移入，记录最终落地形态与方案演变）。
 
-- [`archived/1040-forge管理/`](proposals/archived/1040-forge管理/) — ✅ 已实现（2026-09-05）：forge（git 托管平台实例）配置管理——`Forge{host,kind,icon}` 存 settings `forges` 节（host 归一化唯一键、kind 四值枚举 github/gitea/gitee/generic），CLI `forge list`、Web settings Forge 分区增删改、API list/save/delete；repo→forge 匹配在前端（repoUrl 解析 host 查表，projects 列表/树名称旁展示 icon），不写 git.json 快照
+- [`archived/1040-forge管理/`](proposals/archived/1040-forge管理/) — ✅ 已实现（2026-09-05）：forge（git 托管平台实例）配置管理——`Forge{host,kind,icon}` 存 settings `forges` 节（host 归一化唯一键、kind 四值枚举 github/gitea/gitee/generic），CLI `forge list`、Web settings Forge 分区增删改、API list/save/delete；repo→forge 匹配在前端（repoUrl 解析 host 查表，projects 列表/树名称旁展示 icon），不写 projcache 快照
 - [`archived/1041-forge-account/`](proposals/archived/1041-forge-account/) — ✅ 已实现（2026-09-06）：forge account / namespace 与远端拉取对账——Account（纯 API 凭证，token 打码）+ Namespace（personal/org、可选挂 account）存 settings 两节；API 客户端沉淀 `pkg/gitapi`（github/gitea/gitee 三方言）；拉取手动出站 + easycache，探测 detect；对账纯函数三分（未 clone/孤儿/已 clone）；9 个 API，settings Forge 分区下挂两子表
 - [`archived/1044-forge-account-only/`](proposals/archived/1044-forge-account-only/) — ✅ 已实现（2026-09-07）：推翻 namespace 模型——实测各平台「按命名空间列仓库」端点分裂且不可靠（github/gitee `/users/{path}/repos` 只回公开库、gitee org 列表混幽灵条目），只保留 account 拉取（三平台统一 `GET /user/repos`，「列表即真相」）；Namespace/detect/forgeNamespaces 节删除，孤儿 = 同 namespace（URL 推导）但不在拉取结果
 - [`archived/1042-forge页/`](proposals/archived/1042-forge页/) — ✅ 已实现（2026-09-07）：前台 Forges 页——远端仓库视角列表（无 tree 模式），account 摘要条（fetchedAt 新鲜度 + 显式刷新），筛选 chips（forge/状态，公共 FilterRow）+ 表头排序（公共 SortHead），RepoUrl 合并列，未 clone 复制 clone 命令（不做 clone 执行）；拉取结果落盘 + fetchedAt 前端展示

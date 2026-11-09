@@ -52,7 +52,7 @@ export function ProjectDrawer({
   const [wsEditOpen, setWsEditOpen] = useState(false);
   const wsState = useWorkspaceState(project?.path ?? null);
 
-  const g = project?.gitInfo;
+  const g = project?.snapshot;
 
   return (
     <Sheet
@@ -97,7 +97,7 @@ export function ProjectDrawer({
                   <KV k="采集时间">{formatDateTime(g.collectedAt)}</KV>
                 </dl>
               ) : (
-                <div className="text-muted-foreground">未采集（等后台 git 缓存刷新）</div>
+                <div className="text-muted-foreground">未采集（等后台快照刷新）</div>
               )}
             </DrawerSection>
 

@@ -18,11 +18,11 @@ func TestProjectList(t *testing.T) {
 	env := newTestEnv(t)
 	var got struct {
 		List []struct {
-			Name    string          `json:"name"`
-			Group   string          `json:"group"`
-			Path    string          `json:"path"`
-			Tags    []string        `json:"tags"`
-			GitInfo *ProjectInfoDTO `json:"gitInfo"`
+			Name     string              `json:"name"`
+			Group    string              `json:"group"`
+			Path     string              `json:"path"`
+			Tags     []string            `json:"tags"`
+			Snapshot *ProjectSnapshotDTO `json:"snapshot"`
 		} `json:"list"`
 	}
 	decodeData(t, getJSON(t, env.url("/api/project/list")), &got)
@@ -41,12 +41,12 @@ func TestProjectList(t *testing.T) {
 	if got.List[p1].Group != "g1" || got.List[p1].Path != env.proj1Path() {
 		t.Errorf("g1:proj1 字段不符: %+v", got.List[p1])
 	}
-	// nil tags 序列化为 []（nilCollectionsJSONFormat 契约），gitInfo 未采集为 null
+	// nil tags 序列化为 []（nilCollectionsJSONFormat 契约），snapshot 未采集为 null
 	if got.List[p1].Tags == nil {
 		t.Error("nil tags 应序列化为 [] 而非 null")
 	}
-	if got.List[p1].GitInfo != nil {
-		t.Errorf("未采集的 gitInfo 应为 null, got %+v", got.List[p1].GitInfo)
+	if got.List[p1].Snapshot != nil {
+		t.Errorf("未采集的 snapshot 应为 null, got %+v", got.List[p1].Snapshot)
 	}
 	p2 := got.List[byName["g2:proj2"]]
 	if len(p2.Tags) != 1 || p2.Tags[0] != "godot" {
