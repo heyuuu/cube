@@ -3,6 +3,8 @@ package workspace
 import (
 	"fmt"
 
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/internal/domain/project/cubefile"
 )
 
@@ -24,9 +26,8 @@ func Save(root string, ws []Workspace) error {
 	if len(ws) == 0 {
 		return fmt.Errorf("workspaces 为空，如需清除 workspace 声明请删除 .cube/cube.json: root=%s", root)
 	}
-	declared := make([]cubefile.Declared, 0, len(ws))
-	for _, w := range ws {
-		declared = append(declared, cubefile.Declared{Name: w.Name, Path: w.Path})
-	}
-	return cubefile.Save(root, &cubefile.File{Workspaces: declared, WorkspacesSet: true})
+	rules := xslices.Map(ws, func(w Workspace) cubefile.WorkspaceRule {
+		return cubefile.WorkspaceRule(w)
+	})
+	return cubefile.SaveWorkspaceRules(root, rules)
 }

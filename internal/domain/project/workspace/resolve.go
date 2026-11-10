@@ -1,64 +1,71 @@
 package workspace
 
 import (
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
+	"github.com/heyuuu/x/store"
+	"github.com/heyuuu/x/xstd/xos"
+	"go.yaml.in/yaml/v3"
+
 	"cube/internal/domain/project/cubefile"
 )
 
 // Resolve 解析项目根（或 worktree 根）的 workspace 列表，返回相对该根的成员目录。
-//
-// 优先级（提案 1030 讨论定稿）：
-//  1. cube.json 存在且 workspaces 字段存在 → 只用它（空数组也是显式声明，不回落探测；
-//     条目逐个校验，坏的跳过，全坏等价于空）；
-//  2. 否则探测：cube.json 的 workspaceScanRule（无则 DefaultScanRule）按序第一个命中生效；
-//  3. cube.json 不存在或坏 JSON → 等价于无声明，走探测。
-//
-// 本函数供采集侧调用（读文件系统），读路径不应调用——读侧走快照。
 func Resolve(root string) []Workspace {
-	if f, ok := cubefile.Load(root); ok {
-		if f.WorkspacesSet {
-			return ValidateDeclared(root, f.Workspaces)
-		}
-		return Detect(root, f.WorkspaceScanRule)
-	}
-	return Detect(root, "")
+	return ResolveRules(root, cubefile.LoadWorkspaceRules(root))
 }
 
-// ValidateDeclared 校验显式声明并构造成员列表：路径须相对、不逃逸出根、目录存在；
-// 坏条目跳过（记日志），name 缺省取路径末段。
-//
-// path 支持 glob 通配（apps/*、packages/** 等，语义与 pnpm-workspace.yaml 的
-// packages 一致：doublestar 展开、排除隐藏与 node_modules 目录）——这是「cube.json
-// 完整替代 pnpm-workspace.yaml」的保底表达力。通配命中多目录时各成员取名路径末段
-// （name 只对单命中生效）。
-func ValidateDeclared(root string, declared []cubefile.Declared) []Workspace {
-	result := make([]Workspace, 0, len(declared))
-	for _, d := range declared {
-		rel, ok := cleanDeclaredPath(root, d.Path)
-		if !ok {
-			continue
-		}
-		if hasGlobMeta(rel) {
-			result = append(result, expandDeclared(root, d, rel)...)
-			continue
-		}
-		info, err := os.Stat(filepath.Join(root, rel))
-		if err != nil || !info.IsDir() {
-			slog.Warn("cube.json workspace 条目目录不存在，跳过", "root", root, "path", d.Path)
-			continue
-		}
-		result = append(result, Workspace{Name: declaredName(d.Name, rel), Path: rel})
+// ResolveRules 在指定目录下根据给定规则列表匹配 workspace
+func ResolveRules(root string, rules []cubefile.WorkspaceRule) []Workspace {
+	result := make([]Workspace, 0, len(rules))
+	for _, rule := range rules {
+		result = append(result, resolveRule(root, rule)...)
 	}
 	return result
 }
 
-// cleanDeclaredPath 条目 path 的公共校验：非空、相对、不逃逸出根。
+// ResolveRules 在指定目录下根据给定规则匹配 workspace, 跳过各种错误
+// path 支持 glob 通配（apps/*、packages/** 等，语义与 npm/pnpm 一致：doublestar 展开、排除隐藏与 node_modules 目录）
+func resolveRule(root string, rule cubefile.WorkspaceRule) []Workspace {
+	rel, ok := cleanRulePath(root, rule.Path)
+	if !ok {
+		return nil
+	}
+
+	// 特殊 rule
+	switch rule.Path {
+	case cubefile.NpmRule:
+		return resolveNpmRule(root, rule.Name)
+	case cubefile.PnpmRule:
+		return resolvePnpmRule(root, rule.Name)
+	}
+
+	// 模糊匹配
+	if hasGlobMeta(rel) {
+		return resolvePatterns(root, rule.Name, []string{rel})
+	}
+
+	// 精确匹配
+	if !xos.IsDir(filepath.Join(root, rel)) {
+		slog.Warn("cube.json workspace 条目目录不存在，跳过", "root", root, "path", rule.Path)
+		return nil
+	}
+
+	return []Workspace{
+		{Name: rule.Name, Path: rel},
+	}
+}
+
+// cleanRulePath 条目 path 的公共校验：非空、相对、不逃逸出根。
 // 返回清理后的相对路径；坏路径返回 ok=false（已记日志）。
-func cleanDeclaredPath(root, path string) (string, bool) {
+func cleanRulePath(root, path string) (string, bool) {
 	if path == "" {
 		slog.Warn("cube.json workspace 条目缺 path，跳过", "root", root)
 		return "", false
@@ -80,29 +87,90 @@ func hasGlobMeta(path string) bool {
 	return strings.ContainsAny(path, "*?[")
 }
 
-// expandDeclared 展开通配声明的命中目录（复用探测侧的 glob 语义）。
-// 单命中且声明了 name 时用声明的 name，否则各成员取路径末段。
-func expandDeclared(root string, d cubefile.Declared, rel string) []Workspace {
-	members := expandPatterns(root, []string{rel})
-	if len(members) == 0 {
-		slog.Warn("cube.json workspace 通配条目无命中，跳过", "root", root, "path", d.Path)
+// resolvePatterns 处理给定规则匹配的情况
+func resolvePatterns(root string, name string, patterns []string) []Workspace {
+	if len(patterns) == 0 {
 		return nil
 	}
-	result := make([]Workspace, 0, len(members))
-	for _, m := range members {
-		name := filepath.Base(m)
-		if len(members) == 1 && d.Name != "" {
-			name = d.Name
+	rootRel := "."
+	var workspaces []Workspace
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // 单目录读失败（权限等）跳过，不中断整次探测
 		}
-		result = append(result, Workspace{Name: name, Path: m})
-	}
-	return result
+		if !d.IsDir() {
+			return nil
+		}
+
+		rel, err := filepath.Rel(root, path)
+		if err != nil || rel == rootRel {
+			return nil
+		}
+		depth := strings.Count(rel, string(filepath.Separator))
+		if depth >= maxGlobWalkDepth {
+			return fs.SkipDir
+		}
+		if isGlobDir(rel) {
+			return fs.SkipDir // node_modules / .git 等不进 glob 结果也不下钻
+		}
+		for _, p := range patterns {
+			if p == "" {
+				continue
+			}
+			// doublestar 的 "**" 可匹配零段，libs/** 会连 libs 本身也命中——
+			// 模式自身的静态前缀是「容器目录」不是成员，排除
+			if prefix, ok := strings.CutSuffix(filepath.ToSlash(p), "/**"); ok && filepath.ToSlash(rel) == prefix {
+				continue
+			}
+			if ok, _ := doublestar.Match(filepath.ToSlash(p), filepath.ToSlash(rel)); ok {
+				workspaces = append(workspaces, Workspace{Name: name + ":" + filepath.ToSlash(rel), Path: rel})
+				break
+			}
+		}
+		return nil
+	})
+	return workspaces
 }
 
-// declaredName 显式条目的显示名：声明了 name 用声明值，缺省取路径末段。
-func declaredName(name, rel string) string {
-	if name == "" {
-		return filepath.Base(rel)
+// resolveNpmRule 解析 npm 的 workspaces 规则
+// npm 使用 package.json 的 workspaces 节表示工作空间规则，支持数组或 {packages: []} 两种形态
+func resolveNpmRule(root string, name string) []Workspace {
+	// 读取原始节
+	pkgFile := filepath.Join(root, "package.json")
+	raw, err := store.LoadSection[jsontext.Value](pkgFile, "workspaces")
+	if err != nil || len(raw) == 0 {
+		return nil
 	}
-	return name
+
+	// 尝试解析为 []string
+	var patterns []string
+	if err := json.Unmarshal(raw, &patterns); err != nil {
+		return resolvePatterns(root, name, patterns)
+	}
+
+	// 尝试解析为 {packages: []string}
+	var obj struct {
+		Packages []string `json:"packages"`
+	}
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return resolvePatterns(root, name, obj.Packages)
+	}
+
+	return nil
+}
+
+// resolveNpmRule 解析 pnpm 的 workspaces 规则
+// pnpm 使用 pnpm-workspace.yaml 的 workspaces 节表示工作空间规则
+func resolvePnpmRule(root string, name string) []Workspace {
+	data, err := os.ReadFile(filepath.Join(root, "pnpm-workspace.yaml"))
+	if err != nil {
+		return nil
+	}
+	var spec struct {
+		Packages []string `yaml:"packages"`
+	}
+	if err := yaml.Unmarshal(data, &spec); err != nil {
+		return nil
+	}
+	return resolvePatterns(root, name, spec.Packages)
 }

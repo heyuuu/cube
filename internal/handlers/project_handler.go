@@ -394,10 +394,10 @@ func (h *ProjectHandler) workspaceSave(input WorkspaceSaveInput) (map[string]any
 			return nil, errors.New("path 不支持通配符（glob 是手写 cube.json 的表达，保存接口固化具体成员）: " + m.Path)
 		}
 	}
-	declared := xslices.Map(input.Body.Workspaces, func(m WorkspaceMemberDTO) cubefile.Declared {
-		return cubefile.Declared(m)
+	declared := xslices.Map(input.Body.Workspaces, func(m WorkspaceMemberDTO) cubefile.WorkspaceRule {
+		return cubefile.WorkspaceRule(m)
 	})
-	validated := workspace.ValidateDeclared(root, declared)
+	validated := workspace.ResolveRules(root, declared)
 	if len(validated) != len(declared) {
 		return nil, errors.New("存在无效条目（path 须相对项目根、目录存在且不逃逸），请修正后重试")
 	}

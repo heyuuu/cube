@@ -8,16 +8,18 @@
 package cubefile
 
 import (
-	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/heyuuu/x/store"
 )
 
 const cubeFileName = ".cube/cube.json"
+
+func path(root string) string {
+	return filepath.Join(root, cubeFileName)
+}
 
 // Declared workspaces 节里的单条显式声明（schema 类型；运行期值对象见 workspace.Workspace）。
 type Declared struct {
@@ -59,38 +61,3 @@ func Load(root string) (*File, bool) {
 	}
 	return &f, true
 }
-
-// Save 写入 root/.cube/cube.json：File 的已知节整体覆盖，**未知节原样保留**——
-// cube.json 是多节容器，本包只认识其中几节，不能把不认识的节写丢。
-// workspaces 为空清单时字段仍写出（空数组是有效声明，不能被 omitempty 吞掉）。
-func Save(root string, f *File) error {
-	raw, err := os.ReadFile(filepath.Join(root, cubeFileName))
-	var merged map[string]jsontext.Value
-	if err == nil && json.Unmarshal(raw, &merged) == nil {
-		for _, k := range knownKeys {
-			delete(merged, k)
-		}
-	} else {
-		merged = map[string]jsontext.Value{}
-	}
-	// 已知节显式组装（不走 File 的 omitempty tag，保留「空数组声明」语义）
-	if f.WorkspacesSet {
-		if v, err := json.Marshal(f.Workspaces); err == nil {
-			merged["workspaces"] = v
-		}
-	}
-	if f.WorkspaceScanRule != "" {
-		if v, err := json.Marshal(f.WorkspaceScanRule); err == nil {
-			merged["workspaceScanRule"] = v
-		}
-	}
-	// store.SaveJSON 的 Deterministic 保证 map key 排序、字节稳定——
-	// cube.json 进 git 跟仓库走，顺序抖动会制造无意义 diff
-	if err := store.SaveJSON(filepath.Join(root, cubeFileName), merged); err != nil {
-		return fmt.Errorf("写入 cube.json 失败: %w", err)
-	}
-	return nil
-}
-
-// knownKeys File 当前认识的节；Save 覆盖前先摘掉，未知节留给 merge 保留。
-var knownKeys = []string{"workspaces", "workspaceScanRule"}
