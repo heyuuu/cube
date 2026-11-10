@@ -48,6 +48,7 @@ func resolveRule(root string, rule cubefile.WorkspaceRule) []Workspace {
 		return nil
 	}
 
+	// 特殊 rule
 	switch rule.Path {
 	case cubefile.NpmRule:
 		return resolvePatterns(root, rule.Name, npmPatterns(root))
@@ -55,14 +56,17 @@ func resolveRule(root string, rule cubefile.WorkspaceRule) []Workspace {
 		return resolvePatterns(root, rule.Name, pnpmPatterns(root))
 	}
 
+	// 模糊匹配
 	if hasGlobMeta(rel) {
 		return resolvePatterns(root, rule.Name, []string{rel})
 	}
 
+	// 精确匹配
 	if !xos.IsDir(filepath.Join(root, rel)) {
 		slog.Warn("cube.json workspace 条目目录不存在，跳过", "root", root, "path", rule.Path)
 		return nil
 	}
+
 	return []Workspace{{Name: displayName(rule.Name, rel), Path: rel}}
 }
 
@@ -127,6 +131,7 @@ func resolvePatterns(root string, name string, patterns []string) []Workspace {
 		if !d.IsDir() {
 			return nil
 		}
+
 		rel, err := filepath.Rel(root, path)
 		if err != nil || rel == rootRel {
 			return nil
@@ -169,16 +174,21 @@ func npmPatterns(root string) []string {
 	if err != nil || len(raw) == 0 {
 		return nil
 	}
+
+	// 尝试解析为 []string
 	var patterns []string
 	if err := json.Unmarshal(raw, &patterns); err == nil {
 		return patterns
 	}
+
+	// 尝试解析为 {packages: []string}
 	var obj struct {
 		Packages []string `json:"packages"`
 	}
 	if err := json.Unmarshal(raw, &obj); err == nil {
 		return obj.Packages
 	}
+
 	return nil
 }
 
