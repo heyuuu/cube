@@ -46,9 +46,7 @@ query 支持两种搜索模式：
     搜索给定路径及其所有子目录中的项目。
 
 -v 显示扩展信息（实时读仓库，不依赖缓存快照）：
-  - 未提交的文件列表（类似 git status --short）；
-  - 各本地分支与每个 remote 同名分支的 ahead/behind 宽表；
-  - 按差距生成的 cube pull / cube push 建议命令。`,
+  - 未提交的文件列表（类似 git status --short）。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			query := xslices.Get(args, 0)
@@ -136,7 +134,7 @@ query 支持两种搜索模式：
 			return nil
 		},
 	}
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "显示扩展信息：未提交文件、各分支与 remote 的差距、pull/push 建议")
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "显示扩展信息：未提交文件列表（实时读取）")
 	cmd.Flags().BoolVarP(&refresh, "refresh", "r", false, "是否刷新 snapshot 信息")
 	return cmd
 }
@@ -176,8 +174,8 @@ func formatAheadBehind(ahead, behind int) string {
 	return strings.Join(parts, "/")
 }
 
-// printInfoVerbose 打印 -v 的三段扩展：未提交文件 / 分支同步状态 / pull·push 建议。
-// 数据实时读本地仓库（remote 跟踪分支口径，不联网），不依赖缓存快照；
+// printInfoVerbose 打印 -v 的扩展段：未提交文件。
+// 数据实时读本地仓库，不依赖缓存快照；
 // 读失败按 info 的容错基调降级为警告行，不中断整体输出。
 func printInfoVerbose(repoPath string) {
 	// ── 未提交改动：工作区干净时整段不显示 ──

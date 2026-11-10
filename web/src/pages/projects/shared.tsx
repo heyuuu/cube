@@ -18,7 +18,7 @@ export interface ProjectTarget {
 
 // 项目的打开目标列表（1032 根目录/worktrees + 1030 workspaces）。展示名与后端同规则：
 // worktree 分支名优先（detached / 同分支冲突回退目录名），workspace 取声明/推导名。
-// 排序与后端 targetEntries 一致：主根 > 主 workspaces > 各 worktree 根 > 其 workspaces。
+// 排序与后端 cmdutil.OpenTargets 一致：主根 > 主 workspaces > 各 worktree 根 > 其 workspaces。
 // label 去歧义：worktree 下的 workspace 恒带归属前缀「分支 · 名字」；前缀后仍撞名
 // （跨 worktree 同名、或与 worktree 根/主 workspace 撞名）的条目追加相对路径后缀。
 export function projectTargets(p: Project): ProjectTarget[] {
