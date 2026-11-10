@@ -51,7 +51,7 @@ type WorktreeStatus struct {
 	Head      string `json:"head"`      // 当前 HEAD commit sha（虚拟节点的挂载点）
 	Branch    string `json:"branch"`    // 检出分支短名；detached/bare 为空
 	Detached  bool   `json:"detached"`  // HEAD 游离
-	Bare      bool   `json:"bare"`      // 裸仓库（无工作区，无未提交概念）
+	Bare      bool   `json:"bare"`      // 裸仓库（无工作树，无未提交概念）
 	Dirty     bool   `json:"dirty"`     // 任一变更（staged/unstaged/untracked）
 	Ahead     int    `json:"ahead"`     // 领先上游的提交数
 	Behind    int    `json:"behind"`    // 落后上游的提交数

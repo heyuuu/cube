@@ -131,7 +131,7 @@ func TestSortLocalBranches(t *testing.T) {
 	}
 }
 
-// TestCollectEntry_RealRepo 真实仓库采集能拿到 branch（主工作区信息）。
+// TestCollectEntry_RealRepo 真实仓库采集能拿到 branch（主工作树信息）。
 func TestCollectEntry_RealRepo(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "main"})
@@ -144,7 +144,7 @@ func TestCollectEntry_RealRepo(t *testing.T) {
 		t.Fatalf("collectEntry 不应返回 nil")
 	}
 	if main := e.Main; main.Branch != "main" {
-		t.Fatalf("主工作区分支不符（Entry.Main）: %+v", main)
+		t.Fatalf("主工作树分支不符（Entry.Main）: %+v", main)
 	}
 }
 
@@ -184,7 +184,7 @@ func TestCollectEntry_NonRepo(t *testing.T) {
 	}
 }
 
-// TestCollectEntry_Worktrees 工作区枚举含主工作区（Worktrees[0]）+ linked worktree（1032 归并、v4 主区并入）。
+// TestCollectEntry_Worktrees 工作树枚举（1032 归并）：Main 拆出为独立字段，Worktrees 只含 linked worktree。
 func TestCollectEntry_Worktrees(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "main"})
@@ -195,7 +195,7 @@ func TestCollectEntry_Worktrees(t *testing.T) {
 	if err != nil {
 		t.Fatalf("collectEntry 不应返回 error: %v", err)
 	}
-	// Main 是主工作区（分支 = 仓库当前分支，路径经符号链接规范化），Worktrees 只含 linked
+	// Main 是主工作树（分支 = 仓库当前分支，路径经符号链接规范化），Worktrees 只含 linked
 	if len(e.Worktrees) != 2 {
 		t.Fatalf("应含 2 个 linked worktree, got %d (%+v)", len(e.Worktrees), e.Worktrees)
 	}
@@ -204,7 +204,7 @@ func TestCollectEntry_Worktrees(t *testing.T) {
 		t.Fatalf("解析真实路径失败: %v", err)
 	}
 	if e.Main.Path != canonicalRepo || e.Main.Branch != "main" {
-		t.Fatalf("Main 应为主工作区: %+v", e.Main)
+		t.Fatalf("Main 应为主工作树: %+v", e.Main)
 	}
 	// 分支名 + 路径落在快照里；git 输出路径经符号链接规范化，比较前同样求值
 	canonicalWt, err := filepath.EvalSymlinks(ws.Join("wt-hot"))
@@ -223,8 +223,8 @@ func TestCollectEntry_Worktrees(t *testing.T) {
 	}
 }
 
-// TestCollectEntry_WorktreeDirty dirty 按工作区各自探测（迁入 WorktreeInfo）：
-// 主区与各 linked worktree 的 dirty 互不影响。
+// TestCollectEntry_WorktreeDirty dirty 按工作树各自探测（迁入 WorktreeInfo）：
+// 主树与各 linked worktree 的 dirty 互不影响。
 func TestCollectEntry_WorktreeDirty(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := ws.MakeGitRepoWith("repo", testfixture.GitRepoSpec{Branch: "main", MakeDirty: true})
@@ -292,7 +292,7 @@ func TestRefresh_RealRepo(t *testing.T) {
 		t.Fatalf("Refresh 后 Get 应命中")
 	}
 	if e.Main.Branch != "develop" {
-		t.Fatalf("Refresh 采集主工作区分支 = %q，期望 develop", e.Main.Branch)
+		t.Fatalf("Refresh 采集主工作树分支 = %q，期望 develop", e.Main.Branch)
 	}
 
 	// snapshot.json 应已落盘

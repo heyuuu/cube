@@ -71,7 +71,7 @@ func runOutRaw(dir string, args ...string) (stdout, stderrText string, err error
 
 // isGitRepo 判断 path 自身是否为 git 仓库根（存在 .git 文件或目录，worktree 的
 // .git 文件也算）。bare 仓库（目录本身即 gitdir，无 .git）按非仓库降级——
-// cube 收录的项目必然是普通工作区副本。
+// cube 收录的项目必然是普通工作树副本。
 //
 // 读命令靠它把「非仓库」从子进程错误里区分出来：git 的报错文案随 locale 变化，
 // 不能解析 stderr 识别，而一次 os.Stat 的预判开销可以忽略。

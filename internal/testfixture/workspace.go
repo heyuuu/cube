@@ -1,4 +1,4 @@
-// Package testfixture 提供 cube 测试用的通用辅助：临时工作区、git 仓库 fixture、工程目录 fixture。
+// Package testfixture 提供 cube 测试用的通用辅助：临时目录、git 仓库 fixture、工程目录 fixture。
 //
 // 临时目录策略：写到系统临时目录（os.MkdirTemp），测试成功后自动删除；
 // 测试失败时保留现场并在日志中打印路径，便于人工排查。

@@ -12,7 +12,7 @@ import (
 // Project 扫描识别出的一个项目（数据由 scan-rule 推导，只读快照）。
 type Project struct {
 	path  string   // 项目路径，唯一标识
-	group string   // 所属工作区名
+	group string   // 所属分组名（scan-rule 根目录名）
 	name  string   // 项目展示名，格式 `{组名}:{组内相对路径}`
 	tags  []string // 标签列表
 }
@@ -28,7 +28,7 @@ func newProject(r ScanRule, path string, tags []string) *Project {
 }
 
 // projectName 计算项目展示名 `{组名}:{组内相对路径}`。
-// 若整个工作区即为当前项目（path 即规则根），则直接使用工作区名。
+// 若整个规则根即为当前项目（path 即规则根），则直接使用组名。
 func projectName(r ScanRule, path string) string {
 	subName, _ := filepath.Rel(r.Path, path)
 	if subName == "." {
@@ -40,7 +40,7 @@ func projectName(r ScanRule, path string) string {
 // Path 返回项目绝对路径（唯一标识）
 func (p Project) Path() string { return p.path }
 
-// Group 返回所属工作区名
+// Group 返回所属分组名
 func (p Project) Group() string { return p.group }
 
 // Name 返回展示名（{组名}:{组内相对路径}）

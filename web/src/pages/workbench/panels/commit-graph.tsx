@@ -95,7 +95,7 @@ export function CommitGraphSection({
       } // 关闭开关的副本不进图（虚拟节点与装饰都不注入）
       if (wt.bare) {
         continue;
-      } // bare 无工作区，无未提交概念
+      } // bare 无工作树，无未提交概念
       const label = wt.path.split('/').pop() || wt.path;
       if (wt.dirty) {
         virtual.push({

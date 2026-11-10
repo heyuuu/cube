@@ -56,7 +56,7 @@ func LoadRepoStatus(dir string) (*RepoStatus, error) {
 
 // IsDirty 工作副本是否有任何变更（staged/unstaged/untracked 任一即 true）。
 // 与 LoadRepoStatus 同源但不带 --branch、不解析明细——只要 dirty 布尔的调用方
-// （如 snapshot 按工作区采集）走这条轻量路径。
+// （如 snapshot 按工作树采集 dirty）走这条轻量路径。
 func IsDirty(dir string) (bool, error) {
 	if !isGitRepo(dir) {
 		return false, nil

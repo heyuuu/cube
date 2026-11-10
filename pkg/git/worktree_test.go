@@ -90,7 +90,7 @@ func TestWorktreeList(t *testing.T) {
 	}
 }
 
-// FindMainRoot 归并到主工作区根：普通仓库（含子目录）返回仓库根，
+// FindMainRoot 归并到主工作树根：普通仓库（含子目录）返回仓库根，
 // linked worktree（含子目录）返回主仓库目录，非 git 目录 ok=false。
 func TestFindMainRoot(t *testing.T) {
 	ws := newTestWorkspace(t)

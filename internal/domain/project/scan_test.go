@@ -17,7 +17,7 @@ func newServiceAt(t *testing.T, scanRoot, group string, maxDepth int) *Service {
 		[]ScanRule{{Group: group, Path: scanRoot, MaxDepth: maxDepth}}, nil)
 }
 
-// newServiceWithRules 把 scan/clone 规则写进工作区的 settings.json 再构造 Service（规则数据源即 settings 节）。
+// newServiceWithRules 把 scan/clone 规则写进测试目录的 settings.json 再构造 Service（规则数据源即 settings 节）。
 func newServiceWithRules(t *testing.T, ws *testfixture.Workspace, scan []ScanRule, clone []CloneRule) *Service {
 	t.Helper()
 	saveRules(t, ws, scan, clone)

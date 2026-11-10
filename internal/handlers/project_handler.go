@@ -62,7 +62,7 @@ type WorktreeDTO struct {
 }
 
 // newProjectSnapshotDTO 把内部快照转为对外形态；nil（未采集）透传为 nil。
-// 主工作区信息（Entry.Main）升位到 DTO 顶级字段；快照 Worktrees
+// 主工作树信息（Entry.Main）升位到 DTO 顶级字段；快照 Worktrees
 // 只含 linked worktree，作为 worktree 目标下发（前端「主目录」目标由固定首位承载）。
 func newProjectSnapshotDTO(e *snapshot.Entry) *ProjectSnapshotDTO {
 	if e == nil {
@@ -352,7 +352,7 @@ func (h *ProjectHandler) workspaceGet(input struct {
 	}
 	root := proj.Path()
 	result := WorkspaceStateResult{Effective: []WorkspaceMemberDTO{}, Declared: []WorkspaceMemberDTO{}, Detected: []WorkspaceMemberDTO{}}
-	// 生效清单读主工作区（Entry.Main）的 workspace 成员
+	// 生效清单读主工作树（Entry.Main）的 workspace 成员
 	if info, ok := h.projectService.Snapshot(root); ok && info != nil {
 		result.Effective = workspaceMemberDTOs(info.Main.Workspaces)
 	}

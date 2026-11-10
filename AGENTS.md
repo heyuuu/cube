@@ -13,6 +13,15 @@
 - 定位原则：不做云服务、不绑 AI（cube 可被 AI 编排，但自身不集成 AI）。
 - Go 源码与 go.mod 都在仓库根（`cmd/` / `internal/` / `pkg/` 分目录）；构建 / 安装 / 校验 / 打 tag / 发号等全部工具链收敛在仓库根 `justfile`（`just --list` 看全量）。
 
+## 关键名词（worktree / workspace 措辞）
+
+两个形近概念的中英文对照固定如下，注释、报错、文档一律遵守：
+
+- **worktree = 工作树**：git 工作树（主工作树 + linked worktree）——snapshot 的 worktree 枚举、`worktree` tag、`FindMainRoot` 归并的「主工作树根」都是它。
+- **workspace = 工作空间**：monorepo 中可打开的成员子目录（`.cube/cube.json` 的 workspaces 声明或 pnpm/npm 探测，见 1030）。
+
+**「工作区」是禁用的模糊词**（VS Code 译 workspace、git 教材译 working directory，两义混用）。唯一保留用法：指**当前工作树的未提交内容**时可用（如「工作区 dirty」「工作区改动」「工作区状态」）。表示 worktree / workspace 概念时不得使用「工作区」，也不用「子包」（预设了必须是包）、「子目录」（会被误会为任意子目录）等意译词。
+
 ## 分层架构（改代码必须遵守的依赖纪律）
 
 ```
@@ -79,7 +88,7 @@ go test ./internal/domain/opener/...     # 聚焦某个包
 cube 的 IO 测试（git 操作、文件扫描、缓存读写）通过 `internal/testfixture` 包提供统一 fixture builder：
 
 - **临时目录用 `os.MkdirTemp` 落系统临时目录**（前缀 `cube-test-<测试名>-`），测试成功自动清理、失败保留现场排查（旧方案写项目内 `runtime/test/` 且永不清理，会持续膨胀并被 goimports/IDE 扫描拖慢）。
-- **`Workspace`**：测试工作区。`ws := testfixture.NewWorkspace(t)` → `ws.Dir` 是该测试专属目录；`ws.Mkdir/WriteFile/Join` 在其下操作。
+- **`Workspace`**：测试临时目录（非 worktree / workspace 概念）。`ws := testfixture.NewWorkspace(t)` → `ws.Dir` 是该测试专属目录；`ws.Mkdir/WriteFile/Join` 在其下操作。
 - **`BuildGitRepo(t, dir, GitRepoSpec)` / `ws.MakeGitRepo(name)`**：建真实 git 仓库（用系统 git + 注入 user 配置，不依赖全局 git config）。`GitRepoSpec` 声明预期状态（分支/commit 数/tag/remote/ahead/dirty）。
 - **`ws.MakeProjectDir(relPath, opts...)`**：建「会被 cube 扫描识别为 project」的目录（默认含 git 仓库）。opts：`WithGodot()`/`WithWorktree()`/`WithDirty()`/`WithoutGit()`。
 

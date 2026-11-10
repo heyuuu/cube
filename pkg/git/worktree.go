@@ -13,7 +13,7 @@ type Worktree struct {
 	Path     string `json:"path"`     // 工作副本绝对路径
 	Head     string `json:"head"`     // 当前 HEAD commit sha（detached 时也有值）
 	Branch   string `json:"branch"`   // 检出分支短名（refs/heads/ 前缀已剥）；detached/bare 为空
-	Bare     bool   `json:"bare"`     // 裸仓库（无工作区文件）
+	Bare     bool   `json:"bare"`     // 裸仓库（无工作树文件）
 	Detached bool   `json:"detached"` // HEAD 游离（未检出任何分支）
 }
 
@@ -40,7 +40,7 @@ func WorktreeMain(dir string) string {
 
 // FindMainRoot 向上探测 dir 所属 git 仓库并归并到主工作副本目录：dir（或其祖先）是
 // linked worktree 时返回主仓库目录，否则返回仓库根本身；非 git 目录 ok=false。
-// 「目录 → 所属仓库主工作区」的归并原语，调用方不再手拼 WorktreeMain + 自身兜底的两段式。
+// 「目录 → 所属仓库主工作树」的归并原语，调用方不再手拼 WorktreeMain + 自身兜底的两段式。
 func FindMainRoot(dir string) (root string, ok bool) {
 	root, ok = FindGitRoot(dir)
 	if !ok {

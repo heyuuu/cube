@@ -86,7 +86,7 @@ query 支持两种搜索模式：
 			} else {
 				branch := info.Main.Branch
 				if branch == "" {
-					branch = "HEAD(detached)" // 主工作区分支为空即 detached HEAD
+					branch = "HEAD(detached)" // 主工作树分支为空即 detached HEAD
 				}
 				printInfoKV("branch", branch)
 				if info.DefaultBranch != "" {

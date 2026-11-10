@@ -185,14 +185,14 @@ func (s *Service) SearchInPath(path string) []*Project {
 }
 
 // ResolveProject 查找目录所属项目
-// 参数目录可以是 git 工作区的根目录或子目录，或 git worktree 的根目录或子目录
+// 参数目录可以是 git 工作树的根目录或子目录，或 git worktree 的根目录或子目录
 func (s *Service) ResolveProject(path string) *Project {
 	path, ok := cleanAbsPath(path)
 	if !ok {
 		return nil
 	}
 
-	// 归并到仓库主工作区根（linked worktree 顺藤到主仓库，普通工作区即仓库根）
+	// 归并到仓库主工作树根（linked worktree 顺藤到主仓库，普通工作树即仓库根）
 	root, ok := git.FindMainRoot(path)
 	if !ok {
 		return nil

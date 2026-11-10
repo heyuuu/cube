@@ -55,7 +55,7 @@ func targetEntries(root string, info *snapshot.Entry) []OpenTarget {
 	if info == nil {
 		return nil
 	}
-	// 主工作区信息在 Entry.Main（其 workspaces 即主根目标），Worktrees 只含 linked worktree。
+	// 主工作树信息在 Entry.Main（其 workspaces 即主根目标），Worktrees 只含 linked worktree。
 	// 主根路径用调用方传入的 root（scan 规则字面路径），不用快照里的 git 规范化路径。
 	targets := make([]OpenTarget, 0, len(info.Main.Workspaces)+2*len(info.Worktrees))
 	rels := make([]string, 0, cap(targets)) // workspace 相对所属根的路径，撞名消歧时作后缀；非 workspace 位（各 worktree 根）填 ""

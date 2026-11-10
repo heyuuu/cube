@@ -32,9 +32,9 @@ import (
 // v2：worktree 归并为项目打开目标（1032）——移除 WorktreeMain（worktree 不再是独立项目），
 // 新增 Worktrees（主项目附带枚举 linked worktree）。
 // v3：包更名 projcache（原 gitcache）+ workspace 字段（1030）——Entry/WorktreeInfo 各增 Workspaces。
-// v4：主工作区拆出为独立 Main 值字段（恒存在，类型强制），Worktrees 只含 linked worktree；
+// v4：主工作树拆出为独立 Main 值字段（恒存在，类型强制），Worktrees 只含 linked worktree；
 // 移除 Entry 顶级 RepoURL/CurrentBranch/Workspaces/Dirty（改经 OriginURL/Main 取用，
-// dirty 迁入 WorktreeInfo 按工作区采集）；采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
+// dirty 迁入 WorktreeInfo 按工作树采集）；采集全有或全无（任一失败整条丢弃）；文件更名 projcache.json。
 // v5：Branches 从短名字符串列表改为 LocalBranchInfo（含 upstream/ahead/behind，随 git.Refs
 // 单进程顺带采集），移除顶级 Ahead/Behind（改经 DefaultBranchAhead/Behind 派生）。
 const cacheVersion = 5
@@ -47,8 +47,8 @@ type Entry struct {
 	Remotes       []RemoteInfo      `json:"remotes"`       // 全部 remote（无则空数组；origin 地址经 OriginURL 派生）
 	DefaultBranch string            `json:"defaultBranch"` // 默认主分支名（master/main/...）
 	Branches      []LocalBranchInfo `json:"branches"`      // 本地分支信息列表
-	Main          WorktreeInfo      `json:"main"`          // 主工作区信息
-	Worktrees     []WorktreeInfo    `json:"worktrees"`     // 各工作区信息(linked worktree)
+	Main          WorktreeInfo      `json:"main"`          // 主工作树信息
+	Worktrees     []WorktreeInfo    `json:"worktrees"`     // 各工作树信息（linked worktree）
 	UpdatedAt     time.Time         `json:"updatedAt"`     // 本次采集时间
 }
 
@@ -68,7 +68,7 @@ type LocalBranchInfo struct {
 	Behind    int    `json:"behind"`    // 相对 upstream 落后 commit 数
 }
 
-// WorktreeInfo 单个工作区信息(主项目根或单个 linked worktree)
+// WorktreeInfo 单个工作树信息（主项目根或单个 linked worktree）
 type WorktreeInfo struct {
 	Path       string                `json:"path"`       // worktree 绝对路径（git 输出经符号链接规范化）
 	Branch     string                `json:"branch"`     // 检出分支短名；detached 为空
@@ -344,13 +344,13 @@ func collectEntry(path string) (*Entry, error) {
 	localBranches = sortLocalBranches(localBranches)
 	defaultBranch := calcDefaultBranch(localBranches)
 
-	// 收集各工作区信息（dirty 按工作区各自探测，主区与 linked 同路径）
+	// 收集各工作树信息（dirty 按工作树各自探测，主树与 linked 同路径）
 	worktrees, err := collectWorktrees(path)
 	if err != nil {
 		return nil, err
 	}
 	if len(worktrees) == 0 {
-		return nil, fmt.Errorf("工作区信息错误，至少应该包含主工作区: path = %s", path)
+		return nil, fmt.Errorf("工作树信息错误，至少应该包含主工作树: path = %s", path)
 	}
 
 	return &Entry{
@@ -363,7 +363,7 @@ func collectEntry(path string) (*Entry, error) {
 	}, nil
 }
 
-// collectWorktrees 枚举全部工作区（主目录在前，调用方拆分为 Main 与 linked Worktrees）。
+// collectWorktrees 枚举全部工作树（主目录在前，调用方拆分为 Main 与 linked Worktrees）。
 // WorktreeList 输出主目录在前；枚举失败上抛（collectEntry 全有或全无，不降级）。
 func collectWorktrees(path string) ([]WorktreeInfo, error) {
 	list, err := git.WorktreeList(path)
@@ -379,7 +379,7 @@ func collectWorktrees(path string) ([]WorktreeInfo, error) {
 		}
 		dirty, err := git.IsDirty(wt.Path)
 		if err != nil {
-			return nil, fmt.Errorf("探测工作区 dirty 失败: path=%s, err=%w", wt.Path, err)
+			return nil, fmt.Errorf("探测工作树 dirty 失败: path=%s, err=%w", wt.Path, err)
 		}
 		worktrees = append(worktrees, WorktreeInfo{
 			Path:       wt.Path,

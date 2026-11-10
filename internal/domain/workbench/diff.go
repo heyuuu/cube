@@ -28,7 +28,7 @@ type DiffEntry struct {
 
 // DiffTreesResult 目录级对比结果。Mode 显式返回实际使用的模式，前端不猜：
 //   - git：两侧都是 commit/ref，走 git diff（快、语义准，但不含 untracked/ignored）
-//   - fs：任一侧是 worktree（其语义就是「工作区当前状态」），走文件系统扫描对比
+//   - fs：任一侧是 worktree（其语义就是「工作树当前状态」），走文件系统扫描对比
 type DiffTreesResult struct {
 	Mode string      `json:"mode"`
 	List []DiffEntry `json:"list"`
@@ -51,7 +51,7 @@ func sourceFileMap(root string, src TreeSource) (map[string]string, error) {
 // 与 fsFileMap 的产物等价，但免去 status --ignored + 目录树 walk——忽略目录
 // （如 node_modules）的存在会让那条路走到秒级，而 ls-files 对文件数是线性的。
 // 磁盘上已不存在的 tracked 文件读失败跳过（与 fsFileMap 的 walk 语义一致：不在
-// 磁盘上就不出现在工作区侧，diff 表现为 deleted）。
+// 磁盘上就不出现在工作树侧，diff 表现为 deleted）。
 func lsFilesFileMap(wtDir string) (map[string]string, error) {
 	files, err := git.ListFiles(wtDir)
 	if err != nil {

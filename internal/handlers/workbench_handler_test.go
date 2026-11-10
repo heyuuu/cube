@@ -438,7 +438,7 @@ func TestWorkbenchDiffGit(t *testing.T) {
 	env := newTestEnv(t)
 	repo, head := setupDiffRepo(t, env)
 
-	// worktree(工作区) vs commit(head)：fs 模式
+	// worktree(工作树) vs commit(head)：fs 模式
 	var got struct {
 		Mode string `json:"mode"`
 		List []struct {
