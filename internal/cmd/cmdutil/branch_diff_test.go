@@ -44,26 +44,3 @@ func TestPickSharedBranches(t *testing.T) {
 		t.Fatalf("PickSharedBranches = %v，期望 %v", got, want)
 	}
 }
-
-// TestBuildStatusRowsFromDiffs 验证由预计算差距构造宽表行：
-// 同步 ✓、落后 +N、领先 -N、remote 无该分支 -、当前分支 * 标记。
-func TestBuildStatusRowsFromDiffs(t *testing.T) {
-	remotes := []git.Remote{{Name: "origin"}, {Name: "gitee"}}
-	branches := []string{"develop", "master"}
-	diffs := []BranchRemoteDiff{
-		{Branch: "develop", Remote: "origin", Behind: 2},
-		{Branch: "develop", Remote: "gitee", Ahead: 0, Behind: 0},
-		{Branch: "master", Remote: "origin", Ahead: 1},
-		// master 在 gitee 上无同名分支 → 该格 "-"
-	}
-
-	rows := BuildStatusRowsFromDiffs(diffs, branches, remotes, "develop")
-
-	want := [][]string{
-		{"* develop", "-2", "✓"},
-		{"master", "+1", "-"},
-	}
-	if !reflect.DeepEqual(rows, want) {
-		t.Fatalf("BuildStatusRowsFromDiffs = %v，期望 %v", rows, want)
-	}
-}

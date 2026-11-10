@@ -108,7 +108,7 @@ query 支持两种搜索模式：
 				if br.Upstream == "" {
 					continue
 				}
-				printInfoLine(br.ShortName, cmdutil.FormatAheadBehind(br.Ahead, br.Behind))
+				printInfoLine(br.ShortName, formatAheadBehind(br.Ahead, br.Behind))
 			}
 
 			// worktree
@@ -157,6 +157,23 @@ func printInfoLineEx(key, value, dim string) {
 		value += " " + infoDimStyle.Render("("+dim+")")
 	}
 	tui.Print(infoKeyStyle.Width(infoKeyWidth).Render(key) + ": " + value + "\n")
+}
+
+// formatAheadBehind 把 (ahead, behind) 格式化为一格内容：
+//   - 全 0 → "✓"
+//   - 否则形如 "+3/-1"；ahead 或 behind 为 0 时省略该半边（"+3" / "-1"）
+func formatAheadBehind(ahead, behind int) string {
+	if ahead == 0 && behind == 0 {
+		return "✓"
+	}
+	var parts []string
+	if ahead > 0 {
+		parts = append(parts, fmt.Sprintf("+%d", ahead))
+	}
+	if behind > 0 {
+		parts = append(parts, fmt.Sprintf("-%d", behind))
+	}
+	return strings.Join(parts, "/")
 }
 
 // printInfoVerbose 打印 -v 的三段扩展：未提交文件 / 分支同步状态 / pull·push 建议。
