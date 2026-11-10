@@ -272,19 +272,24 @@ func (c *Cache) Refresh(paths []string) error {
 	return nil
 }
 
-// RefreshOne 定向刷新单个项目的快照条目并落盘（提案 1031：worktree/分支写操作
-// 成功后即时可见，不等 TTL 整表重建）。与 Refresh 的整表重建语义不同：只覆盖
-// 该路径的 entry，其余项目保持原样。采集失败不落盘、保留旧 entry，返回错误
+// RefreshOne 定向刷新单个项目的快照条目并落盘，返回刚采集的新 entry——直接把
+// 手里这条给调用方，免去刷新后再 Get 一次（Get 可能读到并发整表 Refresh 的结果，
+// 不是本次定向采集的那条）。提案 1031：worktree/分支写操作成功后即时可见，
+// 不等 TTL 整表重建。与 Refresh 的整表重建语义不同：只覆盖该路径的 entry，
+// 其余项目保持原样。失败（采集或落盘）返回 (nil, err) 且保留旧 entry，
 // 由调用方决定是否上抛（写操作本身已成功，通常 Warn 后依赖 TTL 自愈即可）。
-func (c *Cache) RefreshOne(path string) error {
+func (c *Cache) RefreshOne(path string) (*Entry, error) {
 	entry, err := collectEntry(path)
 	if err != nil {
-		return fmt.Errorf("定向刷新项目快照失败: %w", err)
+		return nil, fmt.Errorf("定向刷新项目快照失败: %w", err)
 	}
 	c.mu.Lock()
 	c.entries[path] = entry
 	c.mu.Unlock()
-	return c.Save()
+	if err := c.Save(); err != nil {
+		return nil, err
+	}
+	return entry, nil
 }
 
 // defaultWorkers 默认并发数。

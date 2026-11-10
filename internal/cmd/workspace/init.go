@@ -66,7 +66,7 @@ query 支持项目名模糊搜索，规则同 open 命令。`,
 				return err
 			}
 			// 定向重采集：写盘即刻反映到打开目标，不等 TTL
-			if err := a.ProjectService().RefreshSnapshot(root); err != nil {
+			if _, err := a.ProjectService().RefreshSnapshot(root); err != nil {
 				fmt.Printf("cube.json 已写入，但刷新快照失败（等下次采集自愈）: %v\n", err)
 			}
 			fmt.Printf("已写入 %s/.cube/cube.json（%d 个 workspace），记得提交进 git\n", root, len(picked))

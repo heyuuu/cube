@@ -227,18 +227,22 @@ func (s *Service) Snapshot(path string) *snapshot.Entry {
 	return s.snapshotCache.Get(path)
 }
 
-// RefreshSnapshot 定向刷新单个项目的快照并落盘（workbench 写操作后即时可见，
-// 提案 1031）。经 app 装配点以方法值注入 workbench，避免 workbench 反向依赖 project。
+// RefreshSnapshot 定向刷新单个项目的快照并落盘，返回刷新后的 entry——即 Snapshot
+// 的立即刷新版：强刷该项目并直接返回新数据，调用方无需再读一次缓存。
+// 跳过路径（非绝对路径 / 非本服务收录项目）返回 (nil, nil)；失败返回 (nil, err)
+// 且旧 entry 保持原样（见 RefreshOne）。
+// （workbench 写操作后即时可见，提案 1031。）经 app 装配点以方法值注入 workbench，
+// 避免 workbench 反向依赖 project。
 // 归属校验：workbench 以任意 git 目录为输入，非本服务收录项目的仓库直接跳过——
 // 外来仓库进快照后会在下轮整表重建时被删掉（白采一次全量），快照也短暂混入
 // 无消费者的外来条目。
-func (s *Service) RefreshSnapshot(path string) error {
+func (s *Service) RefreshSnapshot(path string) (*snapshot.Entry, error) {
 	path, ok := cleanAbsPath(path)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	if s.FindByPath(path) == nil {
-		return nil
+		return nil, nil
 	}
 	return s.snapshotCache.RefreshOne(path)
 }

@@ -391,7 +391,7 @@ func (h *ProjectHandler) workspaceSave(input WorkspaceSaveInput) (map[string]any
 	if err := workspace.SaveRules(root, rules); err != nil {
 		return nil, err
 	}
-	if err := h.projectService.RefreshSnapshot(root); err != nil {
+	if _, err := h.projectService.RefreshSnapshot(root); err != nil {
 		slog.Warn("workspace 保存后刷新快照失败（等下次采集自愈）", "err", err)
 	}
 	return map[string]any{"ok": true}, nil
@@ -411,7 +411,7 @@ func (h *ProjectHandler) workspaceReset(input struct {
 	if err := workspace.Reset(root); err != nil {
 		return nil, err
 	}
-	if err := h.projectService.RefreshSnapshot(root); err != nil {
+	if _, err := h.projectService.RefreshSnapshot(root); err != nil {
 		slog.Warn("workspace 重置后刷新快照失败（等下次采集自愈）", "err", err)
 	}
 	return map[string]any{"ok": true}, nil

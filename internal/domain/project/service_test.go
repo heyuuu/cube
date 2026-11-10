@@ -52,15 +52,19 @@ func TestRefreshSnapshotOwnership(t *testing.T) {
 
 	s := newServiceWithRules(t, ws, []ScanRule{{Group: "g", Path: root, MaxDepth: 3}}, nil)
 
-	if err := s.RefreshSnapshot(repo); err != nil {
+	e, err := s.RefreshSnapshot(repo)
+	if err != nil {
 		t.Fatalf("收录项目应可定向刷新: %v", err)
 	}
-	if s.Snapshot(repo) == nil {
-		t.Fatal("收录项目刷新后应有快照")
+	if e == nil || e.Main.Branch == "" {
+		t.Fatalf("刷新应返回新采集的 entry: %+v", e)
+	}
+	if s.Snapshot(repo) != e {
+		t.Fatal("快照应为刷新返回的同一条 entry")
 	}
 
-	if err := s.RefreshSnapshot(foreign); err != nil {
-		t.Fatalf("外来仓库跳过不应报错: %v", err)
+	if e, err := s.RefreshSnapshot(foreign); e != nil || err != nil {
+		t.Fatalf("外来仓库跳过应返回 (nil, nil): entry=%+v, err=%v", e, err)
 	}
 	if s.Snapshot(foreign) != nil {
 		t.Fatal("外来仓库不应进快照")

@@ -36,8 +36,12 @@ type Service struct {
 }
 
 // NewService di 装配入口：注入 project.Service 的项目快照定向刷新能力。
+// 本包不消费刷新结果（面板数据走 git 直读），此处收窄为 error 回调。
 func NewService(projectService *project.Service) *Service {
-	return newServiceEx(projectService.RefreshSnapshot)
+	return newServiceEx(func(path string) error {
+		_, err := projectService.RefreshSnapshot(path)
+		return err
+	})
 }
 
 // newServiceEx 构造 Service（cacheRefresh 为 nil 表示无刷新能力，跳过）。

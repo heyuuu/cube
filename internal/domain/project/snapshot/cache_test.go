@@ -314,20 +314,22 @@ func TestRefreshOne(t *testing.T) {
 	other := ws.MakeGitRepo("other")
 	c := Load(ws.Mkdir("cache"))
 
-	if err := c.RefreshOne(repo); err != nil {
+	e, err := c.RefreshOne(repo)
+	if err != nil {
 		t.Fatalf("RefreshOne 报错: %v", err)
 	}
-
-	e := c.Get(repo)
 	if e == nil || e.Main.Branch == "" {
-		t.Fatalf("刷新后应有该项目的 entry: %+v", e)
+		t.Fatalf("应返回新采集的 entry: %+v", e)
+	}
+	if c.Get(repo) != e {
+		t.Fatal("返回的应即缓存中的同一条 entry")
 	}
 	if c.Get(other) != nil {
 		t.Fatalf("定向刷新不应影响其他项目")
 	}
 
 	ws.MakeWorktree(repo, "wt-hot", "hotfix")
-	if err := c.RefreshOne(repo); err != nil {
+	if _, err := c.RefreshOne(repo); err != nil {
 		t.Fatalf("二次刷新报错: %v", err)
 	}
 
@@ -337,7 +339,7 @@ func TestRefreshOne(t *testing.T) {
 	}
 
 	// 非 git 目录：与整表 Refresh 语义一致，整条失败不落盘（全有或全无）
-	if err := c.RefreshOne(ws.Join("plain")); err == nil {
+	if _, err := c.RefreshOne(ws.Join("plain")); err == nil {
 		t.Fatal("非仓库按约定应整条失败（不接受残缺数据）")
 	}
 	if e := c.Get(repo); e == nil || e.Main.Branch == "" {
