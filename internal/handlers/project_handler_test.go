@@ -298,12 +298,12 @@ func TestProjectList_LastUsedAt(t *testing.T) {
 	}
 }
 
-// TestWorkspaceGetSave workspace/get 三块信息（生效/声明/候选）+ save 全链路（写盘 + 即时重采集）。
+// TestWorkspaceGetSave workspace/get（生效清单读快照 + 规则清单）+ save/reset 全链路（写盘 + 即时重采集）。
 func TestWorkspaceGetSave(t *testing.T) {
 	env := newTestEnv(t)
 	repo := env.proj1Path()
 
-	// 建子目录 + pnpm 声明：未写 cube.json 时探测生效
+	// 建子目录 + pnpm 声明：未写 cube.json 时默认规则生效
 	env.ws.Mkdir("g1/proj1/apps/web")
 	if err := os.WriteFile(env.ws.Join("g1", "proj1", "pnpm-workspace.yaml"), []byte("packages:\n  - 'apps/*'\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -315,18 +315,19 @@ func TestWorkspaceGetSave(t *testing.T) {
 	// v2 解码字段名大小写敏感，这里直接用真实 DTO（匿名结构无 tag 时 Name 匹配不上 "name"）
 	var state WorkspaceStateResult
 	decodeData(t, getJSON(t, env.url("/api/project/workspace/get?path="+url.QueryEscape(repo))), &state)
-	if state.DeclaredSet {
-		t.Fatal("未写 cube.json 时 declaredSet 应为 false")
+	if state.Declared {
+		t.Fatal("未写 cube.json 时 declared 应为 false")
+	}
+	if len(state.Rules) != 2 || state.Rules[0].Path != "<npm>" || state.Rules[1].Path != "<pnpm>" {
+		t.Fatalf("未声明时 rules 应为默认规则, got %+v", state.Rules)
 	}
 	if len(state.Effective) != 1 || state.Effective[0].Path != "apps/web" {
-		t.Fatalf("探测应生效于生效清单, got %+v", state.Effective)
-	}
-	if len(state.Detected) != 1 {
-		t.Fatalf("探测候选应可得, got %+v", state.Detected)
+		t.Fatalf("默认规则应生效于生效清单, got %+v", state.Effective)
 	}
 
-	// save 固化显式声明 → get 反映 declaredSet，且 effective 即时刷新（不等 TTL）
-	body := fmt.Sprintf(`{"path":%q,"workspaces":[{"name":"前端","path":"apps/web"}]}`, repo)
+	// save 固化规则（含 glob——规则模型下通配是合法表达）→ get 反映 declared，
+	// 且 effective 即时刷新（不等 TTL）
+	body := fmt.Sprintf(`{"path":%q,"workspaces":[{"name":"前端","path":"apps/*"}]}`, repo)
 	resp, err := http.Post(env.url("/api/project/workspace/save"), "application/json", strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
@@ -338,11 +339,32 @@ func TestWorkspaceGetSave(t *testing.T) {
 	}
 
 	decodeData(t, getJSON(t, env.url("/api/project/workspace/get?path="+url.QueryEscape(repo))), &state)
-	if !state.DeclaredSet {
-		t.Fatal("save 后 declaredSet 应为 true")
+	if !state.Declared || len(state.Rules) != 1 || state.Rules[0].Name != "前端" {
+		t.Fatalf("save 后应反映显式规则, got declared=%v rules=%+v", state.Declared, state.Rules)
 	}
-	if len(state.Effective) != 1 || state.Effective[0].Name != "前端" {
-		t.Fatalf("save 后 effective 应即时反映显式声明, got %+v", state.Effective)
+	if len(state.Effective) != 1 || state.Effective[0].Name != "前端:apps/web" {
+		t.Fatalf("save 后 effective 应即时反映显式规则, got %+v", state.Effective)
+	}
+
+	// 空清单 = 显式「无 workspace」声明
+	if err := postOK(t, env.url("/api/project/workspace/save"), fmt.Sprintf(`{"path":%q,"workspaces":[]}`, repo)); err != nil {
+		t.Fatal(err)
+	}
+	decodeData(t, getJSON(t, env.url("/api/project/workspace/get?path="+url.QueryEscape(repo))), &state)
+	if !state.Declared || len(state.Rules) != 0 || len(state.Effective) != 0 {
+		t.Fatalf("空清单应为显式无成员, got declared=%v rules=%+v effective=%+v", state.Declared, state.Rules, state.Effective)
+	}
+
+	// reset 删节恢复默认规则
+	if err := postOK(t, env.url("/api/project/workspace/reset"), fmt.Sprintf(`{"path":%q}`, repo)); err != nil {
+		t.Fatal(err)
+	}
+	decodeData(t, getJSON(t, env.url("/api/project/workspace/get?path="+url.QueryEscape(repo))), &state)
+	if state.Declared || len(state.Rules) != 2 {
+		t.Fatalf("reset 后应回落默认规则, got declared=%v rules=%+v", state.Declared, state.Rules)
+	}
+	if len(state.Effective) != 1 || state.Effective[0].Path != "apps/web" {
+		t.Fatalf("reset 后 effective 应回到默认规则结果, got %+v", state.Effective)
 	}
 
 	// 坏条目整体拒绝（写侧严格语义，区别于采集侧静默跳过）
@@ -359,4 +381,19 @@ func TestWorkspaceGetSave(t *testing.T) {
 	if rejected.Ok {
 		t.Fatal("坏条目应整体拒绝")
 	}
+}
+
+// postOK 断言 POST 返回 ok envelope，失败时返回错误。
+func postOK(t *testing.T, url, body string) error {
+	t.Helper()
+	resp, err := http.Post(url, "application/json", strings.NewReader(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var got envelope
+	if err := json.UnmarshalRead(resp.Body, &got); err != nil || !got.Ok {
+		return fmt.Errorf("POST %s 应成功: err=%v env=%+v", url, err, got)
+	}
+	return nil
 }

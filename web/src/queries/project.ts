@@ -75,7 +75,7 @@ export function useProjectOpen() {
   return { ...open, run };
 }
 
-// 项目 workspace 声明状态（1030）：生效清单 / 显式声明 / 探测候选（编辑视图用）
+// 项目 workspace 规则状态（1030）：生效清单（读快照）/ 规则清单（未声明时为默认规则）
 export function useWorkspaceState(path: string | null) {
   return useQuery({
     queryKey: ['project', 'workspace', path],
@@ -84,10 +84,17 @@ export function useWorkspaceState(path: string | null) {
   });
 }
 
-// 保存显式 workspaces 声明（写入项目内 .cube/cube.json，后端即时重采集）
+// 保存 workspace 规则清单（写入项目内 .cube/cube.json，后端即时重采集；空清单=显式无 workspace）
 export function useWorkspaceSave() {
   return useMutation({
     mutationFn: (input: { path: string; workspaces: { name: string; path: string }[] }) =>
       apiPost('/api/project/workspace/save', input),
+  });
+}
+
+// 删除 workspaces 节恢复默认规则（<npm>+<pnpm>），后端即时重采集
+export function useWorkspaceReset() {
+  return useMutation({
+    mutationFn: (input: { path: string }) => apiPost('/api/project/workspace/reset', input),
   });
 }

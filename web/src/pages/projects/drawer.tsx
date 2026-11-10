@@ -110,12 +110,12 @@ export function ProjectDrawer({
               </div>
             </DrawerSection>
 
-            <DrawerSection title="workspace 声明（1030）">
+            <DrawerSection title="workspace（1030）">
               <div className="flex items-center gap-2 text-sm">
-                {wsState.data?.declaredSet ? (
-                  <Badge variant="default">显式声明</Badge>
+                {wsState.data?.declared ? (
+                  <Badge variant="default">显式规则</Badge>
                 ) : (wsState.data?.effective?.length ?? 0) > 0 ? (
-                  <Badge variant="secondary">探测生效</Badge>
+                  <Badge variant="secondary">默认规则</Badge>
                 ) : (
                   <span className="text-muted-foreground">无</span>
                 )}

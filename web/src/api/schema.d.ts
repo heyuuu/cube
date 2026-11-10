@@ -572,10 +572,27 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** 获取项目 workspace 状态（生效清单 / 显式声明 / 探测候选） */
+    /** 获取项目 workspace 状态（生效清单读快照 / 规则清单） */
     get: operations['project.workspaceGet'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/project/workspace/reset': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 删除 workspaces 节恢复默认规则并即时重采集 */
+    post: operations['project.workspaceReset'];
     delete?: never;
     options?: never;
     head?: never;
@@ -591,7 +608,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 保存显式 workspaces 声明（.cube/cube.json）并即时重采集 */
+    /** 保存 workspace 规则清单（.cube/cube.json）并即时重采集 */
     post: operations['project.workspaceSave'];
     delete?: never;
     options?: never;
@@ -1967,6 +1984,20 @@ export interface components {
       name: string;
       path: string;
     };
+    WorkspaceResetRequest: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/WorkspaceResetRequest.json
+       */
+      readonly $schema?: string;
+      /** @description 项目绝对路径 */
+      path: string;
+    };
+    WorkspaceRuleDTO: {
+      name: string;
+      path: string;
+    };
     WorkspaceSaveInputBody: {
       /**
        * Format: uri
@@ -1976,15 +2007,13 @@ export interface components {
       readonly $schema?: string;
       /** @description 项目绝对路径 */
       path: string;
-      /** @description 显式声明的成员清单（name + 相对项目根路径） */
-      workspaces: components['schemas']['WorkspaceMemberDTO'][] | null;
+      /** @description 规则清单（name 可选 + path：相对路径/glob/<npm>/<pnpm>） */
+      workspaces: components['schemas']['WorkspaceRuleDTO'][] | null;
     };
     WorkspaceStateResult: {
-      declared: components['schemas']['WorkspaceMemberDTO'][] | null;
-      declaredSet: boolean;
-      detected: components['schemas']['WorkspaceMemberDTO'][] | null;
+      declared: boolean;
       effective: components['schemas']['WorkspaceMemberDTO'][] | null;
-      scanRule: string;
+      rules: components['schemas']['WorkspaceRuleDTO'][] | null;
     };
     WorktreeAddRequest: {
       /**
@@ -3138,6 +3167,39 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['EnvelopeWorkspaceStateResult'];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel'];
+        };
+      };
+    };
+  };
+  'project.workspaceReset': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['WorkspaceResetRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
         };
       };
       /** @description Error */

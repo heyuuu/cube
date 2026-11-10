@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/heyuuu/x/xstd/xslices"
@@ -113,8 +112,9 @@ func NewProjectHandler(projectService *project.Service, openerService *opener.Se
 func (h *ProjectHandler) Register(r *server.Routes) {
 	r.Get("/api/project/list", "获取项目列表", server.JSONHandler(h.projectList))
 	r.Post("/api/project/open", "用指定 opener 打开已收录项目（记 usage；目标目录选择为 1030/1032 预留）", server.JSONHandler(h.projectOpen))
-	r.Get("/api/project/workspace/get", "获取项目 workspace 状态（生效清单 / 显式声明 / 探测候选）", server.JSONHandler(h.workspaceGet))
-	r.Post("/api/project/workspace/save", "保存显式 workspaces 声明（.cube/cube.json）并即时重采集", server.JSONHandler(h.workspaceSave))
+	r.Get("/api/project/workspace/get", "获取项目 workspace 状态（生效清单读快照 / 规则清单）", server.JSONHandler(h.workspaceGet))
+	r.Post("/api/project/workspace/save", "保存 workspace 规则清单（.cube/cube.json）并即时重采集", server.JSONHandler(h.workspaceSave))
+	r.Post("/api/project/workspace/reset", "删除 workspaces 节恢复默认规则并即时重采集", server.JSONHandler(h.workspaceReset))
 	r.Get("/api/project/scan-rules", "获取扫描规则", server.JSONHandler(h.scanRules))
 	r.Get("/api/project/clone-rules", "获取 clone 规则", server.JSONHandler(h.cloneRules))
 	r.Post("/api/project/scan-rule/save", "新增或按 path 替换扫描规则", server.JSONHandler(h.scanRuleSave))
@@ -332,15 +332,20 @@ func workspaceMemberDTOs(ws []workspace.Workspace) []WorkspaceMemberDTO {
 	return xslices.Map(ws, func(w workspace.Workspace) WorkspaceMemberDTO { return WorkspaceMemberDTO(w) })
 }
 
-// WorkspaceStateResult workspace/get 返回：编辑视图所需的三块信息。
-// Effective 读项目快照（读路径不读声明文件、不探测）；Declared/Detected 是
-// 编辑场景的一次性现算（编辑场景可以严格，与「读路径纯快照」纪律不冲突）。
+// WorkspaceRuleDTO workspace 规则（name 可选——通配/特殊规则的组前缀；
+// path 为相对路径 / glob / 特殊规则 <npm>/<pnpm>）。
+type WorkspaceRuleDTO struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+// WorkspaceStateResult workspace/get 返回：编辑视图所需信息。
+// Effective 读项目快照（读路径不读规则文件、不解析）；Rules 是编辑场景的一次性
+// 现算（未声明时返回默认规则——编辑起点即当前生效配置）。
 type WorkspaceStateResult struct {
-	Effective   []WorkspaceMemberDTO `json:"effective"`   // 当前生效清单（显式声明或探测结果）
-	DeclaredSet bool                 `json:"declaredSet"` // cube.json 是否有显式 workspaces 字段
-	Declared    []WorkspaceMemberDTO `json:"declared"`    // 显式声明原文（declaredSet=false 时为空）
-	ScanRule    string               `json:"scanRule"`    // cube.json 的 workspaceScanRule（空=用默认规则）
-	Detected    []WorkspaceMemberDTO `json:"detected"`    // 探测候选（「导入为候选」入口用；未命中为空）
+	Effective []WorkspaceMemberDTO `json:"effective"` // 当前生效成员清单（读快照）
+	Declared  bool                 `json:"declared"`  // workspaces 节是否显式声明（false=默认规则生效中）
+	Rules     []WorkspaceRuleDTO   `json:"rules"`     // 当前规则清单（未声明时为默认规则）
 }
 
 func (h *ProjectHandler) workspaceGet(input struct {
@@ -351,61 +356,63 @@ func (h *ProjectHandler) workspaceGet(input struct {
 		return WorkspaceStateResult{}, errors.New("未找到指定项目: " + input.Path)
 	}
 	root := proj.Path()
-	result := WorkspaceStateResult{Effective: []WorkspaceMemberDTO{}, Declared: []WorkspaceMemberDTO{}, Detected: []WorkspaceMemberDTO{}}
+	result := WorkspaceStateResult{Effective: []WorkspaceMemberDTO{}, Rules: []WorkspaceRuleDTO{}}
 	// 生效清单读主工作树（Entry.Main）的 workspace 成员
 	if info := h.projectService.Snapshot(root); info != nil {
 		result.Effective = workspaceMemberDTOs(info.Main.Workspaces)
 	}
-	if cf, ok := cubefile.Load(root); ok {
-		result.DeclaredSet = cf.WorkspacesSet
-		result.Declared = xslices.Map(cf.Workspaces, func(d cubefile.Declared) WorkspaceMemberDTO {
-			return WorkspaceMemberDTO(d)
-		})
-		result.ScanRule = cf.WorkspaceScanRule
-	}
-	// 探测候选独立于 cube.json 是否存在（无声明项目的「导入为候选」入口同样要工作）
-	result.Detected = xslices.Map(workspace.Detect(root, workspace.EffectiveScanRule(root)), func(w workspace.Workspace) WorkspaceMemberDTO {
-		return WorkspaceMemberDTO(w)
+	result.Declared = cubefile.WorkspaceRulesDeclared(root)
+	result.Rules = xslices.Map(cubefile.LoadWorkspaceRules(root), func(r cubefile.WorkspaceRule) WorkspaceRuleDTO {
+		return WorkspaceRuleDTO(r)
 	})
 	return result, nil
 }
 
-// WorkspaceSaveInput workspace/save 接口入参。workspaces 至少一条（清除声明直接删 .cube/cube.json，不开 API）。
+// WorkspaceSaveInput workspace/save 接口入参。workspaces 为规则清单整节覆盖
+// （空清单 = 显式「无 workspace」；恢复默认规则走 workspace/reset）。
 type WorkspaceSaveInput struct {
 	Body struct {
-		Path       string               `json:"path" doc:"项目绝对路径"`
-		Workspaces []WorkspaceMemberDTO `json:"workspaces" doc:"显式声明的成员清单（name + 相对项目根路径）"`
+		Path       string             `json:"path" doc:"项目绝对路径"`
+		Workspaces []WorkspaceRuleDTO `json:"workspaces" doc:"规则清单（name 可选 + path：相对路径/glob/<npm>/<pnpm>）"`
 	}
 }
 
-// workspaceSave 写侧校验严格（坏条目整体拒绝，静默跳过是采集侧的降级语义），
+// workspaceSave 写侧结构校验严格（坏条目整体拒绝，静默跳过是采集侧的降级语义），
 // 成功后定向重采集让打开目标即刻反映。
 func (h *ProjectHandler) workspaceSave(input WorkspaceSaveInput) (map[string]any, error) {
 	proj := h.projectService.FindByPath(input.Body.Path)
 	if proj == nil {
 		return nil, errors.New("未找到指定项目: " + input.Body.Path)
 	}
-	if len(input.Body.Workspaces) == 0 {
-		return nil, errors.New("workspaces 不能为空（清除声明请删除项目内 .cube/cube.json）")
-	}
 	root := proj.Path()
-	for _, m := range input.Body.Workspaces {
-		if strings.ContainsAny(m.Path, "*?[") {
-			return nil, errors.New("path 不支持通配符（glob 是手写 cube.json 的表达，保存接口固化具体成员）: " + m.Path)
-		}
-	}
-	declared := xslices.Map(input.Body.Workspaces, func(m WorkspaceMemberDTO) cubefile.WorkspaceRule {
+	rules := xslices.Map(input.Body.Workspaces, func(m WorkspaceRuleDTO) cubefile.WorkspaceRule {
 		return cubefile.WorkspaceRule(m)
 	})
-	validated := workspace.ResolveRules(root, declared)
-	if len(validated) != len(declared) {
-		return nil, errors.New("存在无效条目（path 须相对项目根、目录存在且不逃逸），请修正后重试")
-	}
-	if err := workspace.Save(root, validated); err != nil {
+	if err := workspace.SaveRules(root, rules); err != nil {
 		return nil, err
 	}
 	if err := h.projectService.RefreshSnapshot(root); err != nil {
 		slog.Warn("workspace 保存后刷新快照失败（等下次采集自愈）", "err", err)
+	}
+	return map[string]any{"ok": true}, nil
+}
+
+// workspaceReset 删除 workspaces 节恢复默认规则（<npm>+<pnpm>），成功后定向重采集。
+func (h *ProjectHandler) workspaceReset(input struct {
+	Body struct {
+		Path string `json:"path" doc:"项目绝对路径"`
+	}
+}) (map[string]any, error) {
+	proj := h.projectService.FindByPath(input.Body.Path)
+	if proj == nil {
+		return nil, errors.New("未找到指定项目: " + input.Body.Path)
+	}
+	root := proj.Path()
+	if err := workspace.Reset(root); err != nil {
+		return nil, err
+	}
+	if err := h.projectService.RefreshSnapshot(root); err != nil {
+		slog.Warn("workspace 重置后刷新快照失败（等下次采集自愈）", "err", err)
 	}
 	return map[string]any{"ok": true}, nil
 }
