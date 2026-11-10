@@ -394,21 +394,6 @@ func TestParseCountPair(t *testing.T) {
 	}
 }
 
-// TestFirstLine 取输出首行。
-func TestFirstLine(t *testing.T) {
-	cases := map[string]string{
-		"git@x:a/b\nsecond\n": "git@x:a/b",
-		"only\n":              "only",
-		"":                    "",
-		"  \n":                "",
-	}
-	for in, want := range cases {
-		if got := firstLine(in); got != want {
-			t.Errorf("firstLine(%q) = %q，期望 %q", in, got, want)
-		}
-	}
-}
-
 // TestHeadSha 返回 HEAD 完整 sha；非仓库降级为空值。
 func TestHeadSha(t *testing.T) {
 	ws := newTestWorkspace(t)

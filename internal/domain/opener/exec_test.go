@@ -453,3 +453,14 @@ func TestURLActions(t *testing.T) {
 		}
 	})
 }
+
+func TestTitleDefault(t *testing.T) {
+	o1, _ := InitActionOpener(Spec{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}, nil, "")
+	if got := o1.Title(); got != "用 code 打开" {
+		t.Fatalf("缺省 title 应由 name 生成, got %q", got)
+	}
+	o2, _ := InitActionOpener(Spec{Name: "finder", Title: "打开所在目录", Actions: map[Role]string{"open-dir": `exec: open $0`}}, nil, "")
+	if got := o2.Title(); got != "打开所在目录" {
+		t.Fatalf("配置 title 应原样生效, got %q", got)
+	}
+}

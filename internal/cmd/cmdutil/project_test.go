@@ -1,10 +1,9 @@
-package cmd
+package cmdutil
 
 import (
 	"path"
 	"testing"
 
-	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/project"
 	"cube/internal/testfixture"
 )
@@ -35,7 +34,7 @@ func TestSearchProjects_PathQueryCwd(t *testing.T) {
 
 	// 项目根：query="." 命中
 	t.Chdir(repo)
-	projs := cmdutil.SearchProjects(s, ".")
+	projs := SearchProjects(s, ".")
 	if len(projs) != 1 || projs[0].Path() != repo {
 		t.Fatalf("searchProjects(\".\") 应命中 %s，实际 %v", repo, projs)
 	}
@@ -43,7 +42,7 @@ func TestSearchProjects_PathQueryCwd(t *testing.T) {
 	// 项目子目录：query="." 只向下搜索，落空（不向上标定）
 	sub := ws.Mkdir(path.Join("root", "proj", "sub"))
 	t.Chdir(sub)
-	projs = cmdutil.SearchProjects(s, ".")
+	projs = SearchProjects(s, ".")
 	if len(projs) != 0 {
 		t.Fatalf("searchProjects(\".\") 在子目录不应向上命中，实际 %v", projs)
 	}
@@ -61,13 +60,13 @@ func TestPickProject_LocalMode(t *testing.T) {
 	s := newCmdServiceAt(t, root, "g1", 5)
 
 	// 非 local：query 空匹配两个项目，走交互选择，非 TTY 下报错
-	if _, err := cmdutil.PickProject(s, "", false); err == nil {
+	if _, err := PickProject(s, "", false); err == nil {
 		t.Fatalf("非 local 模式下 query 空应因多项匹配无法交互而报错")
 	}
 
 	// local：query 缺省以 cwd 定位，在 projA 子目录内向上命中唯一项目
 	t.Chdir(ws.Mkdir(path.Join("root", "projA", "sub")))
-	proj, err := cmdutil.PickProject(s, "", true)
+	proj, err := PickProject(s, "", true)
 	if err != nil {
 		t.Fatalf("local 模式下 pickProject(\"\") 出错: %v", err)
 	}
@@ -76,7 +75,7 @@ func TestPickProject_LocalMode(t *testing.T) {
 	}
 
 	// local 下显式 query 不干预：仍按名称搜索命中 projB
-	proj, err = cmdutil.PickProject(s, "projB", true)
+	proj, err = PickProject(s, "projB", true)
 	if err != nil {
 		t.Fatalf("pickProject(\"projB\") 出错: %v", err)
 	}
@@ -94,13 +93,13 @@ func TestSearchProjects_QueryModes(t *testing.T) {
 	s := newCmdServiceAt(t, root, "g1", 5)
 
 	// name query：不走路径分支
-	projs := cmdutil.SearchProjects(s, "proj")
+	projs := SearchProjects(s, "proj")
 	if len(projs) != 1 {
 		t.Fatalf("name 搜索应命中 1 个，实际 %d", len(projs))
 	}
 
 	// ~user 不满足路径形态：按名字搜索，自然落空为空列表
-	projs = cmdutil.SearchProjects(s, "~user/x")
+	projs = SearchProjects(s, "~user/x")
 	if len(projs) != 0 {
 		t.Fatalf("~user/x 应按名字搜索落空，实际命中 %d", len(projs))
 	}

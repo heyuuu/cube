@@ -17,7 +17,6 @@ import (
 
 	"github.com/coder/websocket"
 
-	"cube/internal/domain/workbench"
 	"cube/internal/testfixture"
 	"cube/pkg/git"
 )
@@ -96,64 +95,6 @@ func TestWorkbenchRemotes(t *testing.T) {
 	// 无 remote 的仓库：nil 切片序列化为 []
 	if r := getJSON(t, env.url("/api/workbench/remotes?path="+env.ws.Join("g1/proj1"))); !r.Ok {
 		t.Error("无 remote 的仓库应为空列表而非报错")
-	}
-}
-
-// TestWorkbenchSourceParse 校验 TreeSource 解析纯函数（HTTP 契约的一部分）。
-// 合法用例同时断言 String() 往返一致（写方序列化与解析成对）。
-func TestWorkbenchSourceParse(t *testing.T) {
-	sha40 := strings.Repeat("a1", 20)
-	sha64 := strings.Repeat("b2", 32)
-	cases := []struct {
-		name    string
-		in      string
-		want    workbench.TreeSource
-		wantErr bool
-	}{
-		{"commit 40 位 sha", "commit://" + sha40, workbench.TreeSource{Type: workbench.SourceTypeCommit, ID: sha40}, false},
-		{"commit 64 位 sha（sha256 仓库）", "commit://" + sha64, workbench.TreeSource{Type: workbench.SourceTypeCommit, ID: sha64}, false},
-		{"ref 全名-分支", "ref://refs/heads/master", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "refs/heads/master"}, false},
-		{"ref 全名-tag", "ref://refs/tags/v1.0", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "refs/tags/v1.0"}, false},
-		{"ref 全名-远程跟踪", "ref://refs/remotes/origin/dev", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "refs/remotes/origin/dev"}, false},
-		{"ref 全名-开放子树", "ref://refs/pull/123/head", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "refs/pull/123/head"}, false},
-		{"ref 相对路径短名", "ref://heads/master", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "heads/master"}, false},
-		{"ref 短名-HEAD", "ref://HEAD", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "HEAD"}, false},
-		{"ref 短名-远程叶名", "ref://origin/dev", workbench.TreeSource{Type: workbench.SourceTypeRef, ID: "origin/dev"}, false},
-		{"worktree 绝对路径", "worktree:///tmp/x", workbench.TreeSource{Type: workbench.SourceTypeWorktree, ID: "/tmp/x"}, false},
-		{"worktree 路径含冒号不歧义", "worktree:///tmp/a://b", workbench.TreeSource{Type: workbench.SourceTypeWorktree, ID: "/tmp/a://b"}, false},
-		{"缺 scheme", "master", workbench.TreeSource{}, true},
-		{"未知 scheme", "branch://main", workbench.TreeSource{}, true},
-		{"空 id", "ref://", workbench.TreeSource{}, true},
-		{"commit 非 hex", "commit://" + strings.Repeat("z", 40), workbench.TreeSource{}, true},
-		{"commit 长度不符", "commit://abc123", workbench.TreeSource{}, true},
-		{"rev 表达式-波浪号", "ref://HEAD~2", workbench.TreeSource{}, true},
-		{"rev 表达式-upstream", "ref://@{u}", workbench.TreeSource{}, true},
-		{"rev 表达式-插入符", "ref://master^", workbench.TreeSource{}, true},
-		{"ref 短名含空格", "ref://a b", workbench.TreeSource{}, true},
-		{"ref 短名含冒号", "ref://a:b", workbench.TreeSource{}, true},
-		{"ref 短名连续点", "ref://master..dev", workbench.TreeSource{}, true},
-		{"ref 短名 lock 结尾", "ref://x.lock", workbench.TreeSource{}, true},
-		{"ref 短名前导点", "ref://.hidden", workbench.TreeSource{}, true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := workbench.ParseTreeSource(tc.in)
-			if tc.wantErr {
-				if err == nil {
-					t.Fatalf("应报错: %+v", got)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("不应报错: %v", err)
-			}
-			if got != tc.want {
-				t.Errorf("解析不符: got %+v, want %+v", got, tc.want)
-			}
-			if got.String() != tc.in {
-				t.Errorf("String 往返不一致: got %q, want %q", got.String(), tc.in)
-			}
-		})
 	}
 }
 

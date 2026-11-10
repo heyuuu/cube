@@ -1,6 +1,7 @@
 package project
 
 import (
+	"os"
 	"path"
 	"slices"
 	"strings"
@@ -339,5 +340,125 @@ func TestSaveAllCloneRules(t *testing.T) {
 	}
 	if rules := s.CloneRules(); len(rules) != 2 || rules[0].RepoHost != "gitee.com" {
 		t.Fatalf("失败的 save-all 不应改动文件: %v", rules)
+	}
+}
+
+// TestScanRules_Getter ScanRules() 从 settings.json 读出规则（含路径校验）。
+func TestScanRules_Getter(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	s := newServiceWithRules(t, ws, []ScanRule{{Group: "g", Path: ws.Mkdir("root"), MaxDepth: 3}}, nil)
+	rules := s.ScanRules()
+	if len(rules) != 1 || rules[0].Group != "g" {
+		t.Fatalf("ScanRules 异常: %v", rules)
+	}
+}
+
+// TestScan_HomePrefixSkipped ~/ 前缀不再由 domain 展开（展开职责在出口层），
+// 配置里写 ~/ 视为配置错误，降级跳过、不阻断其它规则。
+func TestScan_HomePrefixSkipped(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	repoDir := home + "/Code/proj"
+	os.MkdirAll(repoDir, 0755)
+	ws := testfixture.NewWorkspace(t)
+	testfixture.BuildGitRepo(ws.TB, repoDir, testfixture.GitRepoSpec{})
+
+	s := newServiceWithRules(t, ws, []ScanRule{
+		{Group: "bad", Path: "~/Code", MaxDepth: 3},
+		{Group: "good", Path: home + "/Code", MaxDepth: 3},
+	}, nil)
+
+	rules := s.ScanRules()
+	if len(rules) != 1 || rules[0].Group != "good" {
+		t.Fatalf("~/ 前缀应被跳过，只保留绝对路径规则，实际 %v", rules)
+	}
+}
+
+// TestScan_InvalidPathSkipped 不存在的 scan 路径被降级跳过（不阻断其它规则）。
+func TestScan_InvalidPathSkipped(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	goodRoot := ws.Mkdir("real-root")
+	ws.MakeProjectDir(path.Join("real-root", "proj"))
+
+	s := newServiceWithRules(t, ws, []ScanRule{
+		{Group: "bad", Path: "/this/does/not/exist/xyz", MaxDepth: 3},
+		{Group: "good", Path: goodRoot, MaxDepth: 3},
+	}, nil)
+
+	rules := s.ScanRules()
+	if len(rules) != 1 {
+		t.Fatalf("无效路径应被跳过，保留 1 条规则，实际 %d", len(rules))
+	}
+	if rules[0].Group != "good" {
+		t.Fatalf("应保留 good 规则，实际 %v", rules)
+	}
+	// 扫描仍能命中有效规则下的项目
+	if len(s.Projects()) != 1 {
+		t.Fatalf("应扫到 1 个项目，实际 %d", len(s.Projects()))
+	}
+}
+
+// TestCloneRule_HomePrefixSkipped clone 规则 LocalPath 的 ~/ 前缀不再展开，按配置错误跳过。
+func TestCloneRule_HomePrefixSkipped(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	ws := testfixture.NewWorkspace(t)
+	s := newServiceWithRules(t, ws, nil, []CloneRule{
+		{RepoHost: "github.com", RepoPrefix: "/heyuuu", LocalPath: "~/src"},
+	})
+
+	if rules := s.CloneRules(); len(rules) != 0 {
+		t.Fatalf("~/ 前缀应被跳过，实际 %v", rules)
+	}
+}
+
+// TestCloneRule_InvalidLocalPathSkipped clone 规则 LocalPath 为相对路径时降级跳过（不阻断其它规则）。
+// 配置路径不得依赖执行目录，相对路径是配置错误。
+func TestCloneRule_InvalidLocalPathSkipped(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	s := newServiceWithRules(t, ws, nil, []CloneRule{
+		{RepoHost: "github.com", RepoPrefix: "/heyuuu", LocalPath: "relative/src"}, // 相对路径，跳过
+		{RepoHost: "gitee.com", RepoPrefix: "/heyuuu", LocalPath: ws.Dir},          // 绝对路径，保留
+	})
+
+	rules := s.CloneRules()
+	if len(rules) != 1 {
+		t.Fatalf("应只保留 1 条合法 clone 规则，实际 %d", len(rules))
+	}
+	if rules[0].RepoHost != "gitee.com" {
+		t.Fatalf("保留的应是绝对路径规则，实际 host=%s", rules[0].RepoHost)
+	}
+}
+
+// TestService_SettingsDirectRead 规则直读 settings.json：不重建 Service，
+// 重写 settings.json 后规则立即更新，重扫（Reload）后项目列表随之变化。
+func TestService_SettingsDirectRead(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	root1 := ws.Mkdir("root1")
+	ws.MakeProjectDir(path.Join("root1", "p1"))
+
+	// 初始：只 root1 一条规则
+	s := newServiceWithRules(t, ws, []ScanRule{{Group: "g1", Path: root1, MaxDepth: 5}}, nil)
+	if len(s.Projects()) != 1 {
+		t.Fatalf("初始应扫到 1 个项目，实际 %d", len(s.Projects()))
+	}
+
+	// 重写 settings.json 为 root2 规则（模拟外部修改 / Web 保存）
+	root2 := ws.Mkdir("root2")
+	ws.MakeProjectDir(path.Join("root2", "a"))
+	ws.MakeProjectDir(path.Join("root2", "b"))
+	saveRules(t, ws, []ScanRule{{Group: "g2", Path: root2, MaxDepth: 5}}, nil)
+
+	// 规则立即更新（直读不缓存）
+	rules := s.ScanRules()
+	if len(rules) != 1 || rules[0].Path != root2 {
+		t.Fatalf("规则应直读更新为 root2：%v", rules)
+	}
+	// 项目列表在重扫后反映新规则
+	if _, _, err := s.Refresh(); err != nil {
+		t.Fatalf("Refresh 失败: %v", err)
+	}
+	if projs := s.Projects(); len(projs) != 2 {
+		t.Fatalf("重扫后应扫到 root2 的 2 个项目，实际 %d：%v", len(projs), projs)
 	}
 }
