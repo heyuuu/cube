@@ -1,6 +1,7 @@
 package project
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -62,5 +63,49 @@ func TestRefreshSnapshotOwnership(t *testing.T) {
 	}
 	if s.Snapshot(foreign) != nil {
 		t.Fatal("外来仓库不应进快照")
+	}
+}
+
+// TestResolveProject 项目根与任意子目录直接命中（向上标定当前项目）；
+// worktree / 主根 workspace 成员归并主项目；项目外目录与相对路径返回 nil。
+func TestResolveProject(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	root := ws.Mkdir("root")
+	repo := ws.MakeProjectDir(filepath.Join("root", "repo"))
+	wtDir := ws.MakeWorktree(repo, "wt-out", "feat")
+
+	s := newServiceWithRules(t, ws, []ScanRule{{Group: "g", Path: root, MaxDepth: 3}}, nil)
+
+	if p := s.ResolveProject(repo); p == nil || p.Path() != repo {
+		t.Fatalf("项目根应直接命中, got %+v", p)
+	}
+	if p := s.ResolveProject(wtDir); p == nil || p.Path() != repo {
+		t.Fatalf("worktree 应归并到主项目 %s, got %+v", repo, p)
+	}
+
+	// 项目普通子目录归并（--local 在子目录标定当前项目的链路）
+	if p := s.ResolveProject(filepath.Join(repo, "misc")); p == nil || p.Path() != repo {
+		t.Fatalf("项目子目录应归并到主项目 %s, got %+v", repo, p)
+	}
+
+	// 主根 workspace 成员及其子目录（成员是主根直系子目录，同被覆盖）
+	for _, sub := range []string{filepath.Join(".cube"), filepath.Join("server"), filepath.Join("server", "sub")} {
+		if err := os.MkdirAll(filepath.Join(repo, sub), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	member := filepath.Join(repo, "server")
+	for _, dir := range []string{member, filepath.Join(member, "sub")} {
+		if p := s.ResolveProject(dir); p == nil || p.Path() != repo {
+			t.Fatalf("workspace 成员 %s 应归并到主项目 %s, got %+v", dir, repo, p)
+		}
+	}
+
+	// 项目外目录与相对路径：不归并
+	if p := s.ResolveProject(ws.Join("plain")); p != nil {
+		t.Fatalf("普通目录应返回 nil, got %+v", p)
+	}
+	if p := s.ResolveProject("relative/sub"); p != nil {
+		t.Fatalf("相对路径应按未找到处理, got %+v", p)
 	}
 }

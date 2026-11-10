@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
+	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/project"
 )
 
@@ -34,12 +35,18 @@ func newProjectSearchCmd(a *app.App) *cobra.Command {
 					SubTitle: proj.Path(),
 					Arg:      proj.Path(),
 				})
-				for _, target := range a.ProjectService().OpenTargets(proj.Path())[1:] { // 跳过根目录（上面已输出）
-					items = append(items, Item{
-						Title:    proj.Name() + " (" + target.Label + ")",
-						SubTitle: target.Path,
-						Arg:      target.Path,
-					})
+
+				// open targets
+				snap := a.ProjectService().Snapshot(proj.Path())
+				targets := cmdutil.OpenTargets(snap)
+				if len(targets) > 0 {
+					for _, target := range targets[1:] { // 跳过根目录（上面已输出）
+						items = append(items, Item{
+							Title:    proj.Name() + " (" + target.Label + ")",
+							SubTitle: target.Path,
+							Arg:      target.Path,
+						})
+					}
 				}
 			}
 			return PrintItems(items)

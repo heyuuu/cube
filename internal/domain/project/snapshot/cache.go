@@ -13,6 +13,7 @@ package snapshot
 import (
 	"cmp"
 	"fmt"
+	"iter"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -105,6 +106,40 @@ func (e *Entry) DefaultBranchBehind() int {
 		}
 	}
 	return 0
+}
+
+// AllWorktrees 所有 worktree 的 iter，包括主 worktree
+func (e *Entry) AllWorktrees() iter.Seq[WorktreeInfo] {
+	return func(yield func(WorktreeInfo) bool) {
+		// 主 worktree
+		if !yield(e.Main) {
+			return
+		}
+		// 各 linked worktree
+		for _, wt := range e.Worktrees {
+			if !yield(wt) {
+				return
+			}
+		}
+	}
+}
+
+// AllWorkspaces 所有 workspace 的 iter，包括根目录工作空间
+func (e *Entry) AllWorkspaces() iter.Seq2[WorktreeInfo, workspace.Workspace] {
+	return func(yield func(WorktreeInfo, workspace.Workspace) bool) {
+		for wt := range e.AllWorktrees() {
+			// 根目录
+			if !yield(wt, workspace.Workspace{}) {
+				return
+			}
+			// 子 workspace
+			for _, ws := range wt.Workspaces {
+				if !yield(wt, ws) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // cacheFile 缓存文件的磁盘序列化结构。

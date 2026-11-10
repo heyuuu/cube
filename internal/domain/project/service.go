@@ -2,7 +2,6 @@ package project
 
 import (
 	"log/slog"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -199,29 +198,6 @@ func (s *Service) ResolveProject(path string) *Project {
 	}
 
 	return s.FindByPath(root)
-}
-
-// OpenTargets 返回项目的打开目标列表（1032 根目录 + worktrees；1030 主/worktree 的 workspaces）。
-// 排序定稿：主项目根 > 主项目 workspaces > 每个 worktree 根 > 该 worktree 的 workspaces。
-// 只读项目快照，不现场跑 git、不读 cube.json（遵守「读路径不得阻塞采集」）；项目未找到返回 nil。
-func (s *Service) OpenTargets(path string) []OpenTarget {
-	proj := s.FindByPath(path)
-	if proj == nil {
-		return nil
-	}
-	targets := []OpenTarget{{Path: proj.Path(), Label: rootLabel}}
-
-	info := s.Snapshot(proj.Path())
-	if info != nil {
-		// 存在性兜底过滤：采集侧已过滤，但目录在两次采集之间被删时快照仍残留，
-		// 打开目标必须是真实可打开的目录（os.Stat 廉价，不违反读路径不跑 git 的纪律）
-		for _, t := range targetEntries(proj.Path(), info) {
-			if _, err := os.Stat(t.Path); err == nil {
-				targets = append(targets, t)
-			}
-		}
-	}
-	return targets
 }
 
 // --- scan 相关 ---

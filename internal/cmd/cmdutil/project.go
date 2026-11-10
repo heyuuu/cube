@@ -4,11 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xos"
 	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/domain/project"
+	"cube/internal/domain/project/snapshot"
 	"cube/pkg/tui"
 )
 
@@ -108,4 +111,39 @@ func ShowProjects(service *project.Service, projects []*project.Project) {
 			}
 		}),
 	)
+}
+
+type OpenTarget struct {
+	Label string
+	Path  string
+}
+
+// OpenTargets 返回 OpenTarget 数组；结果不为空时，首位必然是主 worktree 根目录
+func OpenTargets(snap *snapshot.Entry) []OpenTarget {
+	if snap == nil {
+		return nil
+	}
+
+	projPath := snap.Main.Path
+
+	var targets []OpenTarget
+	for worktree, ws := range snap.AllWorkspaces() {
+		path := filepath.Join(worktree.Path, ws.Path)
+		if !xos.IsDir(path) {
+			continue
+		}
+
+		var label string
+		if worktree.Path == projPath { // main worktree
+			label = "main"
+		} else { // linked worktree
+			label = worktree.Branch // 使用分支来标识 worktree
+		}
+		if ws.Name != "" {
+			label += " · " + ws.Name
+		}
+
+		targets = append(targets, OpenTarget{Label: label, Path: path})
+	}
+	return targets
 }
