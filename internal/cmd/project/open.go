@@ -1,7 +1,6 @@
 package project
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -11,8 +10,6 @@ import (
 	"cube/internal/app"
 	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/opener"
-	"cube/internal/domain/project"
-	"cube/pkg/tui"
 )
 
 // newOpenCmd `cube project open` 命令。
@@ -66,30 +63,4 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 	cmd.Flags().StringVarP(&openerName, "opener", "o", "", "打开工具(opener)名；不带值时交互选择，缺省用默认 opener")
 	cmd.Flags().Lookup("opener").NoOptDefVal = cmdutil.InteractivePick
 	return cmd
-}
-
-// pickOpenTarget 选择项目的打开目标（根目录 / workspaces / worktrees，1032+1030）：
-// 单目标直接返回主目录；多目标交互选择，标签为 "main" 或 worktree 分支名（可带 workspace 名）。
-func pickOpenTarget(service *project.Service, proj *project.Project) (string, error) {
-	snap := service.Snapshot(proj.Path())
-	if snap == nil {
-		return proj.Path(), nil
-	}
-
-	targets := cmdutil.OpenTargets(snap)
-	if len(targets) <= 1 {
-		return proj.Path(), nil
-	}
-
-	pick, err := tui.SelectItem("选择打开目标", targets, func(t cmdutil.OpenTarget) string { return t.Label })
-	if err != nil {
-		if errors.Is(err, tui.ErrNotTTY) {
-			return "", fmt.Errorf("该项目有 %d 个打开目标（主目录 + worktree + workspace），非 TTY 环境无法交互选择: %s", len(targets), proj.Path())
-		}
-		if errors.Is(err, tui.ErrUserAborted) {
-			return "", fmt.Errorf("用户取消了打开目标选择: %w", err)
-		}
-		return "", err
-	}
-	return pick.Path, nil
 }

@@ -71,6 +71,7 @@ type LocalBranchInfo struct {
 
 // WorktreeInfo 单个工作树信息（主项目根或单个 linked worktree）
 type WorktreeInfo struct {
+	Main       bool                  `json:"main"`       // 是否为主项目
 	Path       string                `json:"path"`       // worktree 绝对路径（git 输出经符号链接规范化）
 	Branch     string                `json:"branch"`     // 检出分支短名；detached 为空
 	Detached   bool                  `json:"detached"`   // HEAD 游离（展示名回退目录名的信号）
@@ -410,7 +411,7 @@ func collectWorktrees(path string) ([]WorktreeInfo, error) {
 		return nil, fmt.Errorf("枚举 worktree 失败: path=%s, err=%w", path, err)
 	}
 	worktrees := make([]WorktreeInfo, 0, len(list))
-	for _, wt := range list {
+	for i, wt := range list {
 		// 目录已删但 git 元数据未 prune 的 worktree 仍会被列出，按存在性过滤，
 		// 避免失联路径进快照成为打不开的幽灵目标
 		if _, err := os.Stat(wt.Path); err != nil {
@@ -421,6 +422,7 @@ func collectWorktrees(path string) ([]WorktreeInfo, error) {
 			return nil, fmt.Errorf("探测工作树 dirty 失败: path=%s, err=%w", wt.Path, err)
 		}
 		worktrees = append(worktrees, WorktreeInfo{
+			Main:       i == 0,
 			Path:       wt.Path,
 			Branch:     wt.Branch,
 			Detached:   wt.Detached,

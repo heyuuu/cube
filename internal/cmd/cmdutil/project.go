@@ -124,8 +124,6 @@ func OpenTargets(snap *snapshot.Entry) []OpenTarget {
 		return nil
 	}
 
-	projPath := snap.Main.Path
-
 	var targets []OpenTarget
 	for worktree, ws := range snap.AllWorkspaces() {
 		path := filepath.Join(worktree.Path, ws.Path)
@@ -134,7 +132,7 @@ func OpenTargets(snap *snapshot.Entry) []OpenTarget {
 		}
 
 		var label string
-		if worktree.Path == projPath { // main worktree
+		if worktree.Main { // main worktree
 			label = "main"
 		} else { // linked worktree
 			label = worktree.Branch // 使用分支来标识 worktree

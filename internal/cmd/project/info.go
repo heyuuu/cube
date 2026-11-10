@@ -1,16 +1,19 @@
 package project
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/heyuuu/x/xstd/xfilepath"
 	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
 	"cube/internal/cmd/cmdutil"
+	"cube/internal/domain/project/snapshot"
 	"cube/pkg/git"
 	"cube/pkg/tui"
 )
@@ -20,18 +23,18 @@ import (
 var (
 	infoKeyStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("51"))            // 键名
 	infoDimStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))           // 次要信息（网页地址、绝对时间等）
-	infoOkStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))            // 正常状态（未修改等）
 	infoWarnStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))           // 需注意状态（有改动、无缓存等）
 	infoBoldStyle    = lipgloss.NewStyle().Bold(true)                                  // 强调（项目名）
 	infoSectionStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99")) // -v 小节标题（与表格边框同色）
 )
 
 // infoKeyWidth 是键名列宽度（含对齐），多行值的续行缩进也依赖它。
-const infoKeyWidth = 13
+const infoKeyWidth = 16
 
 // newInfoCmd `cube project info` 命令。
 func newInfoCmd(a *app.App) *cobra.Command {
 	var verbose bool
+	var refresh bool
 	cmd := &cobra.Command{
 		Use:   "info [query]",
 		Short: "项目详情(支持项目名或项目路径模糊搜索)",
@@ -56,46 +59,75 @@ query 支持两种搜索模式：
 				return err
 			}
 
-			printInfoKV("project", infoBoldStyle.Render(proj.Name()))
-			printInfoKV("path", proj.Path())
-			printInfoKV("group", orInfoDash(proj.Group()))
-			printInfoKV("tags", orInfoDash(proj.TagsStr()))
-
-			// 路径 query 命中 worktree 时注明当前所属（1032 归并：项目身份是主仓库，
-			// 但用户在 worktree 目录里执行，需指出实际所在副本）
+			// 获取参数绝对路径，后面显示用
+			var queryPath string
 			if absPath, ok := cmdutil.AsPathQuery(query); ok {
-				if root, ok := git.FindGitRoot(absPath); ok && root != proj.Path() {
-					branch := git.CurrentBranch(root)
-					if branch != "" {
-						branch = " (" + branch + ")"
-					}
-					printInfoKV("worktree", root+infoDimStyle.Render(branch))
+				queryPath = absPath
+			}
+
+			// 基础信息
+			printInfoSection("基础信息")
+			printInfoLine("project", infoBoldStyle.Render(proj.Name()))
+			printInfoLine("path", proj.Path())
+			printInfoLine("group", cmp.Or(proj.Group(), "-"))
+			printInfoLine("tags", cmp.Or(proj.TagsStr(), "-"))
+
+			// 项目快照，默认走缓存，--refresh 强制采集最新信息
+			var snap *snapshot.Entry
+			if !refresh {
+				snap = a.ProjectService().Snapshot(proj.Path())
+				if snap == nil {
+					printInfoLine("snapshot", infoWarnStyle.Render("无缓存(可增加 -r｜--refresh 参数强制采集)"))
+					return nil
 				}
-			}
-
-			// 项目快照（branch/dirty 等基础字段）；remote 列表走本地实时读
-			snap := a.ProjectService().Snapshot(proj.Path())
-			cacheURL := ""
-			if snap != nil {
-				cacheURL = snap.OriginURL()
-			}
-			printInfoRemotes(proj.Path(), cacheURL)
-
-			if snap == nil {
-				printInfoKV("git", infoWarnStyle.Render("无缓存(可启动 cube server 自动采集)"))
 			} else {
-				branch := snap.Main.Branch
-				if branch == "" {
-					branch = "HEAD(detached)" // 主工作树分支为空即 detached HEAD
+				snap, err = a.ProjectService().RefreshSnapshot(proj.Path())
+				if err != nil {
+					return err
 				}
-				printInfoKV("branch", branch)
-				if snap.DefaultBranch != "" {
-					// ahead/behind 是默认分支相对 origin 的差异
-					printInfoKV("default", snap.DefaultBranch+" "+cmdutil.FormatAheadBehind(snap.DefaultBranchAhead(), snap.DefaultBranchBehind()))
+			}
+
+			// 补充 snap 中的基础信息
+			printInfoLineEx("snapshot", cmdutil.PrettyTime(snap.UpdatedAt), snap.UpdatedAt.Format(time.TimeOnly))
+			printInfoLine("defaultBranch", snap.DefaultBranch)
+			printInfoLine("branches", fmt.Sprintf("%d 个", len(snap.Branches)))
+
+			// 远程信息
+			printInfoSection("Remotes")
+			for _, r := range snap.Remotes {
+				var webURL string
+				if u, err := git.ParseRepoURL(r.URL); err == nil {
+					webURL = u.WebURL()
 				}
-				printInfoKV("dirty", boolToCnColored(snap.Main.Dirty))
-				printInfoKV("branches", fmt.Sprintf("%d 个", len(snap.Branches)))
-				printInfoKV("snapshot", formatInfoSnapshot(snap.UpdatedAt))
+				printInfoLineEx(r.Name, r.URL, webURL)
+			}
+
+			// branch upstreams
+			printInfoSection("分支同步情况")
+			for _, br := range snap.Branches {
+				if br.Upstream == "" {
+					continue
+				}
+				printInfoLine(br.ShortName, cmdutil.FormatAheadBehind(br.Ahead, br.Behind))
+			}
+
+			// worktree
+			printInfoSection("Worktrees")
+			for wt := range snap.AllWorktrees() {
+				label := "<main>"
+				if !wt.Main {
+					label = wt.Branch
+				}
+				// 在当前 worktree 前增加标识
+				if queryPath != "" && xfilepath.HasPrefix(queryPath, wt.Path) {
+					label = "* " + label
+				}
+
+				// 组装值
+				branch := cmp.Or(wt.Branch, "HEAD detached")
+				value := cmdutil.PrettyPath(wt.Path) + infoDimStyle.Render(" ("+branch+")")
+
+				printInfoLine(label, value)
 			}
 
 			if verbose {
@@ -105,14 +137,8 @@ query 支持两种搜索模式：
 		},
 	}
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "显示扩展信息：未提交文件、各分支与 remote 的差距、pull/push 建议")
+	cmd.Flags().BoolVarP(&refresh, "refresh", "r", false, "是否刷新 snapshot 信息")
 	return cmd
-}
-
-// printInfoKV 按 info 命令的对齐格式打印一行 key: value。
-// 键名用 lipgloss Width 补齐到 13 列（比 %-13s 的好处是按显示宽度计算，
-// 键名带 ANSI 色码时不会错位）；整行走 tui.Print，非 TTY / NO_COLOR 自动降级剥色。
-func printInfoKV(key, value string) {
-	tui.Print(infoKeyStyle.Width(infoKeyWidth).Render(key) + ": " + value + "\n")
 }
 
 // printInfoSection 打印 -v 的小节标题（前置空行 + 加粗着色标题）。
@@ -120,66 +146,17 @@ func printInfoSection(title string) {
 	tui.Print("\n" + infoSectionStyle.Render(title) + "\n")
 }
 
-// printInfoRemotes 打印 git-url 行，展示全部 remote：
-//   - 单 remote：维持「url (网页地址)」形态（与历史输出一致）；
-//   - 多 remote：每 remote 一行「名字  url (网页地址)」，名字列对齐，续行缩进对齐值列。
-//
-// remote 列表实时读本地 .git/config（毫秒级、不联网）；读不到时回退缓存快照里的
-// origin 地址，保持仓库已不可读场景下的展示能力。
-func printInfoRemotes(repoPath string, cacheURL string) {
-	remotes, _ := git.Remotes(repoPath)
-	if len(remotes) == 0 && cacheURL != "" {
-		remotes = []git.Remote{{Name: "origin", Fetch: cacheURL, Push: cacheURL}}
-	}
-
-	if len(remotes) <= 1 {
-		url := ""
-		if len(remotes) == 1 {
-			url = remotes[0].Fetch
-		}
-		printInfoKV("git-url", formatInfoGitURL(url))
-		return
-	}
-
-	lines := buildInfoRemoteLines(remotes)
-	indent := strings.Repeat(" ", infoKeyWidth+2) // 键列 + ": " 的宽度，续行与值列对齐
-	value := lines[0]
-	for _, l := range lines[1:] {
-		value += "\n" + indent + l
-	}
-	printInfoKV("git-url", value)
+// printInfoLine 按 info 命令的对齐格式打印一行 key: value。
+func printInfoLine(key, value string) {
+	printInfoLineEx(key, value, "")
 }
 
-// buildInfoRemoteLines 构造多 remote 场景下每行「名字  url (网页地址)」，名字列按最长名对齐。
-func buildInfoRemoteLines(remotes []git.Remote) []string {
-	nameWidth := 0
-	for _, r := range remotes {
-		if len(r.Name) > nameWidth {
-			nameWidth = len(r.Name)
-		}
+// printInfoLineEx 按 info 命令的对齐格式打印一行 key: value (dim)。
+func printInfoLineEx(key, value, dim string) {
+	if dim != "" {
+		value += " " + infoDimStyle.Render("("+dim+")")
 	}
-	lines := make([]string, len(remotes))
-	for i, r := range remotes {
-		lines[i] = fmt.Sprintf("%-*s", nameWidth, r.Name) + "  " + formatInfoGitURL(r.Fetch)
-	}
-	return lines
-}
-
-// formatInfoGitURL 渲染单个仓库地址：能识别 host 时在括号里附上网页地址。
-// 括号部分用灰色降为次要信息，视觉上不与仓库地址抢焦点。
-func formatInfoGitURL(repoURL string) string {
-	s := orInfoDash(repoURL)
-	if u, err := git.ParseRepoURL(repoURL); err == nil {
-		if web := u.WebURL(); web != "" {
-			s += " " + infoDimStyle.Render("("+web+")")
-		}
-	}
-	return s
-}
-
-// formatInfoSnapshot 渲染 snapshot 值：相对时间为主，绝对时间放括号里备查。
-func formatInfoSnapshot(t time.Time) string {
-	return cmdutil.PrettyTime(t) + " " + infoDimStyle.Render("("+t.Format("2006-01-02 15:04:05")+")")
+	tui.Print(infoKeyStyle.Width(infoKeyWidth).Render(key) + ": " + value + "\n")
 }
 
 // printInfoVerbose 打印 -v 的三段扩展：未提交文件 / 分支同步状态 / pull·push 建议。
@@ -197,48 +174,6 @@ func printInfoVerbose(repoPath string) {
 			tui.Print(formatInfoFileLine(f) + "\n")
 		}
 	}
-
-	// ── 分支同步状态 + 同步建议：无 remote 时提示后结束 ──
-	remotes, _ := git.Remotes(repoPath)
-	if len(remotes) == 0 {
-		printInfoSection("分支同步状态")
-		tui.Print("仓库未配置任何 remote\n")
-		return
-	}
-
-	currentBranch := git.CurrentBranch(repoPath)
-	repoRefs, err := git.Refs(repoPath)
-	if err != nil {
-		printInfoSection("分支同步状态")
-		tui.Print(infoWarnStyle.Render(fmt.Sprintf("读取 ref 列表失败: %v", err)) + "\n")
-		return
-	}
-
-	remoteHasBranch := cmdutil.BuildRemoteBranchMap(repoRefs)
-	branches := cmdutil.PickSharedBranches(repoRefs, remoteHasBranch)
-	diffs := cmdutil.CollectBranchRemoteDiffs(repoPath, branches, remotes, remoteHasBranch)
-
-	printInfoSection("分支同步状态")
-	if len(branches) == 0 {
-		tui.Print("没有本地与任一 remote 同名的分支，无可对比项。\n")
-	} else {
-		tui.PrintTable(cmdutil.BuildStatusHeaders(remotes), cmdutil.BuildStatusRowsFromDiffs(diffs, branches, remotes, currentBranch))
-	}
-
-	printInfoSection("同步建议")
-	suggestions := buildSyncSuggestions(diffs, repoPath)
-	if len(suggestions) == 0 {
-		tui.Print("所有分支与远端一致，无需 pull/push。\n")
-		return
-	}
-	for _, s := range suggestions {
-		if s.Command == "" {
-			// 分叉的分支没有安全的自动同步命令，仅提示
-			tui.Print(infoWarnStyle.Render("# "+s.Note) + "\n")
-		} else {
-			tui.Print(s.Command + "  " + infoDimStyle.Render("← "+s.Note) + "\n")
-		}
-	}
 }
 
 // formatInfoFileLine 渲染一行未提交文件状态：XY 码 + 路径。
@@ -248,70 +183,4 @@ func formatInfoFileLine(f git.FileStatus) string {
 		return infoDimStyle.Render(f.Code) + " " + f.Path
 	}
 	return infoWarnStyle.Render(f.Code) + " " + f.Path
-}
-
-// syncSuggestion 一条同步建议：可复制的 cube 命令 + 差异说明。
-// Command 为空串表示该对没有安全的自动同步方式（分叉），仅输出 Note。
-type syncSuggestion struct {
-	Command string
-	Note    string
-}
-
-// buildSyncSuggestions 由 (分支×remote) 差距生成 pull/push 建议：
-//   - 仅落后 → cube pull（远端有更新，快进可成功）
-//   - 仅领先 → cube push（本地有更新）
-//   - 分叉   → 不给命令（快进/普通推送都会被拒），提示手动处理
-//
-// 输出顺序：先 pull（先更新本地）再 push，分叉提示排最后。
-func buildSyncSuggestions(diffs []cmdutil.BranchRemoteDiff, repoPath string) []syncSuggestion {
-	var out []syncSuggestion
-	for _, d := range diffs {
-		if d.Behind > 0 && d.Ahead == 0 {
-			out = append(out, syncSuggestion{
-				Command: fmt.Sprintf("cube pull %s -r %s -b %s", repoPath, d.Remote, d.Branch),
-				Note:    fmt.Sprintf("远端领先 %d", d.Behind),
-			})
-		}
-	}
-	for _, d := range diffs {
-		if d.Ahead > 0 && d.Behind == 0 {
-			out = append(out, syncSuggestion{
-				Command: fmt.Sprintf("cube push %s -r %s -b %s", repoPath, d.Remote, d.Branch),
-				Note:    fmt.Sprintf("本地领先 %d", d.Ahead),
-			})
-		}
-	}
-	for _, d := range diffs {
-		if d.Ahead > 0 && d.Behind > 0 {
-			out = append(out, syncSuggestion{
-				Note: fmt.Sprintf("%s 与 %s 分叉（本地领先 %d / 落后 %d），需手动 rebase/merge 后再同步",
-					d.Branch, d.Remote, d.Ahead, d.Behind),
-			})
-		}
-	}
-	return out
-}
-
-// orInfoDash 空字符串显示为 "-"，避免输出空值造成阅读歧义。
-func orInfoDash(s string) string {
-	if s == "" {
-		return "-"
-	}
-	return s
-}
-
-// boolToCn 布尔值转中文「是/否」。
-func boolToCn(b bool) string {
-	if b {
-		return "是"
-	}
-	return "否"
-}
-
-// boolToCnColored 布尔值转中文「是/否」并着色：是=黄（需注意有改动），否=绿（干净）。
-func boolToCnColored(b bool) string {
-	if b {
-		return infoWarnStyle.Render(boolToCn(b))
-	}
-	return infoOkStyle.Render(boolToCn(b))
 }
