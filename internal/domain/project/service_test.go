@@ -53,14 +53,14 @@ func TestRefreshSnapshotOwnership(t *testing.T) {
 	if err := s.RefreshSnapshot(repo); err != nil {
 		t.Fatalf("收录项目应可定向刷新: %v", err)
 	}
-	if _, ok := s.Snapshot(repo); !ok {
+	if s.Snapshot(repo) == nil {
 		t.Fatal("收录项目刷新后应有快照")
 	}
 
 	if err := s.RefreshSnapshot(foreign); err != nil {
 		t.Fatalf("外来仓库跳过不应报错: %v", err)
 	}
-	if _, ok := s.Snapshot(foreign); ok {
+	if s.Snapshot(foreign) != nil {
 		t.Fatal("外来仓库不应进快照")
 	}
 }

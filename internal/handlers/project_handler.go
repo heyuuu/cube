@@ -197,7 +197,7 @@ func (h *ProjectHandler) toProjectDTO(entity *project.Project) *ProjectDTO {
 		return nil
 	}
 
-	info, _ := h.projectService.Snapshot(entity.Path())
+	info := h.projectService.Snapshot(entity.Path())
 	return &ProjectDTO{
 		Name:     entity.Name(),
 		Group:    entity.Group(),
@@ -353,7 +353,7 @@ func (h *ProjectHandler) workspaceGet(input struct {
 	root := proj.Path()
 	result := WorkspaceStateResult{Effective: []WorkspaceMemberDTO{}, Declared: []WorkspaceMemberDTO{}, Detected: []WorkspaceMemberDTO{}}
 	// 生效清单读主工作树（Entry.Main）的 workspace 成员
-	if info, ok := h.projectService.Snapshot(root); ok && info != nil {
+	if info := h.projectService.Snapshot(root); info != nil {
 		result.Effective = workspaceMemberDTOs(info.Main.Workspaces)
 	}
 	if cf, ok := cubefile.Load(root); ok {

@@ -61,7 +61,7 @@ func showProjects(service *project.Service, projects []*project.Project) {
 		},
 		xslices.Map(projects, func(p *project.Project) []string {
 			repoURL := ""
-			if info, ok := service.Snapshot(p.Path()); ok {
+			if info := service.Snapshot(p.Path()); info != nil {
 				repoURL = info.OriginURL()
 			}
 			return []string{

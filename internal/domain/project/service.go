@@ -210,12 +210,15 @@ func (s *Service) OpenTargets(path string) []OpenTarget {
 		return nil
 	}
 	targets := []OpenTarget{{Path: proj.Path(), Label: rootLabel}}
-	info, _ := s.Snapshot(proj.Path())
-	// 存在性兜底过滤：采集侧已过滤，但目录在两次采集之间被删时快照仍残留，
-	// 打开目标必须是真实可打开的目录（os.Stat 廉价，不违反读路径不跑 git 的纪律）
-	for _, t := range targetEntries(proj.Path(), info) {
-		if _, err := os.Stat(t.Path); err == nil {
-			targets = append(targets, t)
+
+	info := s.Snapshot(proj.Path())
+	if info != nil {
+		// 存在性兜底过滤：采集侧已过滤，但目录在两次采集之间被删时快照仍残留，
+		// 打开目标必须是真实可打开的目录（os.Stat 廉价，不违反读路径不跑 git 的纪律）
+		for _, t := range targetEntries(proj.Path(), info) {
+			if _, err := os.Stat(t.Path); err == nil {
+				targets = append(targets, t)
+			}
 		}
 	}
 	return targets
@@ -238,12 +241,12 @@ func (s *Service) MatchCloneRule(repoURL string) (rule CloneRule, localPath stri
 
 // --- 项目快照（snapshot）相关 ---
 
-// Snapshot 读取单个项目的状态快照条目；未命中返回 (nil, false)。
+// Snapshot 读取单个项目的状态快照条目；未命中返回 nil。
 // 不阻塞、不触发采集 —— 调用方读取的是当前快照（可能 stale）。
-func (s *Service) Snapshot(path string) (*snapshot.Entry, bool) {
+func (s *Service) Snapshot(path string) *snapshot.Entry {
 	path, ok := cleanAbsPath(path)
 	if !ok {
-		return nil, false
+		return nil
 	}
 	return s.snapshotCache.Get(path)
 }

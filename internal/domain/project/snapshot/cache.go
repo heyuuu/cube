@@ -169,12 +169,11 @@ func (c *Cache) EarlyUpdatedAt() time.Time {
 	return t
 }
 
-// Get 读取单个项目的缓存条目；未命中返回 (nil, false)。
-func (c *Cache) Get(path string) (*Entry, bool) {
+// Get 读取单个项目的缓存条目；未命中返回 nil。
+func (c *Cache) Get(path string) *Entry {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	e, ok := c.entries[path]
-	return e, ok
+	return c.entries[path]
 }
 
 // Size 返回缓存条目数（最近一次采集成功的项目数）。

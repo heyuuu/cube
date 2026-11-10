@@ -74,28 +74,28 @@ query 支持两种搜索模式：
 			}
 
 			// 项目快照（branch/dirty 等基础字段）；remote 列表走本地实时读
-			info, hasCache := a.ProjectService().Snapshot(proj.Path())
+			snap := a.ProjectService().Snapshot(proj.Path())
 			cacheURL := ""
-			if hasCache {
-				cacheURL = info.OriginURL()
+			if snap != nil {
+				cacheURL = snap.OriginURL()
 			}
 			printInfoRemotes(proj.Path(), cacheURL)
 
-			if !hasCache {
+			if snap == nil {
 				printInfoKV("git", infoWarnStyle.Render("无缓存(可启动 cube server 自动采集)"))
 			} else {
-				branch := info.Main.Branch
+				branch := snap.Main.Branch
 				if branch == "" {
 					branch = "HEAD(detached)" // 主工作树分支为空即 detached HEAD
 				}
 				printInfoKV("branch", branch)
-				if info.DefaultBranch != "" {
+				if snap.DefaultBranch != "" {
 					// ahead/behind 是默认分支相对 origin 的差异
-					printInfoKV("default", info.DefaultBranch+" "+cmdutil.FormatAheadBehind(info.DefaultBranchAhead(), info.DefaultBranchBehind()))
+					printInfoKV("default", snap.DefaultBranch+" "+cmdutil.FormatAheadBehind(snap.DefaultBranchAhead(), snap.DefaultBranchBehind()))
 				}
-				printInfoKV("dirty", boolToCnColored(info.Main.Dirty))
-				printInfoKV("branches", fmt.Sprintf("%d 个", len(info.Branches)))
-				printInfoKV("snapshot", formatInfoSnapshot(info.UpdatedAt))
+				printInfoKV("dirty", boolToCnColored(snap.Main.Dirty))
+				printInfoKV("branches", fmt.Sprintf("%d 个", len(snap.Branches)))
+				printInfoKV("snapshot", formatInfoSnapshot(snap.UpdatedAt))
 			}
 
 			if verbose {

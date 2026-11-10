@@ -21,7 +21,7 @@ func TestLoad_EmptyDir(t *testing.T) {
 		t.Fatalf("Load 不应创建目录: %v", err)
 	}
 	// 空缓存：Get 任意路径未命中
-	if _, ok := c.Get("/any"); ok {
+	if c.Get("/any") != nil {
 		t.Fatalf("空缓存 Get 应未命中")
 	}
 }
@@ -32,7 +32,7 @@ func TestLoad_FileMissing(t *testing.T) {
 	dir := ws.Mkdir("cache")
 
 	c := Load(dir)
-	if _, ok := c.Get("/any"); ok {
+	if c.Get("/any") != nil {
 		t.Fatalf("无 snapshot.json 时应返回空缓存")
 	}
 }
@@ -56,8 +56,8 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 
 	// 重新 Load
 	c2 := Load(dir)
-	got, ok := c2.Get("/proj/a")
-	if !ok {
+	got := c2.Get("/proj/a")
+	if got == nil {
 		t.Fatalf("Save 后 Load 应命中")
 	}
 	if got.OriginURL() != "git@x:a" || got.Main.Branch != "main" ||
@@ -73,7 +73,7 @@ func TestLoad_CorruptFile(t *testing.T) {
 	ws.WriteFile(filepath.Join("cache", cacheFileName), []byte("{not valid json"))
 
 	c := Load(dir)
-	if _, ok := c.Get("/any"); ok {
+	if c.Get("/any") != nil {
 		t.Fatalf("损坏文件应返回空缓存")
 	}
 }
@@ -87,7 +87,7 @@ func TestLoad_VersionMismatch(t *testing.T) {
 	ws.WriteFile(filepath.Join("cache", cacheFileName), []byte(old))
 
 	c := Load(dir)
-	if _, ok := c.Get("/p/a"); ok {
+	if c.Get("/p/a") != nil {
 		t.Fatal("旧版本数据应被整体丢弃")
 	}
 	// 区别于损坏文件：版本不符不备份（文件是合法的，只是过时）
@@ -103,11 +103,8 @@ func TestCache_Get(t *testing.T) {
 	c := Load(ws.Mkdir("cache"))
 
 	c.entries["/p"] = &Entry{DefaultBranch: "x", Branches: []LocalBranchInfo{{ShortName: "x", Ahead: 1}}}
-	if e, ok := c.Get("/p"); !ok || e.DefaultBranchAhead() != 1 {
-		t.Fatalf("Get 命中异常: %+v ok=%v", e, ok)
-	}
-	if _, ok := c.Get("/missing"); ok {
-		t.Fatalf("未命中 Get 应返回 ok=false")
+	if e := c.Get("/p"); e == nil || e.DefaultBranchAhead() != 1 {
+		t.Fatalf("Get 命中异常: %+v", e)
 	}
 }
 
@@ -287,8 +284,8 @@ func TestRefresh_RealRepo(t *testing.T) {
 	if err := c.Refresh([]string{repo}); err != nil {
 		t.Fatalf("Refresh 失败: %v", err)
 	}
-	e, ok := c.Get(repo)
-	if !ok {
+	e := c.Get(repo)
+	if e == nil {
 		t.Fatalf("Refresh 后 Get 应命中")
 	}
 	if e.Main.Branch != "develop" {
@@ -320,11 +317,12 @@ func TestRefreshOne(t *testing.T) {
 	if err := c.RefreshOne(repo); err != nil {
 		t.Fatalf("RefreshOne 报错: %v", err)
 	}
-	e, ok := c.Get(repo)
-	if !ok || e.Main.Branch == "" {
+
+	e := c.Get(repo)
+	if e == nil || e.Main.Branch == "" {
 		t.Fatalf("刷新后应有该项目的 entry: %+v", e)
 	}
-	if _, ok := c.Get(other); ok {
+	if c.Get(other) != nil {
 		t.Fatalf("定向刷新不应影响其他项目")
 	}
 
@@ -332,7 +330,8 @@ func TestRefreshOne(t *testing.T) {
 	if err := c.RefreshOne(repo); err != nil {
 		t.Fatalf("二次刷新报错: %v", err)
 	}
-	e, _ = c.Get(repo)
+
+	e = c.Get(repo)
 	if len(e.Worktrees) != 1 || e.Worktrees[0].Branch != "hotfix" {
 		t.Fatalf("worktree 应已进快照（Worktrees 只含 linked）: %+v", e.Worktrees)
 	}
@@ -341,7 +340,7 @@ func TestRefreshOne(t *testing.T) {
 	if err := c.RefreshOne(ws.Join("plain")); err == nil {
 		t.Fatal("非仓库按约定应整条失败（不接受残缺数据）")
 	}
-	if e, ok := c.Get(repo); !ok || e.Main.Branch == "" {
+	if e := c.Get(repo); e == nil || e.Main.Branch == "" {
 		t.Fatalf("其他条目不受影响: %+v", e)
 	}
 }

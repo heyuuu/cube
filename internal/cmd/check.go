@@ -63,9 +63,9 @@ func checkCloneRules(service *project.Service) {
 	var headers = []string{"Name", "Path", "预期 Path", "RepoUrl"}
 	var rows [][]string
 	for _, p := range projects {
-		info, ok := service.Snapshot(p.Path())
+		info := service.Snapshot(p.Path())
 		repoURL := ""
-		if ok {
+		if info != nil {
 			repoURL = info.OriginURL()
 		}
 		if repoURL == "" {
@@ -100,8 +100,8 @@ func checkGitDirty(service *project.Service) {
 	projects := service.Projects()
 
 	targets := xslices.Filter(projects, func(p *project.Project) bool {
-		info, ok := service.Snapshot(p.Path())
-		if !ok || len(info.OriginURL()) == 0 {
+		info := service.Snapshot(p.Path())
+		if info == nil || len(info.OriginURL()) == 0 {
 			return false
 		}
 
