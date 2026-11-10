@@ -61,6 +61,18 @@ func NewService(cfg *config.Config) *Service {
 	}
 }
 
+// -- hooks 实现 --
+
+// OnServerStart 启动后台刷新（app 层钩子，仅常驻 server 调用）。
+func (s *Service) OnServerStart() {
+	s.startRefreshTicker()
+}
+
+// OnServerStop 停止后台定时刷新 goroutine（app 层钩子，server shutdown 时调）。
+func (s *Service) OnServerStop() {
+	s.stopRefreshTicker()
+}
+
 // -- 规则（直读 settings.json，加载即转换校验） --
 
 // ScanRules 现读 settings.json 的 scan 规则（外部改动 Reload 后即反映）。
@@ -258,11 +270,13 @@ func (s *Service) SnapshotUpdatedAt() time.Time {
 	return s.snapshotCache.EarlyUpdatedAt()
 }
 
+// --- 自动刷新相关 ---
+
 // maxExpireTime 缓存可容忍的最大过期时间：任一时间戳（scanCache / snapshotCache 的
 // UpdatedAt）距今超过它就触发刷新。定性约束「数据最多旧 5 分钟」，取代固定周期。
 const maxExpireTime = 5 * time.Minute
 
-// StartRefreshTicker 启动后台刷新 goroutine（仅常驻 server 调用）。重复调用安全：已在跑则直接返回。
+// startRefreshTicker 启动后台刷新 goroutine（仅常驻 server 调用）。重复调用安全：已在跑则直接返回。
 //
 // 刷新节奏由数据新旧决定：每轮取两类时间戳（scanCache / snapshotCache 的 UpdatedAt）
 // 中更过期者计算下次时机，保证距今不超过 maxExpireTime——
@@ -274,9 +288,9 @@ const maxExpireTime = 5 * time.Minute
 // 前端据两个时间戳分别判断「项目列表新鲜度」和「git 状态新鲜度」。
 //
 // CLI 不调用此方法（CLI 短命，只读启动时 Load 的快照）。
-func (s *Service) StartRefreshTicker() {
+func (s *Service) startRefreshTicker() {
 	if s.stopCh != nil {
-		return // 无缓存或已在跑
+		return // 已在跑
 	}
 
 	stopCh := make(chan struct{})
@@ -300,7 +314,7 @@ func (s *Service) StartRefreshTicker() {
 			// time.After 每轮新建：Timer.Reset 在已触发的 timer 上有未读陈旧值陷阱
 			select {
 			case <-time.After(delay):
-				failed = s.refresh() != nil
+				failed = s.tickRefresh() != nil
 			case <-stopCh:
 				return
 			}
@@ -308,27 +322,8 @@ func (s *Service) StartRefreshTicker() {
 	}()
 }
 
-// OnServerStart 启动后台刷新（app 层钩子，仅常驻 server 调用）。
-func (s *Service) OnServerStart() {
-	s.StartRefreshTicker()
-}
-
-// OnServerStop 停止后台定时刷新 goroutine（app 层钩子，server shutdown 时调）。
-func (s *Service) OnServerStop() { s.StopRefreshTicker() }
-
-// StopRefreshTicker 停止定时刷新 goroutine（server shutdown 时调）。
-// 未启用时调用安全（空操作）。
-func (s *Service) StopRefreshTicker() {
-	if s.stopCh == nil {
-		return
-	}
-	close(s.stopCh)
-	s.stopCh = nil
-}
-
-// refresh 完整刷新 project 视图（后台刷新循环调用）：重扫 + git 采集。
-// 异常不抛出（降级优先）：失败记日志并返回错误，由调用方决定退避策略。
-func (s *Service) refresh() error {
+// tickRefresh 每 tick 执行的刷新操作
+func (s *Service) tickRefresh() error {
 	total, collected, err := s.Refresh()
 	if err != nil {
 		slog.Warn("刷新项目快照失败", "err", err, "projects", total)
@@ -336,6 +331,16 @@ func (s *Service) refresh() error {
 	}
 	slog.Debug("project 视图刷新完成", "projects", total, "collected", collected)
 	return nil
+}
+
+// stopRefreshTicker 停止定时刷新 goroutine（server shutdown 时调）。
+// 未启用时调用安全（空操作）。
+func (s *Service) stopRefreshTicker() {
+	if s.stopCh == nil {
+		return
+	}
+	close(s.stopCh)
+	s.stopCh = nil
 }
 
 // Refresh 立即完整刷新 project 视图：重扫项目列表 → 整表采集 git 信息

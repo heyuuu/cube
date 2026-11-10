@@ -126,7 +126,7 @@ func (h *ProjectHandler) Register(r *server.Routes) {
 }
 
 func (h *ProjectHandler) projectList(_ struct{}) (ProjectListResult, error) {
-	// 返回原始扫描序 + lastUsedAt；排序是视图偏好，由前端做（CLI/alfred 出口用 project.SortByRecentUsage）
+	// 返回原始扫描序 + lastUsedAt；排序是视图偏好，由前端做（alfred 出口自带 sortByRecentUsage 置顶）
 	projects := h.projectService.Projects()
 	latest := h.usageService.LatestByProject()
 	list := xslices.Map(projects, func(p *project.Project) *ProjectDTO {
