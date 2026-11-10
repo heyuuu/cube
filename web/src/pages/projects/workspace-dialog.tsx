@@ -77,7 +77,7 @@ export function WorkspaceDialog({ project, onClose }: { project: Project; onClos
   return (
     <DialogShell title="workspace 规则" onClose={onClose} className="flex max-h-[80vh] max-w-lg flex-col">
       <div className="text-muted-foreground mt-1 text-xs">
-        写入项目内 .cube/cube.json（进 git）。path 支持相对目录、glob 通配（apps/*）与特殊规则
+        写入项目内 .cube/cube.json（进 git）。path 支持相对目录、glob 通配（apps/**）与特殊规则
         {' <npm>/<pnpm>（读标准 monorepo 声明）'}；name 可选，通配/特殊规则作组前缀。清空保存 = 显式声明无 workspace。
       </div>
 
