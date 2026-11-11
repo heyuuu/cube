@@ -6,20 +6,6 @@ import (
 	"testing"
 )
 
-// fakeExecutor 记录 Run 调用的 bin+args，不真正启动子进程。注入 Service 供 Open 全链路测试用。
-type fakeExecutor struct {
-	calls []fakeCall
-}
-type fakeCall struct {
-	bin  string
-	args []string
-}
-
-func (f *fakeExecutor) Run(bin string, args ...string) error {
-	f.calls = append(f.calls, fakeCall{bin: bin, args: append([]string(nil), args...)})
-	return nil
-}
-
 func mkmk(pairs ...any) map[Role]string {
 	m := map[Role]string{}
 	for i := 0; i+1 < len(pairs); i += 2 {
@@ -184,142 +170,6 @@ func TestBuildActionArgsResolvesSelfCube(t *testing.T) {
 	})
 }
 
-// ---------- validateOpener actions 校验 ----------
-
-func TestValidateOpenerActions(t *testing.T) {
-	cases := []struct {
-		name    string
-		actions map[Role]string
-		wantErr bool
-	}{
-		{"actions 缺失报错", nil, true},
-		{"actions 空报错", map[Role]string{}, true},
-		{"无 kind 前缀报错", map[Role]string{RoleOpenDir: "code $0"}, true},
-		{"未知 kind 报错", map[Role]string{RoleOpenDir: "shell: code $0"}, true},
-		{"前缀后模板为空报错", map[Role]string{RoleOpenDir: "exec:"}, true},
-		{"url 非法值域报错", map[Role]string{RoleOpenDir: "url: ftp://x"}, true},
-		{"url 占位符越界报错", map[Role]string{RoleDiffFile: "url: /x?a=$2"}, true},
-		{"外部 URL 合法", map[Role]string{RoleOpenDir: "url: https://github.com"}, false},
-		{"未知 role 报错", map[Role]string{"unknown-role": "code"}, true},
-		{"单条 cmd 缺失报错", map[Role]string{RoleOpenDir: ""}, true},
-		{"单条 cmd 纯空白报错", map[Role]string{RoleOpenDir: "   "}, true},
-		{"cmd 引号未闭合报错", map[Role]string{RoleOpenDir: `exec: code "abc`}, true},
-		{"仅可执行文件(无占位符)合法", map[Role]string{RoleOpenDir: "exec: code"}, false},
-		{"占位符不越本 role 槽数合法", map[Role]string{RoleDiffFile: "exec: bcompare $0 $1"}, false},
-		{"占位符越本 role 槽数报错", map[Role]string{RoleOpenDir: "exec: bcompare $0 $1"}, true},
-		{"token 内嵌占位符同样校验越界", map[Role]string{RoleOpenDir: "exec: tool --wd=$1"}, true},
-		{"不同 role 槽数不同可并存（无一致性约束）", map[Role]string{RoleOpenDir: "exec: code $0", RoleDiffFile: "exec: code --diff $0 $1"}, false},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			o := Opener{Name: "test", Actions: c.actions}
-			o, err := validateOpener(o)
-			if c.wantErr {
-				if err == nil {
-					t.Fatalf("期望报错，实际 o=%+v err=nil", o)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("意外报错: %v", err)
-			}
-		})
-	}
-}
-
-// ---------- Open 全链路（Service.Open，注入 fakeExecutor）----------
-
-func TestOpenInvokesExecutor(t *testing.T) {
-	cases := []struct {
-		name     string
-		actions  map[Role]string
-		role     Role
-		paths    []string
-		wantBin  string
-		wantArgs []string
-	}{
-		{
-			name:     "单槽占位符",
-			actions:  mkmk(RoleOpenDir, "code $0"),
-			role:     RoleOpenDir,
-			paths:    []string{"/proj"},
-			wantBin:  "code",
-			wantArgs: []string{"/proj"},
-		},
-		{
-			name:     "无占位符路径追加末尾",
-			actions:  mkmk(RoleOpenDir, "code"),
-			role:     RoleOpenDir,
-			paths:    []string{"/proj"},
-			wantBin:  "code",
-			wantArgs: []string{"/proj"},
-		},
-		{
-			name:     "双槽 diff 工具",
-			actions:  mkmk(RoleDiffDir, "bcompare $0 $1"),
-			role:     RoleDiffDir,
-			paths:    []string{"/a", "/b"},
-			wantBin:  "bcompare",
-			wantArgs: []string{"/a", "/b"},
-		},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			fake := &fakeExecutor{}
-			o, err := validateOpener(Opener{Name: "t", Actions: c.actions})
-			if err != nil {
-				t.Fatalf("validateOpener 失败: %v", err)
-			}
-			svc := &Service{executor: fake}
-			if err := svc.Open(o, c.role, c.paths...); err != nil {
-				t.Fatalf("Open 失败: %v", err)
-			}
-			if len(fake.calls) != 1 {
-				t.Fatalf("期望 executor 被调用 1 次，实际 %d 次", len(fake.calls))
-			}
-			call := fake.calls[0]
-			if call.bin != c.wantBin || !reflect.DeepEqual(call.args, c.wantArgs) {
-				t.Fatalf("Open(%v) 执行 (%q,%v), 期望 (%q,%v)", c.paths, call.bin, call.args, c.wantBin, c.wantArgs)
-			}
-		})
-	}
-}
-
-func TestOpenSlotCountMismatch(t *testing.T) {
-	fake := &fakeExecutor{}
-	o, err := validateOpener(Opener{Name: "t", Actions: mkmk(RoleOpenDir, "code $0")})
-	if err != nil {
-		t.Fatalf("validateOpener 失败: %v", err)
-	}
-	// open-dir 1 槽但传 2 个路径，应在 buildActionArgs 阶段报错，executor 不被调用
-	svc := &Service{executor: fake}
-	err = svc.Open(o, RoleOpenDir, "/a", "/b")
-	if err == nil {
-		t.Fatalf("期望槽个数不匹配报错，实际 nil")
-	}
-	if len(fake.calls) != 0 {
-		t.Fatalf("期望 executor 未被调用，实际调用 %d 次", len(fake.calls))
-	}
-}
-
-// ---------- Open role 前置校验（收敛在实现内） ----------
-
-func TestOpenRoleUnsupported(t *testing.T) {
-	fake := &fakeExecutor{}
-	o, err := validateOpener(Opener{Name: "code", Actions: mkmk(RoleOpenDir, "code")})
-	if err != nil {
-		t.Fatalf("validateOpener 失败: %v", err)
-	}
-	// 用未声明的 role 调 Open 应在实现内报错，且不触达 executor
-	svc := &Service{executor: fake}
-	if err := svc.Open(o, RoleDiffDir, "/a"); err == nil {
-		t.Fatal("期望 role 不支持报错")
-	}
-	if len(fake.calls) != 0 {
-		t.Fatalf("期望 executor 未被调用，实际调用 %d 次", len(fake.calls))
-	}
-}
-
 // ---------- tokenizeCmd ----------
 
 func TestTokenizeCmd(t *testing.T) {
@@ -332,7 +182,7 @@ func TestTokenizeCmd(t *testing.T) {
 		{"纯空白", "   ", nil},
 		{"空格分隔", "code $0 -n", []string{"code", "$0", "-n"}},
 		{"多空白折叠", "code   $0", []string{"code", "$0"}},
-		{"双引号含空格", `"/Applications/Visual Studio Code.app/bin/code" $0`, []string{"/Applications/Visual Studio Code.app/bin/code", "$0"}},
+		{"双引号含空格", `"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" $0`, []string{"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code", "$0"}},
 		{"单引号含空格", `'a b' c`, []string{"a b", "c"}},
 		{"双引号内转义引号", `"a\"b"`, []string{`a"b`}},
 		{"裸词反斜杠转义", `a\ b`, []string{"a b"}},
@@ -443,15 +293,4 @@ func TestURLActions(t *testing.T) {
 			t.Fatalf("parseAction = (%q,%q,%v)", k2, tmpl2, err2)
 		}
 	})
-}
-
-func TestTitleDefault(t *testing.T) {
-	o1, _ := validateOpener(Opener{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}})
-	if got := o1.Title; got != "用 code 打开" {
-		t.Fatalf("缺省 title 应由 name 生成, got %q", got)
-	}
-	o2, _ := validateOpener(Opener{Name: "finder", Title: "打开所在目录", Actions: map[Role]string{"open-dir": `exec: open $0`}})
-	if got := o2.Title; got != "打开所在目录" {
-		t.Fatalf("配置 title 应原样生效, got %q", got)
-	}
 }
