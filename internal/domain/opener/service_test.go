@@ -13,7 +13,7 @@ func newServiceAt(t *testing.T, specs []Opener) (*Service, *testfixture.Workspac
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
 	if specs != nil {
-		ws.SaveSection(settingsSection, specs)
+		ws.SaveSection(openersSection, specs)
 	}
 	fake := &fakeExecutor{}
 	return NewServiceWithExecutor(ws.Cfg, fake), ws
@@ -77,7 +77,7 @@ func TestServiceDirectRead(t *testing.T) {
 
 	t.Run("保存后无需重建 Service 即生效（直读不缓存）", func(t *testing.T) {
 		s, ws := newServiceAt(t, []Opener{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
-		ws.SaveSection(settingsSection, []Opener{
+		ws.SaveSection(openersSection, []Opener{
 			{Name: "newone", Actions: map[Role]string{"open-dir": `exec: newone`}},
 		})
 		if o := s.FindByName("newone"); o == nil {

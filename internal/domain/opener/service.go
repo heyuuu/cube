@@ -15,7 +15,7 @@ import (
 
 // Service opener 领域服务：openers 节现读（直读不缓存，改完即生效）+ 模糊检索。
 type Service struct {
-	specsStore       SpecsStore
+	openersStore     OpenersStore
 	intentSpecsStore store.Store[map[Intent]IntentSpec]
 	executor         Executor // Open 启动子进程的执行器（环境归属 Service；测试经 NewServiceWithExecutor 注入 fake）
 	baseURL          string   // 站内路由基地址（如 http://127.0.0.1:6001），装配注入
@@ -32,11 +32,11 @@ func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
 	if executor == nil {
 		executor = NewDefaultExecutor()
 	}
-	specsStore := newSpecsStore(cfg.SettingsFile())
+	openersStore := newOpenersStore(cfg.SettingsFile())
 	intentSpecsStore := store.SectionStore[map[Intent]IntentSpec](cfg.SettingsFile(), intentsSection)
 
 	return &Service{
-		specsStore:       specsStore,
+		openersStore:     openersStore,
 		intentSpecsStore: intentSpecsStore,
 		executor:         executor,
 		baseURL:          server.BaseURL(cfg.Server),
@@ -47,7 +47,7 @@ func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
 // store.LoadSection 已把文件级/节级坏数据降级为空；条目级坏数据跳过不阻断
 // （配置错误不应让 list 等命令不可用），与旧 config 时代行为一致。
 func (s *Service) openers() []Opener {
-	return s.specsStore.All()
+	return s.openersStore.All()
 }
 
 // AllOpeners 返回全部 opener（坏条目已跳过，不阻断）。
@@ -96,14 +96,14 @@ func (s *Service) Open(o Opener, role Role, slotArgs ...string) error {
 // 写前先走 validateOpener 校验与归一化——坏数据返回中文错误、落不了文件
 // （提案「校验收敛在读写边界」的写侧）。
 func (s *Service) SaveOpener(spec Opener) error {
-	return s.specsStore.Save(spec)
+	return s.openersStore.Save(spec)
 }
 
 // SaveAllOpeners 以提交清单整节覆盖 openers 节。列表顺序即展示顺序（CLI/项目页快捷入口
 // 均按此序），前端拖拽排序落库走这里。逐项构造校验 + name 查重，任一失败整体不落盘；
 // 读侧不可见的坏条目随覆盖丢弃。被移除的 opener 连带清理 openerIntents 引用（同 DeleteOpener）。
 func (s *Service) SaveAllOpeners(specs []Opener) error {
-	if err := s.specsStore.SaveAll(specs); err != nil {
+	if err := s.openersStore.SaveAll(specs); err != nil {
 		return err
 	}
 	kept := make(map[string]bool, len(specs))
@@ -115,7 +115,7 @@ func (s *Service) SaveAllOpeners(specs []Opener) error {
 
 // DeleteOpener 按唯一键（name）删除一条 opener；未命中幂等成功。
 func (s *Service) DeleteOpener(spec Opener) error {
-	if err := s.specsStore.Delete(spec); err != nil {
+	if err := s.openersStore.Delete(spec); err != nil {
 		return err
 	}
 	return s.pruneIntentRefs(func(n string) bool { return n == spec.Name })
