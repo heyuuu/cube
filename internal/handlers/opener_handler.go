@@ -21,25 +21,20 @@ type OpenerDTO struct {
 	Title   string            `json:"title"`   // 展示文案（如「打开所在目录」），缺省由 name 生成
 	Summary string            `json:"summary"` // 动作串展示串（"role:动作串" 拼接）
 	Actions map[string]string `json:"actions"` // role → 动作串原文（`<kind>:<模板>`，编辑表单回显用）；键集合即声明的 roles
-	Icon    icons.Icon        `json:"icon"`    // 恒有值（未配置时后端按主 role 填默认 lucide 图）
+	Icon    *icons.Icon       `json:"icon"`    // 恒有值（未配置时后端按主 role 填默认 lucide 图）
 }
 
 func toOpenerDTO(entity opener.Opener) *OpenerDTO {
-	if entity == nil {
-		return nil
-	}
-
-	actions := entity.Actions()
-	dtoActions := make(map[string]string, len(actions))
-	for r, raw := range actions {
-		dtoActions[string(r)] = raw
+	actions := make(map[string]string, len(entity.Actions))
+	for r, action := range entity.Actions {
+		actions[string(r)] = action
 	}
 	return &OpenerDTO{
-		Name:    entity.Name(),
-		Title:   entity.Title(),
+		Name:    entity.Name,
+		Title:   entity.Title,
 		Summary: entity.Summary(),
-		Actions: dtoActions,
-		Icon:    entity.Icon(),
+		Actions: actions,
+		Icon:    entity.Icon,
 	}
 }
 
@@ -123,7 +118,7 @@ func (h *OpenerHandler) openerOpen(input OpenerOpenInput) (map[string]any, error
 	}
 
 	// role 是否支持由实体内校验（BuildArgs 首步），这里只透传错误
-	if err := h.service.Open(o, role, input.Body.Path); err != nil {
+	if err := h.service.Open(*o, role, input.Body.Path); err != nil {
 		return nil, fmt.Errorf("打开失败: %w", err)
 	}
 	return map[string]any{"ok": true}, nil
@@ -167,7 +162,7 @@ func (h *OpenerHandler) openerDiffOpen(input OpenerDiffOpenInput) (map[string]an
 	if leftDir {
 		role = opener.RoleDiffDir
 	}
-	if err := h.service.Open(o, role, left, right); err != nil {
+	if err := h.service.Open(*o, role, left, right); err != nil {
 		return nil, fmt.Errorf("打开失败: %w", err)
 	}
 	return map[string]any{"ok": true}, nil
@@ -181,7 +176,7 @@ func isDirPath(p string) (bool, error) {
 	return info.IsDir(), nil
 }
 
-// OpenerItem opener 单项（save / delete / save-all 共用，字段与 opener.Spec 对齐）。
+// OpenerItem opener 单项（save / delete / save-all 共用，字段与 opener.Opener 对齐）。
 type OpenerItem struct {
 	Name    string            `json:"name" doc:"opener 名称（唯一标识）"`
 	Title   string            `json:"title,omitempty" doc:"展示文案（如「打开所在目录」），缺省由 name 生成"`
@@ -189,12 +184,12 @@ type OpenerItem struct {
 	Icon    *icons.Icon       `json:"icon,omitempty" doc:"图标声明"`
 }
 
-func (it OpenerItem) toSpec() opener.Spec {
+func (it OpenerItem) toSpec() opener.Opener {
 	actions := make(map[opener.Role]string, len(it.Actions))
 	for r, raw := range it.Actions {
 		actions[opener.Role(r)] = raw
 	}
-	return opener.Spec{Name: it.Name, Title: it.Title, Actions: actions, Icon: it.Icon}
+	return opener.Opener{Name: it.Name, Title: it.Title, Actions: actions, Icon: it.Icon}
 }
 
 // OpenerSaveInput save 接口入参。

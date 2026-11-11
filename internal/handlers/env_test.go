@@ -49,7 +49,7 @@ func newTestEnv(t *testing.T) *testEnv {
 
 	cfg := ws.Cfg
 
-	ws.SaveSection("openers", []opener.Spec{
+	ws.SaveSection("openers", []opener.Opener{
 		{Name: "finder", Actions: map[opener.Role]string{"open-dir": "exec: /usr/bin/open $0"}},
 		{Name: "broken"}, // 缺 commands，解析失败被跳过
 	})

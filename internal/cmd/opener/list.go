@@ -15,7 +15,7 @@ import (
 func newListCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [query]",
-		Short: "列出可用 Opener 列表(支持模糊搜索)",
+		Short: "列出可用 OldOpener 列表(支持模糊搜索)",
 		Long: `显示可用 opener 列表：名称、执行命令及声明的 roles。
 
 query 按 opener 名称模糊搜索，不传时显示全部。`,
@@ -39,13 +39,11 @@ func showOpeners(list []opener.Opener) {
 		[]string{
 			fmt.Sprintf("Opener(%d)", len(list)),
 			"Summary",
-			"Roles",
 		},
 		xslices.Map(list, func(o opener.Opener) []string {
 			return []string{
-				o.Name(),
+				o.Name,
 				o.Summary(),
-				opener.RolesString(o.Roles()),
 			}
 		}),
 	)

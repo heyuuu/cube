@@ -8,7 +8,7 @@ import (
 )
 
 // newServiceAt 建一个指向测试专属 settings.json 的 Service（注入 fakeExecutor）。
-func newServiceAt(t *testing.T, specs []Spec) (*Service, *testfixture.Workspace) {
+func newServiceAt(t *testing.T, specs []Opener) (*Service, *testfixture.Workspace) {
 	t.Helper()
 	ws := testfixture.NewWorkspace(t)
 	if specs != nil {
@@ -27,7 +27,7 @@ func TestServiceDirectRead(t *testing.T) {
 	})
 
 	t.Run("读取全部与按名查找", func(t *testing.T) {
-		s, _ := newServiceAt(t, []Spec{
+		s, _ := newServiceAt(t, []Opener{
 			{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}},
 			{Name: "bcompare", Actions: map[Role]string{"diff-dir": `exec: bcompare $0 $1`}},
 		})
@@ -43,29 +43,29 @@ func TestServiceDirectRead(t *testing.T) {
 	})
 
 	t.Run("坏条目跳过不阻断", func(t *testing.T) {
-		s, _ := newServiceAt(t, []Spec{
+		s, _ := newServiceAt(t, []Opener{
 			{Name: "bad", Actions: map[Role]string{"open-dir": `exec:`}},       // 缺 cmd，条目级坏
 			{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}, // 正常
 			{Name: "bad2", Actions: map[Role]string{"open-dir": `exec: c $9`}}, // 占位符越界，条目级坏
 		})
 		got := s.AllOpeners()
-		if len(got) != 1 || got[0].Name() != "code" {
+		if len(got) != 1 || got[0].Name != "code" {
 			t.Fatalf("期望只剩 code, got %v", got)
 		}
 	})
 
 	t.Run("RoleOpeners 过滤", func(t *testing.T) {
-		s, _ := newServiceAt(t, []Spec{
+		s, _ := newServiceAt(t, []Opener{
 			{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}},
 			{Name: "bcompare", Actions: map[Role]string{"diff-dir": `exec: bcompare $0 $1`}},
 		})
-		if got := s.RoleOpeners(RoleDiffDir); len(got) != 1 || got[0].Name() != "bcompare" {
+		if got := s.RoleOpeners(RoleDiffDir); len(got) != 1 || got[0].Name != "bcompare" {
 			t.Fatalf("diff-dir 应只有 bcompare, got %v", got)
 		}
 	})
 
 	t.Run("SearchAll 模糊匹配", func(t *testing.T) {
-		s, _ := newServiceAt(t, []Spec{
+		s, _ := newServiceAt(t, []Opener{
 			{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}},
 			{Name: "vscode", Actions: map[Role]string{"open-dir": `exec: vscode`}},
 		})
@@ -75,8 +75,8 @@ func TestServiceDirectRead(t *testing.T) {
 	})
 
 	t.Run("保存后无需重建 Service 即生效（直读不缓存）", func(t *testing.T) {
-		s, ws := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
-		ws.SaveSection(settingsSection, []Spec{
+		s, ws := newServiceAt(t, []Opener{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
+		ws.SaveSection(settingsSection, []Opener{
 			{Name: "newone", Actions: map[Role]string{"open-dir": `exec: newone`}},
 		})
 		if o := s.FindByName("newone"); o == nil {
@@ -88,33 +88,33 @@ func TestServiceDirectRead(t *testing.T) {
 	})
 
 	t.Run("其他节不受影响", func(t *testing.T) {
-		s, ws := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
+		s, ws := newServiceAt(t, []Opener{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
 		ws.SaveSection("other", map[string]int{"a": 1})
-		if got := s.AllOpeners(); len(got) != 1 || got[0].Name() != "code" {
+		if got := s.AllOpeners(); len(got) != 1 || got[0].Name != "code" {
 			t.Fatalf("写其他节不应影响 openers, got %v", got)
 		}
 	})
 }
 
 func TestServiceIconEndToEnd(t *testing.T) {
-	// icon 随 Spec 存进 settings.json，读出后透传到 Opener 接口
-	s, _ := newServiceAt(t, []Spec{
-		{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}, Icon: &icons.Icon{Type: IconTypeLucide, Value: "app-window"}},
+	// icon 随 Opener 存进 settings.json，读出后透传到 OldOpener 接口
+	s, _ := newServiceAt(t, []Opener{
+		{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}, Icon: &icons.Icon{Type: icons.IconTypeLucide, Value: "app-window"}},
 		{Name: "plain", Actions: map[Role]string{"open-dir": `exec: plain`}},
 	})
 	o := s.FindByName("code")
-	if o == nil || o.Icon().Value != "app-window" {
+	if o == nil || o.Icon.Value != "app-window" {
 		t.Fatalf("icon 未透传: %+v", o)
 	}
-	if p := s.FindByName("plain"); p.Icon().Value != "app-window-mac" {
-		t.Fatalf("无 icon 应得默认 app-window-mac, got %+v", p.Icon())
+	if p := s.FindByName("plain"); p.Icon.Value != "app-window-mac" {
+		t.Fatalf("无 icon 应得默认 app-window-mac, got %+v", p.Icon)
 	}
 }
 
 func TestServiceSaveDelete(t *testing.T) {
 	t.Run("新增后可读回", func(t *testing.T) {
 		s, _ := newServiceAt(t, nil)
-		if err := s.SaveOpener(Spec{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}); err != nil {
+		if err := s.SaveOpener(Opener{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}); err != nil {
 			t.Fatalf("保存失败: %v", err)
 		}
 		if o := s.FindByName("code"); o == nil {
@@ -123,8 +123,8 @@ func TestServiceSaveDelete(t *testing.T) {
 	})
 
 	t.Run("按名替换不重复", func(t *testing.T) {
-		s, _ := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
-		if err := s.SaveOpener(Spec{Name: "code", Actions: map[Role]string{"open-dir": `exec: code $0`}}); err != nil {
+		s, _ := newServiceAt(t, []Opener{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
+		if err := s.SaveOpener(Opener{Name: "code", Actions: map[Role]string{"open-dir": `exec: code $0`}}); err != nil {
 			t.Fatalf("保存失败: %v", err)
 		}
 		if got := s.AllOpeners(); len(got) != 1 {
@@ -137,10 +137,10 @@ func TestServiceSaveDelete(t *testing.T) {
 
 	t.Run("坏数据返回中文错误且不落文件", func(t *testing.T) {
 		s, _ := newServiceAt(t, nil)
-		if err := s.SaveOpener(Spec{Name: "bad", Actions: map[Role]string{"open-dir": `exec:`}}); err == nil {
+		if err := s.SaveOpener(Opener{Name: "bad", Actions: map[Role]string{"open-dir": `exec:`}}); err == nil {
 			t.Fatal("缺 cmd 应报错")
 		}
-		if err := s.SaveOpener(Spec{Name: "", Actions: map[Role]string{"open-dir": `exec: x`}}); err == nil {
+		if err := s.SaveOpener(Opener{Name: "", Actions: map[Role]string{"open-dir": `exec: x`}}); err == nil {
 			t.Fatal("空 name 应报错")
 		}
 		if got := s.AllOpeners(); len(got) != 0 {
@@ -149,22 +149,22 @@ func TestServiceSaveDelete(t *testing.T) {
 	})
 
 	t.Run("删除与不存在幂等", func(t *testing.T) {
-		s, _ := newServiceAt(t, []Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
+		s, _ := newServiceAt(t, []Opener{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}})
 		// 整项删除只按 name 匹配，其他字段不参与
-		if err := s.DeleteOpener(Spec{Name: "code", Title: "旧展示文案"}); err != nil {
+		if err := s.DeleteOpener(Opener{Name: "code", Title: "旧展示文案"}); err != nil {
 			t.Fatalf("删除失败: %v", err)
 		}
 		if got := s.AllOpeners(); len(got) != 0 {
 			t.Fatalf("删除后应为空, got %d", len(got))
 		}
-		if err := s.DeleteOpener(Spec{Name: "nope"}); err != nil {
+		if err := s.DeleteOpener(Opener{Name: "nope"}); err != nil {
 			t.Fatalf("删除不存在项应幂等成功: %v", err)
 		}
 	})
 }
 
 func TestServiceSaveAll(t *testing.T) {
-	newSpecs := []Spec{
+	newSpecs := []Opener{
 		{Name: "finder", Actions: map[Role]string{"open-dir": `exec: open -a Finder`}},
 		{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}},
 		{Name: "stree", Actions: map[Role]string{"open-dir": `exec: stree`}},
@@ -172,7 +172,7 @@ func TestServiceSaveAll(t *testing.T) {
 
 	t.Run("提交清单即落盘结果（顺序 / 删除 / 新增 / 修改）", func(t *testing.T) {
 		s, _ := newServiceAt(t, newSpecs)
-		if err := s.SaveAllOpeners([]Spec{
+		if err := s.SaveAllOpeners([]Opener{
 			{Name: "stree", Actions: map[Role]string{"open-dir": `exec: stree $0`}},
 			{Name: "ghostty", Actions: map[Role]string{"open-dir": `exec: ghostty`}},
 			{Name: "finder", Actions: map[Role]string{"open-dir": `exec: open -a Finder`}},
@@ -180,7 +180,7 @@ func TestServiceSaveAll(t *testing.T) {
 			t.Fatalf("save-all 失败: %v", err)
 		}
 		got := s.AllOpeners()
-		if len(got) != 3 || got[0].Name() != "stree" || got[1].Name() != "ghostty" || got[2].Name() != "finder" {
+		if len(got) != 3 || got[0].Name != "stree" || got[1].Name != "ghostty" || got[2].Name != "finder" {
 			t.Fatalf("顺序/成员不符: %v", got)
 		}
 		if got[0].Summary() != "open-dir:exec: stree $0" {
@@ -190,14 +190,14 @@ func TestServiceSaveAll(t *testing.T) {
 
 	t.Run("单项非法与重复名整体拒绝不落盘", func(t *testing.T) {
 		s, _ := newServiceAt(t, newSpecs)
-		if err := s.SaveAllOpeners([]Spec{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}, {Name: "bad", Actions: map[Role]string{"open-dir": `exec:`}}}); err == nil {
+		if err := s.SaveAllOpeners([]Opener{{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}, {Name: "bad", Actions: map[Role]string{"open-dir": `exec:`}}}); err == nil {
 			t.Fatal("单项非法应报错")
 		}
-		if err := s.SaveAllOpeners([]Spec{newSpecs[1], newSpecs[1]}); err == nil {
+		if err := s.SaveAllOpeners([]Opener{newSpecs[1], newSpecs[1]}); err == nil {
 			t.Fatal("重复名应报错")
 		}
 		got := s.AllOpeners()
-		if len(got) != 3 || got[0].Name() != "finder" {
+		if len(got) != 3 || got[0].Name != "finder" {
 			t.Fatalf("失败的 save-all 不应改动文件: %v", got)
 		}
 	})
@@ -219,7 +219,7 @@ func TestServiceSaveAll(t *testing.T) {
 			IntentTerminal: {Openers: []string{"stree"}},
 		})
 
-		if err := s.SaveAllOpeners([]Spec{newSpecs[1]}); err != nil {
+		if err := s.SaveAllOpeners([]Opener{newSpecs[1]}); err != nil {
 			t.Fatalf("save-all 失败: %v", err)
 		}
 		specs := s.loadIntents()
@@ -234,10 +234,10 @@ func TestServiceSaveAll(t *testing.T) {
 
 // ---------- intents（openerIntents 节，1038） ----------
 
-func mkSpecs(pairs ...any) []Spec {
-	specs := make([]Spec, 0, len(pairs)/2)
+func mkSpecs(pairs ...any) []Opener {
+	specs := make([]Opener, 0, len(pairs)/2)
 	for i := 0; i+1 < len(pairs); i += 2 {
-		specs = append(specs, Spec{Name: pairs[i].(string), Actions: pairs[i+1].(map[Role]string)})
+		specs = append(specs, Opener{Name: pairs[i].(string), Actions: pairs[i+1].(map[Role]string)})
 	}
 	return specs
 }
@@ -294,7 +294,7 @@ func TestSaveDeleteIntentDefault(t *testing.T) {
 		t.Fatalf("保存默认失败: %v", err)
 	}
 	o, err := s.DefaultOpener(IntentDir)
-	if err != nil || o.Name() != "code" {
+	if err != nil || o.Name != "code" {
 		t.Fatalf("DefaultOpener(dir) = (%v,%v)", o, err)
 	}
 
@@ -317,7 +317,7 @@ func TestDeleteOpenerCleansIntents(t *testing.T) {
 		IntentTerminal: {Openers: []string{"finder"}},
 	})
 
-	if err := s.DeleteOpener(Spec{Name: "finder"}); err != nil {
+	if err := s.DeleteOpener(Opener{Name: "finder"}); err != nil {
 		t.Fatalf("删除 opener 失败: %v", err)
 	}
 	specs := s.loadIntents()

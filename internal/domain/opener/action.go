@@ -22,7 +22,6 @@ const (
 // actionSpec 单个 role 的动作模板：构造时完成前缀解析、值域与占位符校验。
 type actionSpec struct {
 	kind   ActionKind // exec / url
-	raw    string     // 动作串原文（含前缀，编辑表单回显用）
 	tmpl   string     // 前缀后的模板
 	tokens []string   // exec 形态的 tmpl 分词结果（url 形态为 nil）
 }
@@ -47,11 +46,11 @@ func parseAction(raw string) (ActionKind, string, error) {
 	return kind, tmpl, nil
 }
 
-// validateAction 校验 action 合法并返回解析后结构
+// validateAction 校验 action 合法性，成功时返回解析后结构
 func validateAction(role Role, action string) (*actionSpec, error) {
-	slotCount, ok := roleSlotCount(role)
-	if !ok {
-		return nil, fmt.Errorf("未知 role %q（合法值：%s）", role, RolesString(RoleOrder()))
+	slotCount, err := roleSlotCount(role)
+	if err != nil {
+		return nil, err
 	}
 
 	kind, tmpl, err := parseAction(action)
@@ -80,7 +79,7 @@ func validateAction(role Role, action string) (*actionSpec, error) {
 		}
 	}
 
-	return &actionSpec{kind: kind, raw: action, tmpl: tmpl, tokens: tokens}, nil
+	return &actionSpec{kind: kind, tmpl: tmpl, tokens: tokens}, nil
 }
 
 // buildActionArgs 构造 action 参数，主要用于 runAction, 单独函数仅为了方便测试

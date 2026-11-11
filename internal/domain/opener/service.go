@@ -47,17 +47,7 @@ func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
 // store.LoadSection 已把文件级/节级坏数据降级为空；这里处理条目级：坏条目跳过不阻断
 // （配置错误不应让 list 等命令不可用），与旧 config 时代行为一致。
 func (s *Service) openers() []Opener {
-	specs := s.specsStore.All()
-
-	list := make([]Opener, 0, len(specs))
-	for _, spec := range specs {
-		o, err := InitActionOpener(spec)
-		if err != nil {
-			continue
-		}
-		list = append(list, o)
-	}
-	return list
+	return s.specsStore.All()
 }
 
 // AllOpeners 返回全部 opener（坏条目已跳过，不阻断）。
@@ -72,19 +62,19 @@ func (s *Service) RoleOpeners(role Role) []Opener {
 
 // SearchAll 按名称模糊检索全部 opener。
 func (s *Service) SearchAll(query string) []Opener {
-	return fuzzy.MatchBy(query, s.openers(), Opener.Name, nil)
+	return fuzzy.MatchBy(query, s.openers(), func(o Opener) string { return o.Name }, nil)
 }
 
 // SearchFor 在指定 role 的 opener 中按名称模糊检索。
 func (s *Service) SearchFor(role Role, query string) []Opener {
-	return fuzzy.MatchBy(query, s.RoleOpeners(role), Opener.Name, nil)
+	return fuzzy.MatchBy(query, s.RoleOpeners(role), func(o Opener) string { return o.Name }, nil)
 }
 
 // FindByName 按名称精确查找 opener，未命中返回 nil。
-func (s *Service) FindByName(name string) Opener {
+func (s *Service) FindByName(name string) *Opener {
 	for _, o := range s.openers() {
-		if o.Name() == name {
-			return o
+		if o.Name == name {
+			return &o
 		}
 	}
 	return nil
@@ -94,9 +84,9 @@ func (s *Service) FindByName(name string) Opener {
 // 实体内）后经 executor 启动子进程。执行环境只出现在这里——读路径（list/检索）
 // 构造的 opener 是纯数据，不带任何进程设施。
 func (s *Service) Open(o Opener, role Role, slotArgs ...string) error {
-	action, ok := o.Actions()[role]
+	action, ok := o.Actions[role]
 	if !ok {
-		return fmt.Errorf("opener %s 不支持 %s", o.Name(), role)
+		return fmt.Errorf("opener %s 不支持 %s", o.Name, role)
 	}
 
 	return runAction(s.executor, role, action, slotArgs, s.baseURL)
@@ -105,14 +95,14 @@ func (s *Service) Open(o Opener, role Role, slotArgs ...string) error {
 // SaveOpener 新增或按名替换一条 opener。
 // 写前先走领域构造校验（按 Type 分发到对应 Init，只验不留实例）——坏数据返回
 // 中文错误、落不了文件（提案「校验收敛在读写边界」的写侧）。
-func (s *Service) SaveOpener(spec Spec) error {
+func (s *Service) SaveOpener(spec Opener) error {
 	return s.specsStore.Save(spec)
 }
 
 // SaveAllOpeners 以提交清单整节覆盖 openers 节。列表顺序即展示顺序（CLI/项目页快捷入口
 // 均按此序），前端拖拽排序落库走这里。逐项构造校验 + name 查重，任一失败整体不落盘；
 // 读侧不可见的坏条目随覆盖丢弃。被移除的 opener 连带清理 openerIntents 引用（同 DeleteOpener）。
-func (s *Service) SaveAllOpeners(specs []Spec) error {
+func (s *Service) SaveAllOpeners(specs []Opener) error {
 	if err := s.specsStore.SaveAll(specs); err != nil {
 		return err
 	}
@@ -124,12 +114,11 @@ func (s *Service) SaveAllOpeners(specs []Spec) error {
 }
 
 // DeleteOpener 按唯一键（name）删除一条 opener；未命中幂等成功。
-func (s *Service) DeleteOpener(spec Spec) error {
-	name := specName(spec)
+func (s *Service) DeleteOpener(spec Opener) error {
 	if err := s.specsStore.Delete(spec); err != nil {
 		return err
 	}
-	return s.pruneIntentRefs(func(n string) bool { return n == name })
+	return s.pruneIntentRefs(func(n string) bool { return n == spec.Name })
 }
 
 // pruneIntentRefs 清理 openerIntents 节中对已移除 opener 的引用（默认 + 候选），
@@ -177,13 +166,13 @@ func (s *Service) loadIntents() map[Intent]IntentSpec {
 
 // validateIntentOpener 校验 opener 可服务该 intent：存在 + 声明了 intent 对应的 role。
 // exists=false 表示 opener 不在 openers 节中。
-func validateIntentOpener(intent Intent, o Opener) error {
+func validateIntentOpener(intent Intent, o *Opener) error {
 	role := intent.Role()
 	if o == nil {
 		return fmt.Errorf("opener 不存在，无法作为 %s 的默认", intent)
 	}
 	if !slices.Contains(o.Roles(), role) {
-		return fmt.Errorf("opener %s 未声明 %s，不能作为 %s 的默认", o.Name(), role, intent)
+		return fmt.Errorf("opener %s 未声明 %s，不能作为 %s 的默认", o.Name, role, intent)
 	}
 	return nil
 }
@@ -193,9 +182,9 @@ func validateIntentOpener(intent Intent, o Opener) error {
 // slog.Warn；openers 缺省回退为「声明了对应 role 的全部 opener」（按 openers 节的顺序）。
 func (s *Service) Intents() []IntentInfo {
 	specs := s.loadIntents()
-	byName := make(map[string]Opener)
+	byName := make(map[string]*Opener)
 	for _, o := range s.openers() {
-		byName[o.Name()] = o
+		byName[o.Name] = &o
 	}
 
 	out := make([]IntentInfo, 0, len(intentOrder))
@@ -224,7 +213,7 @@ func (s *Service) Intents() []IntentInfo {
 		} else {
 			// 缺省候选 = 声明了对应 role 的全部 opener（openers 节顺序）
 			for _, o := range s.RoleOpeners(intent.Role()) {
-				info.Openers = append(info.Openers, o.Name())
+				info.Openers = append(info.Openers, o.Name)
 			}
 		}
 		out = append(out, info)
@@ -234,7 +223,7 @@ func (s *Service) Intents() []IntentInfo {
 
 // DefaultOpener 返回该 intent 的默认 opener；未配置或失效时返回中文错误
 // （CLI 不带 -o 时直接走这里，报错即引导用户去配置）。
-func (s *Service) DefaultOpener(intent Intent) (Opener, error) {
+func (s *Service) DefaultOpener(intent Intent) (*Opener, error) {
 	if _, err := ParseIntent(string(intent)); err != nil {
 		return nil, err
 	}

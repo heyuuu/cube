@@ -40,7 +40,7 @@ func newOpenCmd(a *app.App) *cobra.Command {
 			}
 
 			// 打开
-			if err := a.OpenerService().Open(pick, role, path); err != nil {
+			if err := a.OpenerService().Open(*pick, role, path); err != nil {
 				return fmt.Errorf("打开失败: %w", err)
 			}
 			return nil

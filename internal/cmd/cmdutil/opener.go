@@ -18,7 +18,7 @@ const InteractivePick = "?"
 //   - name 为具体值 → 按名模糊匹配（现有语义不变）。
 //
 // 非交互环境不支持多项选择，会报错提示使用精确 opener 名。
-func PickOpener(service *opener.Service, intent opener.Intent, name string) (opener.Opener, error) {
+func PickOpener(service *opener.Service, intent opener.Intent, name string) (*opener.Opener, error) {
 	if name == "" {
 		return service.DefaultOpener(intent)
 	}
@@ -30,11 +30,11 @@ func PickOpener(service *opener.Service, intent opener.Intent, name string) (ope
 	if len(openers) == 0 {
 		return nil, fmt.Errorf("未找到匹配的 opener: intent=%s, name=`%s`", intent, name)
 	} else if len(openers) == 1 {
-		return openers[0], nil
+		return &openers[0], nil
 	}
 
 	// 匹配多个 opener 时，触发用户选择
-	pick, err := tui.SelectItem("选择 opener", openers, opener.Opener.Name)
+	pick, err := tui.SelectItem("选择 opener", openers, func(o opener.Opener) string { return o.Name })
 	if err != nil {
 		if errors.Is(err, tui.ErrNotTTY) {
 			return nil, fmt.Errorf("非 TTY 环境请使用精确 opener 名，避免匹配多项: name=`%s`", name)
@@ -44,5 +44,5 @@ func PickOpener(service *opener.Service, intent opener.Intent, name string) (ope
 		}
 		return nil, err
 	}
-	return pick, nil
+	return &pick, nil
 }

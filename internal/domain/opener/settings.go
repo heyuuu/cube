@@ -13,13 +13,13 @@ const settingsSection = "openers"
 // 值 = {defaultOpener?, openers?}。openers 节保持纯清单，意图与默认独立成节。
 const intentsSection = "openerIntents"
 
-type SpecsStore = *xstore.KeyedSliceStore[Spec]
+type SpecsStore = *xstore.KeyedSliceStore[Opener]
 
 func newSpecsStore(settingsFile string) SpecsStore {
-	return xstore.NewKeyedSliceStore(xstore.KeyedSliceStoreOpts[Spec]{
+	return xstore.NewKeyedSliceStore(xstore.KeyedSliceStoreOpts[Opener]{
 		Name:      "opener",
-		Store:     store.SectionStore[[]Spec](settingsFile, settingsSection),
-		KeyOf:     specName,
-		Normalize: validateSpec,
+		Store:     store.SectionStore[[]Opener](settingsFile, settingsSection),
+		KeyOf:     func(o Opener) string { return o.Name },
+		Normalize: validateOpener,
 	})
 }

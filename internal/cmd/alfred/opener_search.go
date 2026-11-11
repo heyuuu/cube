@@ -37,9 +37,9 @@ func newOpenerSearchCmd(a *app.App) *cobra.Command {
 			// 返回结果
 			return PrintResult(openers, func(item opener.Opener) Item {
 				return Item{
-					Title:    item.Name(),
+					Title:    item.Name,
 					SubTitle: item.Summary(),
-					Arg:      item.Name(),
+					Arg:      item.Name,
 				}
 			})
 		},
@@ -66,7 +66,7 @@ func sortOpeners(openers []opener.Opener, history []string) []opener.Opener {
 
 	targets := make([]*target, len(openers))
 	for i, o := range openers {
-		if historyIdx, ok := historyMap[o.Name()]; ok {
+		if historyIdx, ok := historyMap[o.Name]; ok {
 			targets[i] = &target{index: i, weight: historyIdx}
 		} else {
 			targets[i] = &target{index: i, weight: i + len(history)}

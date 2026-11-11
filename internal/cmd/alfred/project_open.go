@@ -35,14 +35,14 @@ func newProjectOpenCmd(a *app.App) *cobra.Command {
 			}
 
 			// 打开目标目录
-			err := a.OpenerService().Open(o, opener.RoleOpenDir, targetPath)
+			err := a.OpenerService().Open(*o, opener.RoleOpenDir, targetPath)
 			if err != nil {
 				return fmt.Errorf("打开失败: %w", err)
 			}
 
 			// 记录使用信号（best-effort：失败不影响打开结果）；dir 直接传目标目录
 			// （等于项目根时由 RecordOpen 归一为空）
-			if err := a.UsageService().RecordOpen(proj.Path(), o.Name(), targetPath); err != nil {
+			if err := a.UsageService().RecordOpen(proj.Path(), o.Name, targetPath); err != nil {
 				slog.Warn("记录 usage 失败", "err", err)
 			}
 

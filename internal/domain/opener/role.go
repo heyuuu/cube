@@ -1,11 +1,13 @@
 package opener
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 )
 
 // Role 描述 opener 的参数约束（固定枚举，封闭稳定）：role 决定调用时需要几个
-// 路径参数（槽个数），是 per-role 动作（见 Spec.Actions）占位符 $0/$1 校验的依据。
+// 路径参数（槽个数），是 per-role 动作（见 Opener.Actions）占位符 $0/$1 校验的依据。
 // 「场景/意图」（如终端打开、git 客户端打开）不属于 role——那是 defaults 的键空间，
 // 由 role 之外的映射承载。
 //
@@ -23,11 +25,16 @@ const (
 	RoleDiffFile Role = "diff-file"
 )
 
-// roleOrder role 的固定展示序（Roles/Summary 等遍历用）。
-var roleOrder = []Role{RoleOpenDir, RoleOpenFile, RoleDiffDir, RoleDiffFile}
+// allRoles role 的固定展示序（Roles/Summary 等遍历用）。
+var allRoles = []Role{RoleOpenDir, RoleOpenFile, RoleDiffDir, RoleDiffFile}
 
-// RoleOrder 返回 role 固定序副本（展示/校验提示用）。
-func RoleOrder() []Role { return append([]Role(nil), roleOrder...) }
+// ValidateRole 校验 Rule 是否合法
+func ValidateRole(role Role) error {
+	if !slices.Contains(allRoles, role) {
+		return fmt.Errorf("未知 role %q（合法值：%s）", role, RolesString(allRoles))
+	}
+	return nil
+}
 
 // roleSlotCounts role → 槽个数。
 var roleSlotCounts = map[Role]int{
@@ -38,9 +45,11 @@ var roleSlotCounts = map[Role]int{
 }
 
 // roleSlotCount 返回 role 的槽个数；未知 role 第二返回值为 false。
-func roleSlotCount(r Role) (int, bool) {
-	n, ok := roleSlotCounts[r]
-	return n, ok
+func roleSlotCount(r Role) (int, error) {
+	if err := ValidateRole(r); err != nil {
+		return 0, err
+	}
+	return roleSlotCounts[r], nil
 }
 
 // RolesString 把 role 声明格式化为 "open-dir,diff-file"（展示用）。

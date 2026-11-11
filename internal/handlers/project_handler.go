@@ -181,12 +181,12 @@ func (h *ProjectHandler) projectOpen(input ProjectOpenInput) (map[string]any, er
 		return nil, errors.New("未找到指定 opener: " + input.Body.Opener)
 	}
 
-	if err := h.openerService.Open(o, opener.RoleOpenDir, target); err != nil {
+	if err := h.openerService.Open(*o, opener.RoleOpenDir, target); err != nil {
 		return nil, fmt.Errorf("打开失败: %w", err)
 	}
 
 	// project 恒记主项目路径；dir 直接传目标目录（等于根时由 RecordOpen 归一为空）
-	if err := h.usageService.RecordOpen(proj.Path(), o.Name(), target); err != nil {
+	if err := h.usageService.RecordOpen(proj.Path(), o.Name, target); err != nil {
 		slog.Warn("记录 usage 失败", "err", err)
 	}
 	return map[string]any{"ok": true}, nil

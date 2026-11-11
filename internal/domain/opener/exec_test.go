@@ -212,8 +212,8 @@ func TestInitOpenerActionsValidation(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			spec := Spec{Name: "test", Actions: c.actions}
-			o, err := InitActionOpener(spec)
+			o := Opener{Name: "test", Actions: c.actions}
+			o, err := validateOpener(o)
 			if c.wantErr {
 				if err == nil {
 					t.Fatalf("期望报错，实际 o=%+v err=nil", o)
@@ -266,7 +266,7 @@ func TestOpenInvokesExecutor(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			fake := &fakeExecutor{}
-			o, err := InitActionOpener(Spec{Name: "t", Actions: c.actions})
+			o, err := validateOpener(Opener{Name: "t", Actions: c.actions})
 			if err != nil {
 				t.Fatalf("InitActionOpener 失败: %v", err)
 			}
@@ -287,7 +287,7 @@ func TestOpenInvokesExecutor(t *testing.T) {
 
 func TestOpenSlotCountMismatch(t *testing.T) {
 	fake := &fakeExecutor{}
-	o, err := InitActionOpener(Spec{Name: "t", Actions: mkmk(RoleOpenDir, "code $0")})
+	o, err := validateOpener(Opener{Name: "t", Actions: mkmk(RoleOpenDir, "code $0")})
 	if err != nil {
 		t.Fatalf("InitActionOpener 失败: %v", err)
 	}
@@ -306,7 +306,7 @@ func TestOpenSlotCountMismatch(t *testing.T) {
 
 func TestOpenRoleUnsupported(t *testing.T) {
 	fake := &fakeExecutor{}
-	o, err := InitActionOpener(Spec{Name: "code", Actions: mkmk(RoleOpenDir, "code")})
+	o, err := validateOpener(Opener{Name: "code", Actions: mkmk(RoleOpenDir, "code")})
 	if err != nil {
 		t.Fatalf("InitActionOpener 失败: %v", err)
 	}
@@ -412,7 +412,7 @@ func TestURLActions(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			fake := &fakeExecutor{}
-			o, err := InitActionOpener(Spec{Name: "t", Actions: c.actions})
+			o, err := validateOpener(Opener{Name: "t", Actions: c.actions})
 			if err != nil {
 				t.Fatalf("InitActionOpener 失败: %v", err)
 			}
@@ -446,12 +446,12 @@ func TestURLActions(t *testing.T) {
 }
 
 func TestTitleDefault(t *testing.T) {
-	o1, _ := InitActionOpener(Spec{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}})
-	if got := o1.Title(); got != "用 code 打开" {
+	o1, _ := validateOpener(Opener{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}})
+	if got := o1.Title; got != "用 code 打开" {
 		t.Fatalf("缺省 title 应由 name 生成, got %q", got)
 	}
-	o2, _ := InitActionOpener(Spec{Name: "finder", Title: "打开所在目录", Actions: map[Role]string{"open-dir": `exec: open $0`}})
-	if got := o2.Title(); got != "打开所在目录" {
+	o2, _ := validateOpener(Opener{Name: "finder", Title: "打开所在目录", Actions: map[Role]string{"open-dir": `exec: open $0`}})
+	if got := o2.Title; got != "打开所在目录" {
 		t.Fatalf("配置 title 应原样生效, got %q", got)
 	}
 }
