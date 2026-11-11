@@ -97,17 +97,17 @@ func TestServiceDirectRead(t *testing.T) {
 }
 
 func TestServiceIconEndToEnd(t *testing.T) {
-	// icon 随 Opener 存进 settings.json，读出后透传到 OldOpener 接口
+	// icon 随 Opener 存进 settings.json，读出后原样透传；未配置为 nil（默认 icon 兜底归前端）
 	s, _ := newServiceAt(t, []Opener{
 		{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}, Icon: &icons.Icon{Type: icons.IconTypeLucide, Value: "app-window"}},
 		{Name: "plain", Actions: map[Role]string{"open-dir": `exec: plain`}},
 	})
 	o := s.FindByName("code")
-	if o == nil || o.Icon.Value != "app-window" {
+	if o == nil || o.Icon == nil || o.Icon.Value != "app-window" {
 		t.Fatalf("icon 未透传: %+v", o)
 	}
-	if p := s.FindByName("plain"); p.Icon.Value != "app-window-mac" {
-		t.Fatalf("无 icon 应得默认 app-window-mac, got %+v", p.Icon)
+	if p := s.FindByName("plain"); p.Icon != nil {
+		t.Fatalf("无 icon 应保持 nil（默认 icon 归前端）, got %+v", p.Icon)
 	}
 }
 

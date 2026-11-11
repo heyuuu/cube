@@ -43,8 +43,8 @@ func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
 	}
 }
 
-// openers 现读 settings.json 的 openers 节并逐条构造。
-// store.LoadSection 已把文件级/节级坏数据降级为空；这里处理条目级：坏条目跳过不阻断
+// openers 现读 settings.json 的 openers 节（store 逐条经 validateOpener 归一化，title 补默认）。
+// store.LoadSection 已把文件级/节级坏数据降级为空；条目级坏数据跳过不阻断
 // （配置错误不应让 list 等命令不可用），与旧 config 时代行为一致。
 func (s *Service) openers() []Opener {
 	return s.specsStore.All()
@@ -80,9 +80,9 @@ func (s *Service) FindByName(name string) *Opener {
 	return nil
 }
 
-// Open 用指定 opener 以指定 role 打开目标：BuildArgs 组装命令（role/槽位校验在
-// 实体内）后经 executor 启动子进程。执行环境只出现在这里——读路径（list/检索）
-// 构造的 opener 是纯数据，不带任何进程设施。
+// Open 用指定 opener 以指定 role 打开目标：role 支持校验后经 runAction 组装命令
+// （槽位校验在内）并启动子进程。执行环境只出现在这里——Opener 是纯数据值对象，
+// 不带任何进程设施。
 func (s *Service) Open(o Opener, role Role, slotArgs ...string) error {
 	action, ok := o.Actions[role]
 	if !ok {
@@ -93,8 +93,8 @@ func (s *Service) Open(o Opener, role Role, slotArgs ...string) error {
 }
 
 // SaveOpener 新增或按名替换一条 opener。
-// 写前先走领域构造校验（按 Type 分发到对应 Init，只验不留实例）——坏数据返回
-// 中文错误、落不了文件（提案「校验收敛在读写边界」的写侧）。
+// 写前先走 validateOpener 校验与归一化——坏数据返回中文错误、落不了文件
+// （提案「校验收敛在读写边界」的写侧）。
 func (s *Service) SaveOpener(spec Opener) error {
 	return s.specsStore.Save(spec)
 }

@@ -184,9 +184,9 @@ func TestBuildActionArgsResolvesSelfCube(t *testing.T) {
 	})
 }
 
-// ---------- InitActionOpener commands 校验 ----------
+// ---------- validateOpener actions 校验 ----------
 
-func TestInitOpenerActionsValidation(t *testing.T) {
+func TestValidateOpenerActions(t *testing.T) {
 	cases := []struct {
 		name    string
 		actions map[Role]string
@@ -268,7 +268,7 @@ func TestOpenInvokesExecutor(t *testing.T) {
 			fake := &fakeExecutor{}
 			o, err := validateOpener(Opener{Name: "t", Actions: c.actions})
 			if err != nil {
-				t.Fatalf("InitActionOpener 失败: %v", err)
+				t.Fatalf("validateOpener 失败: %v", err)
 			}
 			svc := &Service{executor: fake}
 			if err := svc.Open(o, c.role, c.paths...); err != nil {
@@ -289,7 +289,7 @@ func TestOpenSlotCountMismatch(t *testing.T) {
 	fake := &fakeExecutor{}
 	o, err := validateOpener(Opener{Name: "t", Actions: mkmk(RoleOpenDir, "code $0")})
 	if err != nil {
-		t.Fatalf("InitActionOpener 失败: %v", err)
+		t.Fatalf("validateOpener 失败: %v", err)
 	}
 	// open-dir 1 槽但传 2 个路径，应在 buildActionArgs 阶段报错，executor 不被调用
 	svc := &Service{executor: fake}
@@ -308,7 +308,7 @@ func TestOpenRoleUnsupported(t *testing.T) {
 	fake := &fakeExecutor{}
 	o, err := validateOpener(Opener{Name: "code", Actions: mkmk(RoleOpenDir, "code")})
 	if err != nil {
-		t.Fatalf("InitActionOpener 失败: %v", err)
+		t.Fatalf("validateOpener 失败: %v", err)
 	}
 	// 用未声明的 role 调 Open 应在实现内报错，且不触达 executor
 	svc := &Service{executor: fake}
@@ -414,7 +414,7 @@ func TestURLActions(t *testing.T) {
 			fake := &fakeExecutor{}
 			o, err := validateOpener(Opener{Name: "t", Actions: c.actions})
 			if err != nil {
-				t.Fatalf("InitActionOpener 失败: %v", err)
+				t.Fatalf("validateOpener 失败: %v", err)
 			}
 			svc := &Service{executor: fake, baseURL: base}
 			if err := svc.Open(o, c.role, c.paths...); err != nil {

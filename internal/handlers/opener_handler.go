@@ -117,7 +117,7 @@ func (h *OpenerHandler) openerOpen(input OpenerOpenInput) (map[string]any, error
 		role = opener.RoleOpenDir
 	}
 
-	// role 是否支持由实体内校验（BuildArgs 首步），这里只透传错误
+	// role 是否支持由 Service.Open 首步校验，这里只透传错误
 	if err := h.service.Open(*o, role, input.Body.Path); err != nil {
 		return nil, fmt.Errorf("打开失败: %w", err)
 	}
