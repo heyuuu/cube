@@ -1,6 +1,8 @@
 package opener
 
 import (
+	"fmt"
+
 	"cube/internal/domain/icons"
 )
 
@@ -15,3 +17,31 @@ type Spec struct {
 
 // specName opener 在 openers 节内的唯一键（name）。
 func specName(s Spec) string { return s.Name }
+
+func validateSpec(spec Spec) (Spec, error) {
+	var zero Spec
+	if spec.Name == "" {
+		return zero, fmt.Errorf("opener name 不得为空")
+	}
+	if len(spec.Actions) == 0 {
+		return zero, fmt.Errorf("opener %q 缺少必填字段 actions", spec.Name)
+	}
+
+	if spec.Title == "" {
+		spec.Title = "用 " + spec.Name + " 打开"
+	}
+
+	icon, err := InitIcon(spec.Icon)
+	if err != nil {
+		return zero, fmt.Errorf("opener %q icon 解析失败: %w", spec.Name, err)
+	}
+	spec.Icon = &icon
+
+	for role, raw := range spec.Actions {
+		if _, err := validateAction(role, raw); err != nil {
+			return zero, err
+		}
+	}
+
+	return spec, nil
+}

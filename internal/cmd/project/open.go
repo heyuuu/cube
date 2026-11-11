@@ -46,7 +46,7 @@ query 支持项目名和项目列表模糊搜索，具体规则同 info 命令�
 			}
 
 			// 打开项目
-			err = o.Open(opener.RoleOpenDir, target)
+			err = a.OpenerService().Open(o, opener.RoleOpenDir, target)
 			if err != nil {
 				return fmt.Errorf("打开失败: %w", err)
 			}

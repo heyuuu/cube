@@ -122,8 +122,8 @@ func (h *OpenerHandler) openerOpen(input OpenerOpenInput) (map[string]any, error
 		role = opener.RoleOpenDir
 	}
 
-	// role 是否支持由实现内校验（Open 首步），这里只透传错误
-	if err := o.Open(role, input.Body.Path); err != nil {
+	// role 是否支持由实体内校验（BuildArgs 首步），这里只透传错误
+	if err := h.service.Open(o, role, input.Body.Path); err != nil {
 		return nil, fmt.Errorf("打开失败: %w", err)
 	}
 	return map[string]any{"ok": true}, nil
@@ -167,7 +167,7 @@ func (h *OpenerHandler) openerDiffOpen(input OpenerDiffOpenInput) (map[string]an
 	if leftDir {
 		role = opener.RoleDiffDir
 	}
-	if err := o.Open(role, left, right); err != nil {
+	if err := h.service.Open(o, role, left, right); err != nil {
 		return nil, fmt.Errorf("打开失败: %w", err)
 	}
 	return map[string]any{"ok": true}, nil

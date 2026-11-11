@@ -1,8 +1,6 @@
 package opener
 
 import (
-	"fmt"
-
 	"github.com/heyuuu/x/store"
 
 	"cube/pkg/xstore"
@@ -19,17 +17,9 @@ type SpecsStore = *xstore.KeyedSliceStore[Spec]
 
 func newSpecsStore(settingsFile string) SpecsStore {
 	return xstore.NewKeyedSliceStore(xstore.KeyedSliceStoreOpts[Spec]{
-		Name:  "opener",
-		Store: store.SectionStore[[]Spec](settingsFile, settingsSection),
-		KeyOf: specName,
-		Normalize: func(spec Spec) (Spec, error) {
-			if spec.Name == "" {
-				return spec, fmt.Errorf("opener name 不得为空")
-			}
-
-			stubBaseURL := "https://example.com" // 占位 url，用于校验占位
-			_, err := InitActionOpener(spec, nil, stubBaseURL)
-			return spec, err
-		},
+		Name:      "opener",
+		Store:     store.SectionStore[[]Spec](settingsFile, settingsSection),
+		KeyOf:     specName,
+		Normalize: validateSpec,
 	})
 }

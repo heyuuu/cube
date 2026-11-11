@@ -181,7 +181,7 @@ func (h *ProjectHandler) projectOpen(input ProjectOpenInput) (map[string]any, er
 		return nil, errors.New("未找到指定 opener: " + input.Body.Opener)
 	}
 
-	if err := o.Open(opener.RoleOpenDir, target); err != nil {
+	if err := h.openerService.Open(o, opener.RoleOpenDir, target); err != nil {
 		return nil, fmt.Errorf("打开失败: %w", err)
 	}
 

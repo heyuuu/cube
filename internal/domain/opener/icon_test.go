@@ -41,7 +41,7 @@ func TestSpecIconThroughExec(t *testing.T) {
 		o, err := InitActionOpener(Spec{
 			Name: "code", Actions: map[Role]string{"open-dir": `exec: code`},
 			Icon: &icons.Icon{Type: IconTypeLucide, Value: "app-window"},
-		}, nil, "")
+		})
 		if err != nil {
 			t.Fatalf("构造失败: %v", err)
 		}
@@ -51,7 +51,7 @@ func TestSpecIconThroughExec(t *testing.T) {
 	})
 
 	t.Run("无 icon 得默认", func(t *testing.T) {
-		o, err := InitActionOpener(Spec{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}, nil, "")
+		o, err := InitActionOpener(Spec{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}})
 		if err != nil {
 			t.Fatalf("构造失败: %v", err)
 		}
@@ -64,7 +64,7 @@ func TestSpecIconThroughExec(t *testing.T) {
 		if _, err := InitActionOpener(Spec{
 			Name: "code", Actions: map[Role]string{"open-dir": `exec: code`},
 			Icon: &icons.Icon{Type: "bad"},
-		}, nil, ""); err == nil {
+		}); err == nil {
 			t.Fatal("坏 icon 应报错")
 		}
 	})

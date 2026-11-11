@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// fakeExecutor 记录 Run 调用的 bin+args，不真正启动子进程。供 Open 全链路测试用。
+// fakeExecutor 记录 Run 调用的 bin+args，不真正启动子进程。注入 Service 供 Open 全链路测试用。
 type fakeExecutor struct {
 	calls []fakeCall
 }
@@ -56,9 +56,9 @@ func TestRenderArgs(t *testing.T) {
 	}
 }
 
-// ---------- BuildArgs ----------
+// ---------- buildActionArgs ----------
 
-func TestBuildArgs(t *testing.T) {
+func TestBuildActionArgs(t *testing.T) {
 	cases := []struct {
 		name     string
 		actions  map[Role]string
@@ -129,16 +129,12 @@ func TestBuildArgs(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			o, err := InitActionOpener(Spec{Name: "t", Actions: c.actions}, &fakeExecutor{}, "")
+			bin, args, err := buildActionArgs(c.role, c.actions[c.role], c.paths, "")
 			if err != nil {
-				t.Fatalf("InitActionOpener 失败: %v", err)
-			}
-			bin, args, err := o.(*actionOpener).BuildArgs(c.role, c.paths...)
-			if err != nil {
-				t.Fatalf("BuildArgs 失败: %v", err)
+				t.Fatalf("buildActionArgs 失败: %v", err)
 			}
 			if bin != c.wantBin || !reflect.DeepEqual(args, c.wantArgs) {
-				t.Fatalf("BuildArgs(%v) = (%q,%v), want (%q,%v)", c.paths, bin, args, c.wantBin, c.wantArgs)
+				t.Fatalf("buildActionArgs(%v) = (%q,%v), want (%q,%v)", c.paths, bin, args, c.wantBin, c.wantArgs)
 			}
 		})
 	}
@@ -146,7 +142,7 @@ func TestBuildArgs(t *testing.T) {
 
 // ---------- cmd[0] 自引用替换（resolveBin） ----------
 
-func TestBuildArgsResolvesSelfCube(t *testing.T) {
+func TestBuildActionArgsResolvesSelfCube(t *testing.T) {
 	self, err := os.Executable()
 	if err != nil {
 		t.Fatalf("os.Executable 失败: %v", err)
@@ -162,13 +158,9 @@ func TestBuildArgsResolvesSelfCube(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			o, err := InitActionOpener(Spec{Name: "t", Actions: mkmk(RoleOpenDir, c.cmd)}, &fakeExecutor{}, "")
+			bin, args, err := buildActionArgs(RoleOpenDir, "exec: "+c.cmd, []string{"/proj"}, "")
 			if err != nil {
-				t.Fatalf("InitActionOpener 失败: %v", err)
-			}
-			bin, args, err := o.(*actionOpener).BuildArgs(RoleOpenDir, "/proj")
-			if err != nil {
-				t.Fatalf("BuildArgs 失败: %v", err)
+				t.Fatalf("buildActionArgs 失败: %v", err)
 			}
 			if bin != self {
 				t.Fatalf("cmd 应替换为当前可执行文件 %q, got %q", self, bin)
@@ -181,13 +173,9 @@ func TestBuildArgsResolvesSelfCube(t *testing.T) {
 
 	t.Run("近似名不替换", func(t *testing.T) {
 		for _, bin0 := range []string{"cubed", "cube-x", "mycube", "/bin/cubecase"} {
-			o, err := InitActionOpener(Spec{Name: "t", Actions: mkmk(RoleOpenDir, bin0)}, &fakeExecutor{}, "")
+			bin, _, err := buildActionArgs(RoleOpenDir, "exec: "+bin0, []string{"/proj"}, "")
 			if err != nil {
-				t.Fatalf("InitActionOpener 失败: %v", err)
-			}
-			bin, _, err := o.(*actionOpener).BuildArgs(RoleOpenDir, "/proj")
-			if err != nil {
-				t.Fatalf("BuildArgs 失败: %v", err)
+				t.Fatalf("buildActionArgs 失败: %v", err)
 			}
 			if bin != bin0 {
 				t.Fatalf("%q 不应被替换, got %q", bin0, bin)
@@ -210,8 +198,7 @@ func TestInitOpenerActionsValidation(t *testing.T) {
 		{"未知 kind 报错", map[Role]string{RoleOpenDir: "shell: code $0"}, true},
 		{"前缀后模板为空报错", map[Role]string{RoleOpenDir: "exec:"}, true},
 		{"url 非法值域报错", map[Role]string{RoleOpenDir: "url: ftp://x"}, true},
-		{"站内路由缺 baseURL 报错", map[Role]string{RoleOpenDir: "url: /workbench?path=$0"}, true},
-		{"url 占位符越界报错", map[Role]string{RoleDiffFile: "url: /x?a=$0&b=$1"}, true},
+		{"url 占位符越界报错", map[Role]string{RoleDiffFile: "url: /x?a=$2"}, true},
 		{"外部 URL 合法", map[Role]string{RoleOpenDir: "url: https://github.com"}, false},
 		{"未知 role 报错", map[Role]string{"unknown-role": "code"}, true},
 		{"单条 cmd 缺失报错", map[Role]string{RoleOpenDir: ""}, true},
@@ -226,7 +213,7 @@ func TestInitOpenerActionsValidation(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			spec := Spec{Name: "test", Actions: c.actions}
-			o, err := InitActionOpener(spec, &fakeExecutor{}, "")
+			o, err := InitActionOpener(spec)
 			if c.wantErr {
 				if err == nil {
 					t.Fatalf("期望报错，实际 o=%+v err=nil", o)
@@ -240,7 +227,7 @@ func TestInitOpenerActionsValidation(t *testing.T) {
 	}
 }
 
-// ---------- Open 全链路（注入 fakeExecutor）----------
+// ---------- Open 全链路（Service.Open，注入 fakeExecutor）----------
 
 func TestOpenInvokesExecutor(t *testing.T) {
 	cases := []struct {
@@ -279,11 +266,12 @@ func TestOpenInvokesExecutor(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			fake := &fakeExecutor{}
-			o, err := InitActionOpener(Spec{Name: "t", Actions: c.actions}, fake, "")
+			o, err := InitActionOpener(Spec{Name: "t", Actions: c.actions})
 			if err != nil {
 				t.Fatalf("InitActionOpener 失败: %v", err)
 			}
-			if err := o.Open(c.role, c.paths...); err != nil {
+			svc := &Service{executor: fake}
+			if err := svc.Open(o, c.role, c.paths...); err != nil {
 				t.Fatalf("Open 失败: %v", err)
 			}
 			if len(fake.calls) != 1 {
@@ -299,12 +287,13 @@ func TestOpenInvokesExecutor(t *testing.T) {
 
 func TestOpenSlotCountMismatch(t *testing.T) {
 	fake := &fakeExecutor{}
-	o, err := InitActionOpener(Spec{Name: "t", Actions: mkmk(RoleOpenDir, "code $0")}, fake, "")
+	o, err := InitActionOpener(Spec{Name: "t", Actions: mkmk(RoleOpenDir, "code $0")})
 	if err != nil {
 		t.Fatalf("InitActionOpener 失败: %v", err)
 	}
-	// open-dir 1 槽但传 2 个路径，应在 BuildArgs 阶段报错，executor 不被调用
-	err = o.Open(RoleOpenDir, "/a", "/b")
+	// open-dir 1 槽但传 2 个路径，应在 buildActionArgs 阶段报错，executor 不被调用
+	svc := &Service{executor: fake}
+	err = svc.Open(o, RoleOpenDir, "/a", "/b")
 	if err == nil {
 		t.Fatalf("期望槽个数不匹配报错，实际 nil")
 	}
@@ -317,12 +306,13 @@ func TestOpenSlotCountMismatch(t *testing.T) {
 
 func TestOpenRoleUnsupported(t *testing.T) {
 	fake := &fakeExecutor{}
-	o, err := InitActionOpener(Spec{Name: "code", Actions: mkmk(RoleOpenDir, "code")}, fake, "")
+	o, err := InitActionOpener(Spec{Name: "code", Actions: mkmk(RoleOpenDir, "code")})
 	if err != nil {
 		t.Fatalf("InitActionOpener 失败: %v", err)
 	}
 	// 用未声明的 role 调 Open 应在实现内报错，且不触达 executor
-	if err := o.Open(RoleDiffDir, "/a"); err == nil {
+	svc := &Service{executor: fake}
+	if err := svc.Open(o, RoleDiffDir, "/a"); err == nil {
 		t.Fatal("期望 role 不支持报错")
 	}
 	if len(fake.calls) != 0 {
@@ -422,11 +412,12 @@ func TestURLActions(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			fake := &fakeExecutor{}
-			o, err := InitActionOpener(Spec{Name: "t", Actions: c.actions}, fake, base)
+			o, err := InitActionOpener(Spec{Name: "t", Actions: c.actions})
 			if err != nil {
 				t.Fatalf("InitActionOpener 失败: %v", err)
 			}
-			if err := o.Open(c.role, c.paths...); err != nil {
+			svc := &Service{executor: fake, baseURL: base}
+			if err := svc.Open(o, c.role, c.paths...); err != nil {
 				t.Fatalf("Open 失败: %v", err)
 			}
 			if len(fake.calls) != 1 {
@@ -455,11 +446,11 @@ func TestURLActions(t *testing.T) {
 }
 
 func TestTitleDefault(t *testing.T) {
-	o1, _ := InitActionOpener(Spec{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}}, nil, "")
+	o1, _ := InitActionOpener(Spec{Name: "code", Actions: map[Role]string{"open-dir": `exec: code`}})
 	if got := o1.Title(); got != "用 code 打开" {
 		t.Fatalf("缺省 title 应由 name 生成, got %q", got)
 	}
-	o2, _ := InitActionOpener(Spec{Name: "finder", Title: "打开所在目录", Actions: map[Role]string{"open-dir": `exec: open $0`}}, nil, "")
+	o2, _ := InitActionOpener(Spec{Name: "finder", Title: "打开所在目录", Actions: map[Role]string{"open-dir": `exec: open $0`}})
 	if got := o2.Title(); got != "打开所在目录" {
 		t.Fatalf("配置 title 应原样生效, got %q", got)
 	}

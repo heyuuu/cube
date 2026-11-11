@@ -17,7 +17,7 @@ import (
 type Service struct {
 	specsStore       SpecsStore
 	intentSpecsStore store.Store[map[Intent]IntentSpec]
-	executor         Executor // 逐条构造 actionOpener 时注入；nil 时由 InitActionOpener 装默认执行器
+	executor         Executor // Open 启动子进程的执行器（环境归属 Service；测试经 NewServiceWithExecutor 注入 fake）
 	baseURL          string   // 站内路由基地址（如 http://127.0.0.1:6001），装配注入
 }
 
@@ -29,6 +29,9 @@ func NewService(cfg *config.Config) *Service {
 // NewServiceWithExecutor 与 NewService 同构，但注入自定义 Executor
 // （跨包测试的 fake 注入口；executor 传 nil 则用默认执行器）。
 func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
+	if executor == nil {
+		executor = NewDefaultExecutor()
+	}
 	specsStore := newSpecsStore(cfg.SettingsFile())
 	intentSpecsStore := store.SectionStore[map[Intent]IntentSpec](cfg.SettingsFile(), intentsSection)
 
@@ -48,7 +51,7 @@ func (s *Service) openers() []Opener {
 
 	list := make([]Opener, 0, len(specs))
 	for _, spec := range specs {
-		o, err := InitActionOpener(spec, s.executor, s.baseURL)
+		o, err := InitActionOpener(spec)
 		if err != nil {
 			continue
 		}
@@ -85,6 +88,18 @@ func (s *Service) FindByName(name string) Opener {
 		}
 	}
 	return nil
+}
+
+// Open 用指定 opener 以指定 role 打开目标：BuildArgs 组装命令（role/槽位校验在
+// 实体内）后经 executor 启动子进程。执行环境只出现在这里——读路径（list/检索）
+// 构造的 opener 是纯数据，不带任何进程设施。
+func (s *Service) Open(o Opener, role Role, slotArgs ...string) error {
+	action, ok := o.Actions()[role]
+	if !ok {
+		return fmt.Errorf("opener %s 不支持 %s", o.Name(), role)
+	}
+
+	return runAction(s.executor, role, action, slotArgs, s.baseURL)
 }
 
 // SaveOpener 新增或按名替换一条 opener。

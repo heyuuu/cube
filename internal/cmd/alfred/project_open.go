@@ -35,7 +35,7 @@ func newProjectOpenCmd(a *app.App) *cobra.Command {
 			}
 
 			// 打开目标目录
-			err := o.Open(opener.RoleOpenDir, targetPath)
+			err := a.OpenerService().Open(o, opener.RoleOpenDir, targetPath)
 			if err != nil {
 				return fmt.Errorf("打开失败: %w", err)
 			}
