@@ -1,4 +1,4 @@
-package cmd
+package project
 
 import (
 	"errors"
@@ -46,7 +46,7 @@ var allDoctorChecks = []doctorCheck{
 	},
 }
 
-// cmd `cube doctor`
+// newDoctorCmd `cube project doctor` 命令。
 func newDoctorCmd(a *app.App) *cobra.Command {
 	var fix bool
 	cmd := &cobra.Command{

@@ -1,3 +1,5 @@
+// Package cmd cobra 命令定义层：构建根命令与各子命令，命令体只做参数解析与
+// 终端输出，业务一律经持有的 app.App 进入。
 package cmd
 
 import (
@@ -121,21 +123,19 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	// dev 开发用命令
 	cmd.AddCommand(dev.NewCmd(a))
 
-	// 待整理命令
-	cmd.AddCommand(newDoctorCmd(a)) // 环境体检
-	cmd.AddCommand(newCheckCmd(a))
-
 	/* <<subcommand inject point>> */
 
 	// 绑定命令别名
 	aliases := map[string]string{
 		"openapi": "server openapi",
 		// project
-		"list":  "project list",
-		"info":  "project info",
-		"open":  "project open",
-		"path":  "project path",
-		"clone": "project clone",
+		"list":   "project list",
+		"info":   "project info",
+		"open":   "project open",
+		"path":   "project path",
+		"clone":  "project clone",
+		"check":  "project check",
+		"doctor": "project doctor",
 		// tpl
 		"create": "tpl create",
 		// opener

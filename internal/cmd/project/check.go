@@ -1,4 +1,4 @@
-package cmd
+package project
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ const (
 
 var allCheckItems = []string{checkItemCloneRules, checkItemGitDirty}
 
-// cmd `cube check`
+// newCheckCmd `cube project check` 命令。
 func newCheckCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "check [options...]",
@@ -126,5 +126,5 @@ func checkGitDirty(service *project.Service) {
 	})
 
 	fmt.Printf("> github dirty 的项目 %d 个:\n", len(targets))
-	cmdutil.ShowProjects(service, targets)
+	showProjects(service, targets)
 }

@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/heyuuu/x/xstd/xos"
-	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/domain/project"
 	"cube/internal/domain/project/snapshot"
@@ -89,28 +88,6 @@ func PickProject(service *project.Service, query string, localMode bool) (*proje
 		return nil, err
 	}
 	return pick, nil
-}
-
-// ShowProjects 输出项目列表表格
-func ShowProjects(service *project.Service, projects []*project.Project) {
-	tui.PrintTable(
-		[]string{
-			fmt.Sprintf("项目(%d)", len(projects)),
-			"Path",
-			"RepoUrl",
-		},
-		xslices.Map(projects, func(p *project.Project) []string {
-			repoURL := ""
-			if info := service.Snapshot(p.Path()); info != nil {
-				repoURL = info.OriginURL()
-			}
-			return []string{
-				p.Name(),
-				PrettyPath(p.Path()),
-				repoURL,
-			}
-		}),
-	)
 }
 
 type OpenTarget struct {

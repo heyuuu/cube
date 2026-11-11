@@ -20,6 +20,10 @@ func NewCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(newPathCmd(a))  // 输出项目路径（供 shell 包装函数 cd）
 	cmd.AddCommand(newCloneCmd(a)) // 使用 RepoURL 初始化项目
 
+	cmd.AddCommand(newCheckCmd(a)) // check
+
+	cmd.AddCommand(newDoctorCmd(a)) // doctor
+
 	/* <<subcommand inject point>> */
 
 	return cmd
