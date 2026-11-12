@@ -8,7 +8,6 @@ import (
 	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
-	"cube/internal/app"
 	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 	"cube/pkg/tui"
@@ -16,14 +15,14 @@ import (
 
 // newPushCmd 是 `cube git push` 命令入口。
 //
-// 行为：query 定位已收录项目（规则同 info），以项目根为 git 仓库，
-// 把多个分支 / tag 批量推送到多个 remote。remotes 与 refs 都通过 TUI
+// 行为：path 定位 git 仓库（缺省当前目录，linked worktree 归并主工作树根，
+// 不要求已收录），把多个分支 / tag 批量推送到多个 remote。remotes 与 refs 都通过 TUI
 // 多选交互确认；当前分支默认勾选，全部 remote 默认勾选。最后展示推送
 // 计划并二次确认后执行。
 //
 // 非 TTY 环境（脚本）下可改用 flag 显式指定：--remote（可多次）/ --ref（可多次），
 // 此时跳过对应交互；--force 启用 --force-with-lease。
-func newPushCmd(a *app.App) *cobra.Command {
+func newPushCmd() *cobra.Command {
 	var (
 		remotes []string
 		refs    []string
@@ -31,12 +30,12 @@ func newPushCmd(a *app.App) *cobra.Command {
 		yes     bool
 	)
 	cmd := &cobra.Command{
-		Use:   "push [query]",
+		Use:   "push [path]",
 		Short: "把选中的分支/tag 批量推送到多个 remote",
 		Long: `把多个分支 / tag 批量推送到多个 remote。
 
-query 定位目标项目（支持项目名或路径模糊搜索，规则同 info 命令），
-不传时交互选择；以项目根目录作为 git 仓库执行后续操作。
+path 指定目标 git 仓库（绝对/相对路径或 ~ 前缀，不传为当前目录；
+linked worktree 归并到主工作树根），不要求是 cube 已收录的项目。
 
 remote 与 ref 默认通过 TUI 多选交互确认：remote 默认全选，
 ref 默认勾选当前分支；执行前展示推送计划并二次确认。
@@ -46,13 +45,12 @@ ref 默认勾选当前分支；执行前展示推送计划并二次确认。
 --yes 跳过最终确认。单条 push 失败不中断，最后汇总结果。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			// 定位项目：query 匹配（规则同 info），以项目根为仓库
-			query := xslices.Get(args, 0)
-			proj, err := cmdutil.PickProject(a.ProjectService(), query, a.Local())
+			// 定位 git 仓库主工作树根（worktree 归并）
+			path := xslices.Get(args, 0)
+			repoPath, err := resolveGitRoot(path)
 			if err != nil {
 				return err
 			}
-			repoPath := proj.Path()
 
 			// 收集 remote / refs 候选
 			repoRemotes, err := git.Remotes(repoPath)

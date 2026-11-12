@@ -4,8 +4,29 @@ import (
 	"fmt"
 	"strings"
 
+	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 )
+
+// resolveGitRoot 把 path（缺省 "."）解析为 git 仓库根目录：
+// linked worktree 归并到主工作树根；不要求是 cube 已收录项目。
+func resolveGitRoot(path string) (string, error) {
+	if path == "" {
+		path = "."
+	}
+
+	absPath, err := cmdutil.ExtendPath(path)
+	if err != nil {
+		return "", fmt.Errorf("尝试解析 path 路径失败: %w", err)
+	}
+
+	root, ok := git.FindMainRoot(absPath)
+	if !ok {
+		return "", fmt.Errorf("目录不在 git 仓库中: %s", absPath)
+	}
+
+	return root, nil
+}
 
 // resolveRemotesByName 把 flag 传入的 remote 名解析成 git.Remote（找不到则报错）。
 func resolveRemotesByName(all []git.Remote, names []string) ([]git.Remote, error) {

@@ -7,7 +7,6 @@ import (
 	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
-	"cube/internal/app"
 	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 	"cube/pkg/tui"
@@ -15,26 +14,26 @@ import (
 
 // newPullCmd 是 `cube git pull` 命令入口（push 的反向：从单个 remote 批量更新本地分支）。
 //
-// 行为：query 定位已收录项目（规则同 push），选择一个来源 remote
+// 行为：path 定位 git 仓库（规则同 push），选择一个来源 remote
 // （仅 1 个 remote 时自动选中，多个时交互单选），多选分支后逐条快进更新：
 //   - 当前分支：git pull --ff-only <remote> <branch>
 //   - 非当前分支：git fetch <remote> <branch>:<branch>（git 不允许 fetch 更新当前分支）
 //
 // 仅快进：本地与远端分叉的分支失败跳过，绝不产生 merge commit。
 // 单条失败不中断（同 push），最后汇总结果。
-func newPullCmd(a *app.App) *cobra.Command {
+func newPullCmd() *cobra.Command {
 	var (
 		remote string
 		refs   []string
 		yes    bool
 	)
 	cmd := &cobra.Command{
-		Use:   "pull [query]",
+		Use:   "pull [path]",
 		Short: "从选中的 remote 批量快进更新本地分支",
 		Long: `从单个 remote 批量拉取更新选中的分支（push 的反向命令）。
 
-query 定位目标项目（支持项目名或路径模糊搜索，规则同 info 命令），
-不传时交互选择；以项目根目录作为 git 仓库执行后续操作。
+path 指定目标 git 仓库（绝对/相对路径或 ~ 前缀，不传为当前目录；
+linked worktree 归并到主工作树根），不要求是 cube 已收录的项目。
 
 remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选。
 分支默认通过 TUI 多选交互确认：候选为与该 remote 同名的本地分支，
@@ -52,13 +51,12 @@ remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选
 跳过对应交互；--yes 跳过最终确认。单条失败不中断，最后汇总结果。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			// 定位项目：query 匹配（规则同 push），以项目根为仓库
-			query := xslices.Get(args, 0)
-			proj, err := cmdutil.PickProject(a.ProjectService(), query, a.Local())
+			// 定位 git 仓库主工作树根（worktree 归并）
+			path := xslices.Get(args, 0)
+			repoPath, err := resolveGitRoot(path)
 			if err != nil {
 				return err
 			}
-			repoPath := proj.Path()
 
 			// 收集 remote 列表
 			repoRemotes, err := git.Remotes(repoPath)
