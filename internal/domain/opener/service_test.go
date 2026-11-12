@@ -215,7 +215,7 @@ func TestServiceSaveAll(t *testing.T) {
 
 	t.Run("被移除的 opener 连带清理 intents 引用", func(t *testing.T) {
 		s, ws := newServiceAt(t, newSpecs)
-		ws.SaveSection(intentsSection, map[Intent]IntentSpec{
+		ws.SaveSection(intentsSection, map[Intent]intentSeed{
 			IntentDir:      {DefaultOpener: "finder", Openers: []string{"finder", "code"}},
 			IntentTerminal: {Openers: []string{"stree"}},
 		})
@@ -223,17 +223,33 @@ func TestServiceSaveAll(t *testing.T) {
 		if err := s.SaveAllOpeners([]Opener{newSpecs[1]}); err != nil {
 			t.Fatalf("save-all 失败: %v", err)
 		}
-		specs := s.loadIntents()
-		if d, ok := specs[IntentDir]; !ok || d.DefaultOpener != "" || len(d.Openers) != 1 || d.Openers[0] != "code" {
+		infos := intentInfoMap(s.intentInfos())
+		if d := infos[IntentDir]; d.DefaultOpener != "" || len(d.Openers) != 1 || d.Openers[0] != "code" {
 			t.Fatalf("dir 引用应清理为 {无默认, [code]}, got %+v", d)
 		}
-		if _, ok := specs[IntentTerminal]; ok {
-			t.Fatalf("terminal 应整键删除, got %+v", specs[IntentTerminal])
+		// terminal 唯一引用 stree 被清后成为空条目（落盘时整条省略）
+		if d := infos[IntentTerminal]; d.DefaultOpener != "" || len(d.Openers) != 0 {
+			t.Fatalf("terminal 应清为空条目, got %+v", d)
 		}
 	})
 }
 
 // ---------- intents（openerIntents 节，1038） ----------
+
+// intentSeed 测试侧的 openerIntents 节落盘形状：与 store 内部的 Spec 同构但独立定义，
+// 刻意不复用 store 实现——测试只钉住磁盘格式，存储细节不对外暴露。
+type intentSeed struct {
+	DefaultOpener string   `json:"defaultOpener,omitempty"`
+	Openers       []string `json:"openers,omitempty"`
+}
+
+func intentInfoMap(infos []IntentInfo) map[Intent]IntentInfo {
+	m := make(map[Intent]IntentInfo, len(infos))
+	for _, info := range infos {
+		m[info.Intent] = info
+	}
+	return m
+}
 
 func mkSpecs(pairs ...any) []Opener {
 	specs := make([]Opener, 0, len(pairs)/2)
@@ -243,42 +259,42 @@ func mkSpecs(pairs ...any) []Opener {
 	return specs
 }
 
+// Intents 读侧只做缺省候选回退，不校验失效引用——失效清理收敛在 openers 变更的
+// OnChange 级联（见 TestServiceSaveAll / TestDeleteOpenerCleansIntents），
+// 调用时校验在 DefaultOpener（见 TestSaveDeleteIntentDefault）。
 func TestIntentsSynthesis(t *testing.T) {
 	dirOnly := mkSpecs("finder", mkmk(RoleOpenDir, "finder"), "code", mkmk(RoleOpenDir, "code $0", RoleOpenFile, "code $0"))
 	s, ws := newServiceAt(t, dirOnly)
-	ws.SaveSection(intentsSection, map[Intent]IntentSpec{
+	ws.SaveSection(intentsSection, map[Intent]intentSeed{
 		IntentDir:       {DefaultOpener: "finder"},
-		IntentGit:       {DefaultOpener: "stree"},               // opener 不存在 → 读侧忽略
-		IntentDoc:       {DefaultOpener: "finder"},              // role 不符（doc→open-file）→ 读侧忽略
-		IntentTerminal:  {Openers: []string{"code", "ghostty"}}, // ghostty 不存在 → 跳过，保留 code
-		Intent("bogus"): {DefaultOpener: "finder"},              // 未知 intent 键 → 跳过
+		IntentGit:       {DefaultOpener: "stree"},               // opener 不存在 → 读侧原样透传
+		IntentTerminal:  {Openers: []string{"code", "ghostty"}}, // ghostty 不存在 → 读侧原样保留
+		Intent("bogus"): {DefaultOpener: "finder"},              // 未知 intent 键 → 加载时丢弃
 	})
 
-	got := map[Intent]IntentInfo{}
-	for _, info := range s.Intents() {
-		got[info.Intent] = info
+	got := s.Intents()
+	if len(got) != len(intentOrder) {
+		t.Fatalf("应返回全量 %d 个 intent（固定序）, got %d", len(intentOrder), len(got))
 	}
+	infos := intentInfoMap(got)
 
-	if d := got[IntentDir]; d.DefaultOpener != "finder" {
+	if d := infos[IntentDir]; d.DefaultOpener != "finder" {
 		t.Fatalf("dir 默认应为 finder, got %+v", d)
 	}
-	if d := got[IntentGit]; d.DefaultOpener != "" {
-		t.Fatalf("不存在的默认 opener 应被忽略, got %+v", d)
+	if d := infos[IntentGit]; d.DefaultOpener != "stree" {
+		t.Fatalf("失效的默认 opener 读侧应透传不清理, got %+v", d)
 	}
-	if d := got[IntentDoc]; d.DefaultOpener != "" {
-		t.Fatalf("role 不符的默认 opener 应被忽略, got %+v", d)
-	}
-	if d := got[IntentTerminal]; len(d.Openers) != 1 || d.Openers[0] != "code" {
-		t.Fatalf("terminal 候选应只剩 code, got %+v", d)
+	if d := infos[IntentTerminal]; len(d.Openers) != 2 {
+		t.Fatalf("失效的候选清单读侧应透传不清理, got %+v", d)
 	}
 	// 缺省候选 = 声明对应 role 的全部 opener（openers 节顺序）
-	if d := got[IntentFile]; len(d.Openers) != 1 || d.Openers[0] != "code" {
+	if d := infos[IntentFile]; len(d.Openers) != 1 || d.Openers[0] != "code" {
 		t.Fatalf("file 缺省候选应只有 code, got %+v", d)
 	}
 }
 
 func TestSaveDeleteIntentDefault(t *testing.T) {
-	s, _ := newServiceAt(t, mkSpecs("finder", mkmk(RoleOpenDir, "finder"), "code", mkmk(RoleOpenDir, "code $0", RoleOpenFile, "code $0")))
+	s, ws := newServiceAt(t, mkSpecs("finder", mkmk(RoleOpenDir, "finder"), "code", mkmk(RoleOpenDir, "code $0", RoleOpenFile, "code $0")))
 
 	// 写侧校验：role 不符 / 不存在 报错不落盘
 	if err := s.SaveIntentDefault(IntentDoc, "finder"); err == nil {
@@ -289,6 +305,18 @@ func TestSaveDeleteIntentDefault(t *testing.T) {
 	}
 	if _, err := s.DefaultOpener(IntentDir); err == nil {
 		t.Fatal("未配置默认应报错")
+	}
+
+	// 已落盘的失效默认（读侧透传）在调用时校验报错，而非静默忽略
+	ws.SaveSection(intentsSection, map[Intent]intentSeed{
+		IntentGit: {DefaultOpener: "stree"},  // opener 不存在
+		IntentDoc: {DefaultOpener: "finder"}, // role 不符（doc→open-file）
+	})
+	if _, err := s.DefaultOpener(IntentGit); err == nil {
+		t.Fatal("默认 opener 不存在应报错")
+	}
+	if _, err := s.DefaultOpener(IntentDoc); err == nil {
+		t.Fatal("role 不符的默认 opener 应报错")
 	}
 
 	if err := s.SaveIntentDefault(IntentDir, "code"); err != nil {
@@ -305,15 +333,15 @@ func TestSaveDeleteIntentDefault(t *testing.T) {
 	if _, err := s.DefaultOpener(IntentDir); err == nil {
 		t.Fatal("删除后应视为未配置")
 	}
-	if err := s.DeleteIntentDefault(IntentDir); err == nil {
-		t.Fatal("重复删除应报错")
+	if err := s.DeleteIntentDefault(IntentDir); err != nil {
+		t.Fatalf("重复删除应幂等成功: %v", err)
 	}
 }
 
-// DeleteOpener 连带清理 intents 引用（默认 + 候选）
+// DeleteOpener 经 OnChange 级联清理 intents 引用（默认 + 候选）
 func TestDeleteOpenerCleansIntents(t *testing.T) {
 	s, ws := newServiceAt(t, mkSpecs("finder", mkmk(RoleOpenDir, "finder"), "code", mkmk(RoleOpenDir, "code $0")))
-	ws.SaveSection(intentsSection, map[Intent]IntentSpec{
+	ws.SaveSection(intentsSection, map[Intent]intentSeed{
 		IntentDir:      {DefaultOpener: "finder", Openers: []string{"finder", "code"}},
 		IntentTerminal: {Openers: []string{"finder"}},
 	})
@@ -321,13 +349,13 @@ func TestDeleteOpenerCleansIntents(t *testing.T) {
 	if err := s.DeleteOpener(Opener{Name: "finder"}); err != nil {
 		t.Fatalf("删除 opener 失败: %v", err)
 	}
-	specs := s.loadIntents()
-	if d, ok := specs[IntentDir]; !ok || d.DefaultOpener != "" || len(d.Openers) != 1 || d.Openers[0] != "code" {
+	infos := intentInfoMap(s.intentInfos())
+	if d := infos[IntentDir]; d.DefaultOpener != "" || len(d.Openers) != 1 || d.Openers[0] != "code" {
 		t.Fatalf("dir 引用应清理为 {无默认, [code]}, got %+v", d)
 	}
-	// terminal 只剩 finder 引用，清空后整键删除
-	if _, ok := specs[IntentTerminal]; ok {
-		t.Fatalf("terminal 应整键删除, got %+v", specs[IntentTerminal])
+	// terminal 唯一引用 finder 被清后成为空条目（落盘时整条省略）
+	if d := infos[IntentTerminal]; d.DefaultOpener != "" || len(d.Openers) != 0 {
+		t.Fatalf("terminal 应清为空条目, got %+v", d)
 	}
 }
 
