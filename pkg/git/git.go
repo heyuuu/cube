@@ -108,24 +108,23 @@ func PushAllTags(dir string, remote string, force bool) error {
 	return Run(dir, args...)
 }
 
-// Pull 快进合并 remote 的指定分支到当前分支（git pull --ff-only remote ref）。
-// 仅快进：本地与远端分叉时 git 报错退出，不产生 merge commit、不动工作区。
-func Pull(dir string, remote string, ref string) error {
-	return Run(dir, "pull", "--ff-only", remote, ref)
+// MergeFfOnly 在 dir 把当前分支快进到 ref（git merge --ff-only <ref>）。
+// dir 必须是 ref 指向分支的检出工作树——merge 只作用于 cwd 所属工作树的当前分支。
+// 不联网：ref 通常是刚刷新过的 remote 跟踪分支（如 origin/main）。
+func MergeFfOnly(dir string, ref string) error {
+	return Run(dir, "merge", "--ff-only", ref)
 }
 
-// FetchIntoBranch 把 remote 上的指定分支快进更新到本地同名分支
-// （git fetch remote branch:branch）。
-//
-// 用于批量更新非当前分支（当前分支 git 不允许 fetch 直接更新，须走 Pull）。
-// 仅快进：本地有领先提交时 git 拒绝写入，不会覆盖本地工作。
-func FetchIntoBranch(dir string, remote string, branch string) error {
-	return Run(dir, "fetch", remote, branch+":"+branch)
+// FastForwardFromTracking 用本地 remote-tracking 快进未检出的本地分支
+// （git fetch . remote/branch:branch）。与 FetchIntoBranch 的差别：源是
+// 本地对象库（已 Fetch 过），无网络往返；refspec 无 + 前缀，非快进拒绝写入。
+func FastForwardFromTracking(dir string, remote string, branch string) error {
+	return Run(dir, "fetch", ".", remote+"/"+branch+":"+branch)
 }
 
 // Fetch 从指定 remote 拉取最新 refs 到 remote-tracking（不动本地分支与工作区）。
-// 供 push/pull 展示真实的 ahead/behind 前刷新比较基准；网络失败返回错误，
-// 调用方降级为「不显示差异数字」即可，不应阻断主流程。
+// 用途：push 刷新 ahead/behind 展示基准（失败降级为不显示差异数字，不阻断）；
+// pull 的唯一网络步骤（失败即终止——后续本地快进全靠它提供数据）。
 func Fetch(dir string, remote string) error {
 	_, err := runOut(dir, "fetch", remote)
 	return err

@@ -45,68 +45,11 @@ ref 默认勾选当前分支；执行前展示推送计划并二次确认。
 --yes 跳过最终确认。单条 push 失败不中断，最后汇总结果。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			// 定位 git 仓库主工作树根（worktree 归并）
-			path := xslices.Get(args, 0)
-			repoPath, err := resolveGitRoot(path)
-			if err != nil {
-				return err
+			err := pushFlow(xslices.Get(args, 0), remotes, refs, force, yes)
+			if errors.Is(err, tui.ErrUserAborted) {
+				return nil
 			}
-
-			// 收集 remote / refs 候选
-			repoRemotes, err := git.Remotes(repoPath)
-			if err != nil {
-				return fmt.Errorf("读取 remote 列表失败: %w", err)
-			}
-			if len(repoRemotes) == 0 {
-				return errors.New("仓库未配置任何 remote，无可推送目标")
-			}
-
-			headRef := git.HeadRef(repoPath)
-			repoRefs, err := git.Refs(repoPath)
-			if err != nil {
-				return fmt.Errorf("读取 ref 列表失败: %w", err)
-			}
-
-			// 选择 remote（flag 优先，否则 TUI 多选，默认全选）
-			chosenRemotes, err := pickRemotes(repoRemotes, remotes)
-			if err != nil {
-				if errors.Is(err, tui.ErrUserAborted) {
-					return nil
-				}
-				return err
-			}
-			if len(chosenRemotes) == 0 {
-				return errors.New("未选择任何 remote")
-			}
-
-			// 选择 ref（flag 优先，否则 TUI 多选，默认当前分支；标签带各 remote 的真实 ahead/behind）
-			chosenRefs, err := pickRefs(repoPath, repoRefs, headRef, chosenRemotes, refs)
-			if err != nil {
-				if errors.Is(err, tui.ErrUserAborted) {
-					return nil
-				}
-				return err
-			}
-			if len(chosenRefs) == 0 {
-				return errors.New("未选择任何分支/tag")
-			}
-
-			// 展示推送计划 + 二次确认
-			if !yes {
-				ok, err := confirmPlan(repoPath, chosenRemotes, chosenRefs, force)
-				if err != nil {
-					if errors.Is(err, tui.ErrUserAborted) {
-						return nil
-					}
-					return err
-				}
-				if !ok {
-					return nil
-				}
-			}
-
-			// 执行：remote 外层、ref 内层，逐条 push 并汇总结果
-			return runPush(repoPath, chosenRemotes, chosenRefs, force)
+			return err
 		},
 	}
 	cmd.Flags().StringArrayVarP(&remotes, "remote", "r", nil, "目标 remote（可多次指定，默认交互多选）")
@@ -114,6 +57,63 @@ ref 默认勾选当前分支；执行前展示推送计划并二次确认。
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "强制推送（使用 --force-with-lease）")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "跳过最终确认，直接推送")
 	return cmd
+}
+
+// pushFlow 推送主流程：定位仓库 → 收集候选 → 选 remote/ref → 确认 → 逐条推送。
+// 交互取消（ErrUserAborted）上抛，由 RunE 统一转 nil。
+func pushFlow(path string, flagRemotes []string, flagRefs []string, force bool, yes bool) error {
+	// 定位 git 仓库主工作树根（worktree 归并）
+	repoPath, err := resolveGitRoot(path)
+	if err != nil {
+		return err
+	}
+
+	// 收集 remote / refs 候选
+	repoRemotes, err := git.Remotes(repoPath)
+	if err != nil {
+		return fmt.Errorf("读取 remote 列表失败: %w", err)
+	}
+	if len(repoRemotes) == 0 {
+		return errors.New("仓库未配置任何 remote，无可推送目标")
+	}
+
+	headRef := git.HeadRef(repoPath)
+	repoRefs, err := git.Refs(repoPath)
+	if err != nil {
+		return fmt.Errorf("读取 ref 列表失败: %w", err)
+	}
+
+	// 选择 remote（flag 优先，否则 TUI 多选，默认全选）
+	chosenRemotes, err := pickRemotes(repoRemotes, flagRemotes)
+	if err != nil {
+		return err
+	}
+	if len(chosenRemotes) == 0 {
+		return errors.New("未选择任何 remote")
+	}
+
+	// 选择 ref（flag 优先，否则 TUI 多选，默认当前分支；标签带各 remote 的真实 ahead/behind）
+	chosenRefs, err := pickRefs(repoPath, repoRefs, headRef, chosenRemotes, flagRefs)
+	if err != nil {
+		return err
+	}
+	if len(chosenRefs) == 0 {
+		return errors.New("未选择任何分支/tag")
+	}
+
+	// 展示推送计划 + 二次确认
+	if !yes {
+		ok, err := confirmPlan(repoPath, chosenRemotes, chosenRefs, force)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return nil
+		}
+	}
+
+	// 执行：remote 外层、ref 内层，逐条 push 并汇总结果
+	return runPush(repoPath, chosenRemotes, chosenRefs, force)
 }
 
 // pickRemotes 决定要推送的 remote 集合：flag 显式指定优先，否则 TUI 多选（默认全选）。
@@ -136,7 +136,8 @@ func pickRemotes(all []git.Remote, flagRemotes []string) ([]git.Remote, error) {
 // refAllTags 候选哨兵值：代表一次性推送全部本地 tag（git push --tags），非真实 git ref。
 const refAllTags = "--tags"
 
-// pickRefs 决定要推送的 ref 集合：flag 显式指定优先，否则 TUI 多选（默认当前分支）。
+// pickRefs 决定要推送的 ref 集合：flag 显式指定优先（校验存在于本地，重复去重），
+// 否则 TUI 多选（默认当前分支）。
 //   - 候选 = 本地分支 + 一条「全部 tags」合并项（tag 数量随时间线性增长，逐条列出
 //     只会让候选列表越来越长，故合并成 refAllTags 一项整体推送）。
 //   - 默认勾选当前分支（若存在）。
@@ -145,7 +146,10 @@ const refAllTags = "--tags"
 //     fetch 失败（网络不通等）打警告降级为不显示，不阻断选择。
 func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remotes []git.Remote, flagRefs []string) ([]string, error) {
 	if len(flagRefs) > 0 {
-		return flagRefs, nil
+		if err := validateFlagRefs(refs, flagRefs); err != nil {
+			return nil, err
+		}
+		return xslices.Unique(flagRefs), nil
 	}
 	if !tui.IsTTY() {
 		return nil, errors.New("非交互环境(tty)下必须通过 --ref 指定分支/tag")
@@ -210,6 +214,26 @@ func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remotes []g
 		result[i] = it.ref
 	}
 	return result, nil
+}
+
+// validateFlagRefs 校验 flag 指定的 ref 存在于本地（分支/tag 的短名或全名，或 --tags 哨兵）。
+// 拼错即时报错，不等到逐条 push 网络执行后才由 git 报错（对齐 pull 的候选校验）。
+func validateFlagRefs(refs *git.RefsResult, flagRefs []string) error {
+	valid := make(map[string]bool, len(refs.Locals)+len(refs.Tags))
+	for _, r := range refs.Locals {
+		valid[r.Name] = true
+		valid[r.ShortName] = true
+	}
+	for _, t := range refs.Tags {
+		valid[t.Name] = true
+		valid[t.ShortName] = true
+	}
+	for _, r := range flagRefs {
+		if r != refAllTags && !valid[r] {
+			return fmt.Errorf("未找到本地分支/tag: %s", r)
+		}
+	}
+	return nil
 }
 
 // aheadBehindSuffix 生成分支标签的 ahead/behind 后缀（真实值，依赖调用方已 fetch）。

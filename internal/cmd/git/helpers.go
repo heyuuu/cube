@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xslices"
+
 	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 )
@@ -28,14 +30,15 @@ func resolveGitRoot(path string) (string, error) {
 	return root, nil
 }
 
-// resolveRemotesByName 把 flag 传入的 remote 名解析成 git.Remote（找不到则报错）。
+// resolveRemotesByName 把 flag 传入的 remote 名解析成 git.Remote
+// （找不到则报错；重名去重，避免 -r x -r x 同一 remote 重复执行）。
 func resolveRemotesByName(all []git.Remote, names []string) ([]git.Remote, error) {
 	byName := make(map[string]git.Remote, len(all))
 	for _, r := range all {
 		byName[r.Name] = r
 	}
 	var result []git.Remote
-	for _, n := range names {
+	for _, n := range xslices.Unique(names) {
 		r, ok := byName[n]
 		if !ok {
 			return nil, fmt.Errorf("未找到 remote: %s（可用: %s）", n, joinRemoteNames(all))
