@@ -5,9 +5,10 @@ package git
 // 执行核与错误约定见 run.go。
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -212,7 +213,7 @@ func RemoteTags(path string, remote string) ([]RemoteTag, error) {
 		return nil, err
 	}
 	tags := parseLsRemoteTags(out)
-	sort.Slice(tags, func(i, j int) bool { return tags[i].Name < tags[j].Name })
+	slices.SortFunc(tags, func(a, b RemoteTag) int { return cmp.Compare(a.Name, b.Name) })
 	return tags, nil
 }
 
