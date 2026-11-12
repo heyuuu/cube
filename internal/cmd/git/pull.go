@@ -82,12 +82,9 @@ func pullFlow(path string, flagRemote string, flagRefs []string, yes bool) error
 
 	// 先 fetch 一次刷新 remote-tracking：候选的领先/落后与后续本地快进都以它为
 	// 数据源（唯一网络往返）；失败即终止——没有新数据的拉取没有意义
-	fmt.Printf("正在 fetch %s ...", chosenRemote.Name)
-	if err := git.Fetch(repoPath, chosenRemote.Name); err != nil {
-		fmt.Println(" 失败")
-		return fmt.Errorf("fetch %s 失败: %w", chosenRemote.Name, err)
+	if err = doFetch(repoPath, chosenRemote); err != nil {
+		return err
 	}
-	fmt.Println(" 完成")
 
 	// 候选分支：与该 remote 同名的本地分支及各自领先/落后数、检出位置
 	currentBranch := git.CurrentBranch(repoPath)

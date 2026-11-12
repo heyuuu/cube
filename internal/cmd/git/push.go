@@ -131,14 +131,10 @@ func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remote git.
 		return nil, errors.New("非交互环境(tty)下必须通过 --ref 指定分支/tag")
 	}
 
-	fmt.Printf("正在 fetch %s ...", remote.Name)
-	fetched := false
-	if err := git.Fetch(repoPath, remote.Name); err != nil {
-		fmt.Printf(" 失败，ahead/behind 可能不准: %v\n", err)
-	} else {
-		fmt.Println(" 完成")
-		fetched = true
+	if err := doFetch(repoPath, remote); err != nil {
+		return nil, err
 	}
+
 	// fetch 后重读 refs，拿到最新 remote-tracking；远端没有同名分支的显示 ↑0 ↓0 会误导（像是已同步），跳过
 	remoteBranches := map[string]map[string]bool{}
 	if fresh, err := git.Refs(repoPath); err == nil {
@@ -151,7 +147,7 @@ func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remote git.
 	}
 	var items []refItem
 	for _, ref := range refs.Locals {
-		items = append(items, refItem{label: "branch: " + ref.ShortName + aheadBehindSuffix(repoPath, ref.ShortName, remote, fetched, remoteBranches), ref: ref.Name})
+		items = append(items, refItem{label: "branch: " + ref.ShortName + aheadBehindSuffix(repoPath, ref.ShortName, remote, remoteBranches), ref: ref.Name})
 	}
 	if len(refs.Tags) > 0 {
 		items = append(items, refItem{
@@ -212,8 +208,8 @@ func validateFlagRefs(refs *git.RefsResult, flagRefs []string) error {
 
 // aheadBehindSuffix 生成分支标签的 ahead/behind 后缀（真实值，依赖调用方已 fetch）。
 // 远端没有同名分支、或 fetch 失败时返回空串——显示 ↑0 ↓0 会误导为已同步。
-func aheadBehindSuffix(repoPath, branch string, remote git.Remote, fetched bool, remoteBranches map[string]map[string]bool) string {
-	if !fetched || !remoteBranches[branch][remote.Name] {
+func aheadBehindSuffix(repoPath, branch string, remote git.Remote, remoteBranches map[string]map[string]bool) string {
+	if !remoteBranches[branch][remote.Name] {
 		return ""
 	}
 	ahead, behind, _ := git.AheadBehindRemote(repoPath, branch, remote.Name, branch)

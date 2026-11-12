@@ -73,3 +73,15 @@ func joinRemoteNames(remotes []git.Remote) string {
 	}
 	return strings.Join(names, ", ")
 }
+
+func doFetch(repoPath string, remote git.Remote) error {
+	// 先 fetch 一次刷新 remote-tracking：候选的领先/落后与后续本地快进都以它为
+	// 数据源（唯一网络往返）；失败即终止——没有新数据的拉取没有意义
+	fmt.Printf("正在 fetch %s ...", remote.Name)
+	if err := git.Fetch(repoPath, remote.Name); err != nil {
+		fmt.Println(" 失败")
+		return fmt.Errorf("fetch %s 失败: %w", remote.Name, err)
+	}
+	fmt.Println(" 完成")
+	return nil
+}
