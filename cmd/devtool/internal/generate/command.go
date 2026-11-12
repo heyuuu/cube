@@ -13,7 +13,7 @@ import (
 // internal/cmd/root.go 与组入口 cmd.go 的注入锚点（与源文件内标记保持一致，改一侧须同步另一侧）
 const (
 	subCmdMarker = "/* <<subcommand inject point>> */"
-	rootCmdFile  = "internal/cmd/root.go"
+	rootCmdFile  = "internal/cmd/cmd.go"
 )
 
 // genCommand 生成命令脚手架并注入注册点：
