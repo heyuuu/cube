@@ -64,25 +64,29 @@ func checkCloneRules(service *project.Service) {
 	var rows [][]string
 	for _, p := range projects {
 		info := service.Snapshot(p.Path())
-		repoURL := ""
-		if info != nil {
-			repoURL = info.OriginURL()
+		if info == nil {
+			continue
 		}
+
+		repoURL := info.OriginURL()
 		if repoURL == "" {
 			continue
 		}
 
 		_, localPath, ok := service.MatchCloneRule(repoURL)
+		if !ok || localPath == p.Path() {
+			continue
+		}
 
 		// 有预期本地路径，但和目前实际路径不符合的情况下
-		if ok && p.Path() != localPath {
-			rows = append(rows, []string{
-				p.Name(),
-				cmdutil.PrettyPath(p.Path()),
-				cmdutil.PrettyPath(localPath),
-				repoURL,
-			})
-		}
+		styledReal, styledExpected := tui.DiffLine(p.Path(), localPath)
+
+		rows = append(rows, []string{
+			p.Name(),
+			cmdutil.PrettyPath(styledReal),
+			cmdutil.PrettyPath(styledExpected),
+			repoURL,
+		})
 	}
 
 	if len(rows) == 0 {
