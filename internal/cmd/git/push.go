@@ -72,15 +72,7 @@ func pushFlow(path string, flagRemote string, flagRefs []string, force bool, yes
 		return err
 	}
 
-	// 收集 remote / refs 候选
-	repoRemotes, err := git.Remotes(repoPath)
-	if err != nil {
-		return fmt.Errorf("读取 remote 列表失败: %w", err)
-	}
-	if len(repoRemotes) == 0 {
-		return errors.New("仓库未配置任何 remote，无可推送目标")
-	}
-
+	// 收集 refs 候选
 	headRef := git.HeadRef(repoPath)
 	repoRefs, err := git.Refs(repoPath)
 	if err != nil {
@@ -88,7 +80,7 @@ func pushFlow(path string, flagRemote string, flagRefs []string, force bool, yes
 	}
 
 	// 选择目标 remote（同 pull：flag 优先 → 单 remote 自动 → 多 remote 手选）
-	chosenRemote, err := pickRemote(repoRemotes, flagRemote, "选择目标 remote")
+	chosenRemote, err := pickRemote(repoPath, flagRemote)
 	if err != nil {
 		return err
 	}

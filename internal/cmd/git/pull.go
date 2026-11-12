@@ -74,17 +74,8 @@ func pullFlow(path string, flagRemote string, flagRefs []string, yes bool) error
 		return err
 	}
 
-	// 收集 remote 列表
-	repoRemotes, err := git.Remotes(repoPath)
-	if err != nil {
-		return fmt.Errorf("读取 remote 列表失败: %w", err)
-	}
-	if len(repoRemotes) == 0 {
-		return errors.New("仓库未配置任何 remote，无可拉取来源")
-	}
-
 	// 单选来源 remote（flag 优先 → 单 remote 自动 → 多 remote 手选，与 push 共用）
-	chosenRemote, err := pickRemote(repoRemotes, flagRemote, "选择拉取来源 remote")
+	chosenRemote, err := pickRemote(repoPath, flagRemote)
 	if err != nil {
 		return err
 	}

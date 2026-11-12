@@ -1,7 +1,9 @@
 package git
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"cube/internal/cmd/cmdutil"
@@ -29,32 +31,36 @@ func resolveGitRoot(path string) (string, error) {
 	return root, nil
 }
 
-// resolveRemoteByName 把 flag 传入的 remote 名解析成 git.Remote（找不到则报错）。
-func resolveRemoteByName(all []git.Remote, name string) (git.Remote, error) {
-	byName := make(map[string]git.Remote, len(all))
-	for _, r := range all {
-		byName[r.Name] = r
-	}
-	r, ok := byName[name]
-	if !ok {
-		return git.Remote{}, fmt.Errorf("未找到 remote: %s（可用: %s）", name, joinRemoteNames(all))
-	}
-	return r, nil
-}
-
 // pickRemote 决定目标 remote：flag 指定优先；仅 1 个自动选中；多个时交互单选
-// （push/pull 每次只面对一个 remote，title 传入场景文案）。
-func pickRemote(all []git.Remote, flagRemote string, title string) (git.Remote, error) {
+// （push/pull 每次只面对一个 remote，remote 列表的收集也收敛在此）。
+func pickRemote(repoPath string, flagRemote string) (git.Remote, error) {
+	var zero git.Remote
+
+	remotes, err := git.Remotes(repoPath)
+	if err != nil {
+		return zero, fmt.Errorf("读取 remote 列表失败: %w", err)
+	}
+
+	// 指定了 --remote 参数的情况
 	if flagRemote != "" {
-		return resolveRemoteByName(all, flagRemote)
+		index := slices.IndexFunc(remotes, func(r git.Remote) bool { return r.Name == flagRemote })
+		if index < 0 {
+			return zero, fmt.Errorf("未找到 remote: %s（可用: %s）", flagRemote, joinRemoteNames(remotes))
+		}
+		return remotes[index], nil
 	}
-	if len(all) == 1 {
-		return all[0], nil
+
+	// 未指定 --remote 参数的情况
+	if len(remotes) == 0 {
+		return zero, errors.New("仓库未配置任何 remote，无任何可选远端")
+	} else if len(remotes) == 1 {
+		return remotes[0], nil
 	}
+
 	if !tui.IsTTY() {
-		return git.Remote{}, fmt.Errorf("非交互环境(tty)下必须通过 --remote 指定 remote（可选: %s）", joinRemoteNames(all))
+		return zero, fmt.Errorf("非交互环境(tty)下必须通过 --remote 指定 remote（可选: %s）", joinRemoteNames(remotes))
 	}
-	return tui.SelectItem(title, all, func(r git.Remote) string {
+	return tui.SelectItem("选择远端 remote", remotes, func(r git.Remote) string {
 		return fmt.Sprintf("%s  (%s)", r.Name, r.Fetch)
 	})
 }
