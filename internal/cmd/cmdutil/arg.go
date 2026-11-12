@@ -31,5 +31,5 @@ func AsPathArg(arg string) (string, error) {
 		return "", errors.New("空字符串无法作为路径参数，如果想表示当前目录请使用 `.`")
 	}
 
-	return "", fmt.Errorf("路径参数必须是绝对路径或以 . / ~ 开头的相对路径，你希望的参数是不是: ./%s", arg)
+	return "", fmt.Errorf("路径参数必须是绝对路径或以 . 开头的相对路径，你希望的参数是不是: ./%s", arg)
 }

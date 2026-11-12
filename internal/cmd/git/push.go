@@ -34,7 +34,7 @@ func newPushCmd() *cobra.Command {
 		Short: "把选中的分支/tag 批量推送到多个 remote",
 		Long: `把多个分支 / tag 批量推送到多个 remote。
 
-path 指定目标 git 仓库（绝对路径或 ./ ~/ 等前缀的相对路径，裸短名不识别；
+path 指定目标 git 仓库（绝对路径或以 . 开头的相对路径，裸短名不识别；
 不传为当前目录；linked worktree 归并到主工作树根），不要求是 cube 已收录的项目。
 
 remote 与 ref 默认通过 TUI 多选交互确认：remote 默认全选，

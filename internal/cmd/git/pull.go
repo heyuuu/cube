@@ -32,7 +32,7 @@ func newPullCmd() *cobra.Command {
 		Short: "从选中的 remote 批量快进更新本地分支",
 		Long: `从单个 remote 批量拉取更新选中的分支（push 的反向命令）。
 
-path 指定目标 git 仓库（绝对路径或 ./ ~/ 等前缀的相对路径，裸短名不识别；
+path 指定目标 git 仓库（绝对路径或以 . 开头的相对路径，裸短名不识别；
 不传为当前目录；linked worktree 归并到主工作树根），不要求是 cube 已收录的项目。
 
 remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选。
