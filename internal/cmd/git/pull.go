@@ -83,8 +83,8 @@ func pullFlow(path string, flagRemote string, flagRefs []string, yes bool) error
 		return errors.New("仓库未配置任何 remote，无可拉取来源")
 	}
 
-	// 单选来源 remote（flag 优先 → 单 remote 自动 → 多 remote 手选）
-	chosenRemote, err := pickPullRemote(repoRemotes, flagRemote)
+	// 单选来源 remote（flag 优先 → 单 remote 自动 → 多 remote 手选，与 push 共用）
+	chosenRemote, err := pickRemote(repoRemotes, flagRemote, "选择拉取来源 remote")
 	if err != nil {
 		return err
 	}
@@ -171,27 +171,6 @@ func pullCandidates(repoPath string, remoteName string) ([]branchDiff, error) {
 		diffs = append(diffs, branchDiff{Branch: b, Ahead: ahead, Behind: behind, CheckedOutAt: checkedOut[b]})
 	}
 	return diffs, nil
-}
-
-// pickPullRemote 决定拉取来源 remote：flag 指定优先；仅 1 个自动选中；
-// 多个时交互单选（pull 一次只面对一个 remote，与 push 的多选不同）。
-func pickPullRemote(all []git.Remote, flagRemote string) (git.Remote, error) {
-	if flagRemote != "" {
-		rs, err := resolveRemotesByName(all, []string{flagRemote})
-		if err != nil {
-			return git.Remote{}, err
-		}
-		return rs[0], nil
-	}
-	if len(all) == 1 {
-		return all[0], nil
-	}
-	if !tui.IsTTY() {
-		return git.Remote{}, fmt.Errorf("非交互环境(tty)下必须通过 --remote 指定 remote（可选: %s）", joinRemoteNames(all))
-	}
-	return tui.SelectItem("选择拉取来源 remote", all, func(r git.Remote) string {
-		return fmt.Sprintf("%s  (%s)", r.Name, r.Fetch)
-	})
 }
 
 // pickPullBranches 决定待拉取的分支集合：flag 显式指定优先（校验属于候选，重复去重），
