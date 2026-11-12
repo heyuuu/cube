@@ -30,17 +30,17 @@ func newPathCmd(a *app.App) *cobra.Command {
 
 			// 判断 intent（目录 → dir，文件 → file），不带 -o 时用默认 opener
 			intent := opener.IntentFile
-			role := opener.RoleOpenFile
 			if isDir {
-				intent, role = opener.IntentDir, opener.RoleOpenDir
+				intent = opener.IntentDir
 			}
+
 			pick, err := cmdutil.PickOpener(a.OpenerService(), intent, openerName)
 			if err != nil {
 				return err
 			}
 
 			// 打开
-			if err := a.OpenerService().Open(*pick, role, path); err != nil {
+			if err := a.OpenerService().Open(*pick, intent.Role(), path); err != nil {
 				return fmt.Errorf("打开失败: %w", err)
 			}
 			return nil

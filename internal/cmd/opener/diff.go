@@ -40,12 +40,10 @@ func newDiffCmd(a *app.App) *cobra.Command {
 			if isDir1 != isDir2 {
 				return fmt.Errorf("两个路径类型不一致：%s 的 isDir=%v，%s 的 isDir=%v", args[0], isDir1, args[1], isDir2)
 			}
-			var intent opener.Intent
-			var role opener.Role
+
+			intent := opener.IntentDiffFile
 			if isDir1 {
-				intent, role = opener.IntentDiffDir, opener.RoleDiffDir
-			} else {
-				intent, role = opener.IntentDiffFile, opener.RoleDiffFile
+				intent = opener.IntentDiffDir
 			}
 
 			// 选 opener（不带 -o 时用该 intent 的默认）
@@ -58,7 +56,7 @@ func newDiffCmd(a *app.App) *cobra.Command {
 			}
 
 			// 打开
-			if err := a.OpenerService().Open(*pick, role, path1, path2); err != nil {
+			if err := a.OpenerService().Open(*pick, intent.Role(), path1, path2); err != nil {
 				return fmt.Errorf("打开对比软件失败: %w", err)
 			}
 			return nil
