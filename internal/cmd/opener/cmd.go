@@ -11,12 +11,12 @@ import (
 func NewCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "opener",
-		Aliases: []string{"o"},
+		Aliases: []string{"o", "open"},
 	}
 
 	cmd.AddCommand(newListCmd(a)) // list
+	cmd.AddCommand(newPathCmd(a)) // path
 	cmd.AddCommand(newDiffCmd(a)) // diff
-	cmd.AddCommand(newOpenCmd(a)) // open
 
 	/* <<subcommand inject point>> */
 

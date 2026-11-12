@@ -10,11 +10,11 @@ import (
 	"cube/internal/domain/opener"
 )
 
-// newOpenCmd `cube opener open` 命令。
-func newOpenCmd(a *app.App) *cobra.Command {
+// newPathCmd `cube opener path` 命令。
+func newPathCmd(a *app.App) *cobra.Command {
 	var openerName string
 	cmd := &cobra.Command{
-		Use:   "open <path> [-o|--opener=打开工具名]",
+		Use:   "path <path> [-o|--opener=打开工具名]",
 		Short: "用 opener 打开路径（按 dir/file 自动选 intent）",
 		Long: `用 opener 打开任意路径，不限于已收录的项目。
 

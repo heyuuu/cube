@@ -141,7 +141,7 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 		// opener
 		"openers":   "opener list",
 		"diff":      "opener diff",
-		"open-path": "opener open",
+		"open-path": "opener path",
 		// git
 		"push": "git push",
 		"pull": "git pull",
