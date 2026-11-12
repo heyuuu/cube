@@ -111,7 +111,7 @@ func parseCliTpl(cliTpl string) (sourceRef string, tplName string, err error) {
 	}
 
 	// 本地路径：./ ~/ / 开头
-	if absPath, ok := cmdutil.AsPathQuery(cliTpl); ok {
+	if absPath, err := cmdutil.AsPathArg(cliTpl); err == nil {
 		return absPath, "", nil
 	}
 

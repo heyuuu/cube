@@ -3,9 +3,7 @@ package cmdutil
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"path/filepath"
-	"strings"
 
 	"github.com/heyuuu/x/xstd/xos"
 
@@ -14,45 +12,17 @@ import (
 	"cube/pkg/tui"
 )
 
-// IsPathQuery 判断 query 是否为路径, 仅以下情况满足
-// - ".", "..", "~"
-// - 以 "./", "../", "~/", "/" 开头
-func IsPathQuery(query string) bool {
-	if len(query) == 0 {
-		return false
-	}
-
-	prefix, _, _ := strings.Cut(query, "/")
-	return prefix == "." || prefix == ".." || prefix == "~" || prefix == ""
-}
-
-// AsPathQuery 尝试作为路径 query 参数，成功返回 (绝对路径, true)
-func AsPathQuery(query string) (string, bool) {
-	if !IsPathQuery(query) {
-		return "", false
-	}
-
-	// 用 ExtendPath 而非 filepath.Abs：~ 前缀需展开为 home，domain 只接受绝对路径
-	abs, err := ExtendPath(query)
-	if err != nil {
-		slog.Warn("尝试解析 query 路径失败", "query", query, "err", err)
-		return "", false
-	}
-
-	return abs, true
-}
-
 // SearchProjects 搜索项目列表
-// - query 为路径时（IsPathQuery 判断）列出该路径之下的项目; 否则, query 作为项目名模糊搜索
+// - query 为路径时（IsPathArg 判断）列出该路径之下的项目; 否则, query 作为项目名模糊搜索
 func SearchProjects(service *project.Service, query string) []*project.Project {
-	if absPath, ok := AsPathQuery(query); ok {
+	if absPath, err := AsPathArg(query); err == nil {
 		return service.SearchInPath(absPath)
 	}
 	return service.SearchByName(query)
 }
 
 // PickProject 根据关键词匹配项目：精确匹配直接返回，多项匹配则交互选择
-// - query 为路径时（IsPathQuery 判断）返回目录处于哪个项目之中; 否则, query 作为项目名模糊搜索
+// - query 为路径时（IsPathArg 判断）返回目录处于哪个项目之中; 否则, query 作为项目名模糊搜索
 // - 非交互环境不支持多项选择，会报错提示使用精确名称或路径
 // - --local 模式下 query 缺省视作 "."，以 cwd 为起点定位项目; 显式给了 query 则不干预，--local 对其无效果。
 func PickProject(service *project.Service, query string, localMode bool) (*project.Project, error) {
@@ -61,7 +31,7 @@ func PickProject(service *project.Service, query string, localMode bool) (*proje
 	}
 
 	// 按路径查找项目
-	if absPath, ok := AsPathQuery(query); ok {
+	if absPath, err := AsPathArg(query); err == nil {
 		if proj := service.ResolveProject(absPath); proj != nil {
 			return proj, nil
 		}

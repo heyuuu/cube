@@ -15,9 +15,9 @@ func resolveGitRoot(path string) (string, error) {
 		path = "."
 	}
 
-	absPath, err := cmdutil.ExtendPath(path)
+	absPath, err := cmdutil.AsPathArg(path)
 	if err != nil {
-		return "", fmt.Errorf("尝试解析 path 路径失败: %w", err)
+		return "", err
 	}
 
 	root, ok := git.FindMainRoot(absPath)

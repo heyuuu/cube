@@ -59,7 +59,7 @@ query 支持两种搜索模式：
 
 			// 获取参数绝对路径，后面显示用
 			var queryPath string
-			if absPath, ok := cmdutil.AsPathQuery(query); ok {
+			if absPath, err := cmdutil.AsPathArg(query); err == nil {
 				queryPath = absPath
 			}
 
