@@ -16,6 +16,10 @@ type Opener struct {
 	Icon    *icons.Icon     `json:"icon,omitempty"`  // 图标声明（前端渲染方式），缺省无图标
 }
 
+func openerName(o Opener) string {
+	return o.Name
+}
+
 func validateOpener(spec Opener) (Opener, error) {
 	var zero Opener
 
@@ -59,6 +63,12 @@ func (o Opener) Roles() []Role {
 		}
 	}
 	return roles
+}
+
+// SupportsRole 判断是否支持指定 Role
+func (o Opener) SupportsRole(role Role) bool {
+	_, ok := o.Actions[role]
+	return ok
 }
 
 // Summary 展示串（CLI 表格 / alfred 副标题 / Web DTO）：

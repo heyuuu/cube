@@ -2,10 +2,8 @@ package opener
 
 import (
 	"fmt"
-	"log/slog"
 	"slices"
 
-	"github.com/heyuuu/x/store"
 	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/config"
@@ -16,7 +14,7 @@ import (
 // Service opener 领域服务：openers 节现读（直读不缓存，改完即生效）+ 模糊检索。
 type Service struct {
 	openersStore     OpenersStore
-	intentSpecsStore store.Store[map[Intent]IntentSpec]
+	intentInfosStore IntentInfosStore
 	executor         Executor // Open 启动子进程的执行器（环境归属 Service；测试经 NewServiceWithExecutor 注入 fake）
 	baseURL          string   // 站内路由基地址（如 http://127.0.0.1:6001），装配注入
 }
@@ -33,11 +31,20 @@ func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
 		executor = NewDefaultExecutor()
 	}
 	openersStore := newOpenersStore(cfg.SettingsFile())
-	intentSpecsStore := store.SectionStore[map[Intent]IntentSpec](cfg.SettingsFile(), intentsSection)
+	intentInfosStore := newIntentInfosStore(cfg.SettingsFile())
+
+	// opener 配置变更时触发 intent 移除不合法数据
+	openersStore.OnChange(func(openers []Opener) error {
+		intentInfos, changed := normalizeIntentInfos(intentInfosStore.All(), openers)
+		if changed {
+			return intentInfosStore.SaveAll(intentInfos)
+		}
+		return nil
+	})
 
 	return &Service{
 		openersStore:     openersStore,
-		intentSpecsStore: intentSpecsStore,
+		intentInfosStore: intentInfosStore,
 		executor:         executor,
 		baseURL:          server.BaseURL(cfg.Server),
 	}
@@ -103,138 +110,68 @@ func (s *Service) SaveOpener(spec Opener) error {
 // 均按此序），前端拖拽排序落库走这里。逐项构造校验 + name 查重，任一失败整体不落盘；
 // 读侧不可见的坏条目随覆盖丢弃。被移除的 opener 连带清理 openerIntents 引用（同 DeleteOpener）。
 func (s *Service) SaveAllOpeners(specs []Opener) error {
-	if err := s.openersStore.SaveAll(specs); err != nil {
-		return err
-	}
-	kept := make(map[string]bool, len(specs))
-	for _, spec := range specs {
-		kept[spec.Name] = true
-	}
-	return s.pruneIntentRefs(func(name string) bool { return !kept[name] })
+	return s.openersStore.SaveAll(specs)
 }
 
 // DeleteOpener 按唯一键（name）删除一条 opener；未命中幂等成功。
 func (s *Service) DeleteOpener(spec Opener) error {
-	if err := s.openersStore.Delete(spec); err != nil {
-		return err
-	}
-	return s.pruneIntentRefs(func(n string) bool { return n == spec.Name })
+	return s.openersStore.Delete(spec)
 }
 
-// pruneIntentRefs 清理 openerIntents 节中对已移除 opener 的引用（默认 + 候选），
-// 避免悬挂引用；清空后的 intent 条目整条删除。
-func (s *Service) pruneIntentRefs(removed func(name string) bool) error {
-	intents := s.loadIntents()
-	dirty := false
-	for intent, spec := range intents {
-		if spec.DefaultOpener != "" && removed(spec.DefaultOpener) {
-			spec.DefaultOpener = ""
-			dirty = true
-		}
-		if slices.ContainsFunc(spec.Openers, removed) {
-			spec.Openers = xslices.Filter(spec.Openers, func(n string) bool { return !removed(n) })
-			dirty = true
-		}
-		if spec.DefaultOpener == "" && len(spec.Openers) == 0 {
-			delete(intents, intent)
-		} else {
-			intents[intent] = spec
-		}
-	}
-	if dirty {
-		return s.intentSpecsStore.Save(intents)
-	}
-	return nil
+// 返回原始的全部意图状态（固定序）
+func (s *Service) intentInfos() []IntentInfo {
+	return s.intentInfosStore.All()
 }
 
-// loadIntents 现读 openerIntents 节为 map[Intent]IntentSpec（恒非 nil，调用方可直接写入）。
-// 读侧校验（坏条目跳过 + slog.Warn）：未知 intent 键跳过。
-func (s *Service) loadIntents() map[Intent]IntentSpec {
-	raw := s.intentSpecsStore.LoadOrZero()
-
-	out := make(map[Intent]IntentSpec, len(raw))
-	for key, spec := range raw {
-		intent, err := ParseIntent(string(key))
-		if err != nil {
-			slog.Warn("openerIntents 节存在未知 intent，已跳过", "intent", key)
-			continue
-		}
-		out[intent] = spec
+// 获取指定 intent 的信息
+func (s *Service) intentInfo(intent Intent) (IntentInfo, error) {
+	var zero IntentInfo
+	if _, err := ParseIntent(string(intent)); err != nil {
+		return zero, err
 	}
-	return out
+
+	info, ok := s.intentInfosStore.Find(string(intent))
+	if !ok {
+		return zero, fmt.Errorf("未配置 intent %s", intent)
+	}
+
+	return info, nil
 }
 
-// validateIntentOpener 校验 opener 可服务该 intent：存在 + 声明了 intent 对应的 role。
-// exists=false 表示 opener 不在 openers 节中。
-func validateIntentOpener(intent Intent, o *Opener) error {
-	role := intent.Role()
-	if o == nil {
-		return fmt.Errorf("opener 不存在，无法作为 %s 的默认", intent)
-	}
-	if !slices.Contains(o.Roles(), role) {
-		return fmt.Errorf("opener %s 未声明 %s，不能作为 %s 的默认", o.Name, role, intent)
-	}
-	return nil
-}
-
-// Intents 合成全部意图状态（固定序）：每个 intent 给出默认 opener 与候选清单。
-// 读侧双重校验：defaultOpener / openers 成员失效（不存在或 role 不符）时跳过该条并
-// slog.Warn；openers 缺省回退为「声明了对应 role 的全部 opener」（按 openers 节的顺序）。
+// Intents 合成全部意图状态（固定序），原始数据的业务封装
+// 目前仅做了缺省候选, openers 缺省回退为「声明了对应 role 的全部 opener」
 func (s *Service) Intents() []IntentInfo {
-	specs := s.loadIntents()
-	byName := make(map[string]*Opener)
-	for _, o := range s.openers() {
-		byName[o.Name] = &o
-	}
+	infos := s.intentInfosStore.All()
 
-	out := make([]IntentInfo, 0, len(intentOrder))
-	for _, intent := range intentOrder {
-		spec := specs[intent]
-		info := IntentInfo{Intent: intent, Openers: []string{}}
-
-		if spec.DefaultOpener != "" {
-			o := byName[spec.DefaultOpener]
-			if err := validateIntentOpener(intent, o); err != nil {
-				slog.Warn("openerIntents 默认 opener 失效，已忽略", "intent", intent, "opener", spec.DefaultOpener, "err", err)
-			} else {
-				info.DefaultOpener = spec.DefaultOpener
-			}
-		}
-
-		if len(spec.Openers) > 0 {
-			for _, name := range spec.Openers {
-				o := byName[name]
-				if err := validateIntentOpener(intent, o); err != nil {
-					slog.Warn("openerIntents 候选 opener 失效，已跳过", "intent", intent, "opener", name, "err", err)
-					continue
-				}
-				info.Openers = append(info.Openers, name)
-			}
-		} else {
+	for i, info := range infos {
+		if len(info.Openers) == 0 {
 			// 缺省候选 = 声明了对应 role 的全部 opener（openers 节顺序）
-			for _, o := range s.RoleOpeners(intent.Role()) {
-				info.Openers = append(info.Openers, o.Name)
-			}
+			role := info.Intent.Role()
+			infos[i].Openers = xslices.Map(s.RoleOpeners(role), openerName)
 		}
-		out = append(out, info)
 	}
-	return out
+
+	return infos
 }
 
 // DefaultOpener 返回该 intent 的默认 opener；未配置或失效时返回中文错误
 // （CLI 不带 -o 时直接走这里，报错即引导用户去配置）。
 func (s *Service) DefaultOpener(intent Intent) (*Opener, error) {
-	if _, err := ParseIntent(string(intent)); err != nil {
+	info, err := s.intentInfo(intent)
+	if err != nil {
 		return nil, err
 	}
-	specs := s.loadIntents()
-	spec, ok := specs[intent]
-	if !ok || spec.DefaultOpener == "" {
-		return nil, fmt.Errorf("intent %s 未配置默认 opener（settings.json 的 openerIntents 节或 Web 设置页配置）", intent)
+
+	if info.DefaultOpener == "" {
+		return nil, fmt.Errorf("intent %s 未配置默认 opener", intent)
 	}
-	o := s.FindByName(spec.DefaultOpener)
-	if err := validateIntentOpener(intent, o); err != nil {
-		return nil, fmt.Errorf("intent %s 的默认 opener 失效: %w", intent, err)
+
+	o := s.FindByName(info.DefaultOpener)
+	if o == nil {
+		return nil, fmt.Errorf("intent %s 的默认 opener 不存在: %s", intent, info.DefaultOpener)
+	}
+	if !o.SupportsRole(intent.Role()) {
+		return nil, fmt.Errorf("intent %s 的默认 opener 并不支持此 intent: %s", intent, info.DefaultOpener)
 	}
 	return o, nil
 }
@@ -242,35 +179,36 @@ func (s *Service) DefaultOpener(intent Intent) (*Opener, error) {
 // SaveIntentDefault 设置某 intent 的默认 opener。写侧校验：intent 合法 + opener
 // 存在且声明了对应 role（必死配置不落盘）；其余条目原样保留。
 func (s *Service) SaveIntentDefault(intent Intent, openerName string) error {
-	if _, err := ParseIntent(string(intent)); err != nil {
-		return err
-	}
-	if err := validateIntentOpener(intent, s.FindByName(openerName)); err != nil {
+	info, err := s.intentInfo(intent)
+	if err != nil {
 		return err
 	}
 
-	specs := s.loadIntents()
-	spec := specs[intent]
-	spec.DefaultOpener = openerName
-	specs[intent] = spec
-	return s.intentSpecsStore.Save(specs)
+	o := s.FindByName(openerName)
+	if o == nil {
+		return fmt.Errorf("opener %s 不存在，无法作为 %s 的默认", openerName, intent)
+	}
+	if !o.SupportsRole(intent.Role()) {
+		return fmt.Errorf("opener %s 并不支持 intent %s 的 role(%s)", openerName, intent, intent.Role())
+	}
+
+	info.DefaultOpener = openerName
+	return s.intentInfosStore.Save(info)
 }
 
 // DeleteIntentDefault 清除某 intent 的默认 opener（候选 openers 清单如有则保留）。
+// 幂等，若之前未配置默认 opener 也不会报错
 func (s *Service) DeleteIntentDefault(intent Intent) error {
-	if _, err := ParseIntent(string(intent)); err != nil {
+	info, err := s.intentInfo(intent)
+	if err != nil {
 		return err
 	}
-	specs := s.loadIntents()
-	spec, ok := specs[intent]
-	if !ok || spec.DefaultOpener == "" {
-		return fmt.Errorf("intent %s 未配置默认 opener", intent)
+
+	// 无需修改的情况
+	if info.DefaultOpener == "" {
+		return nil
 	}
-	spec.DefaultOpener = ""
-	if len(spec.Openers) == 0 {
-		delete(specs, intent)
-	} else {
-		specs[intent] = spec
-	}
-	return s.intentSpecsStore.Save(specs)
+
+	info.DefaultOpener = ""
+	return s.intentInfosStore.Save(info)
 }

@@ -3,6 +3,8 @@ package opener
 import (
 	"fmt"
 	"strings"
+
+	"github.com/heyuuu/x/xstd/xslices"
 )
 
 // Intent 打开意图（场景枚举，开放增长）：defaults（openerIntents 节）的键空间，
@@ -74,15 +76,40 @@ func intentNames() []string {
 	return parts
 }
 
-// IntentSpec settings.json openerIntents 节内单个意图的存储形状。
-type IntentSpec struct {
-	DefaultOpener string   `json:"defaultOpener,omitempty"` // 默认 opener 名（须存在且声明对应 role）
-	Openers       []string `json:"openers,omitempty"`       // 该意图的候选 opener（可选；缺省 = 声明了对应 role 的全部 opener）
-}
-
 // IntentInfo intents API 的输出条目：合成后的意图状态（默认 + 候选清单）。
 type IntentInfo struct {
 	Intent        Intent
 	DefaultOpener string
 	Openers       []string
+}
+
+// 规范化处理 []IntentInfo，仅保留合法值
+func normalizeIntentInfos(infos []IntentInfo, openers []Opener) (result []IntentInfo, changed bool) {
+	openerMap := xslices.ToMap(openers, func(o Opener) (string, *Opener) { return o.Name, &o })
+	// 检验 openerName 是否有效，如果无效则修改为空字符串
+	normalizeOpener := func(intent Intent, openerName string) string {
+		if openerName == "" {
+			return ""
+		}
+		if o := openerMap[openerName]; o != nil && o.SupportsRole(intent.Role()) {
+			return openerName
+		}
+
+		changed = true
+		return ""
+	}
+
+	result = make([]IntentInfo, len(infos))
+	for i, info := range infos {
+		intent := info.Intent
+		result[i] = IntentInfo{
+			Intent:        intent,
+			DefaultOpener: normalizeOpener(intent, info.DefaultOpener),
+			Openers: xslices.FilterMap(info.Openers, func(openerName string) (string, bool) {
+				openerName = normalizeOpener(intent, openerName)
+				return openerName, openerName != ""
+			}),
+		}
+	}
+	return result, changed
 }
