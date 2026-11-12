@@ -133,6 +133,79 @@ func TestRefs_NonRepo(t *testing.T) {
 	}
 }
 
+// TestRemoteTags ls-remote 实查远端 tag：与本地 refs/tags 两套口径——远端独有的
+// tag 可见、本地独有的不出现；annotated tag 双行合并（Sha≠Commit），轻量 tag 同值。
+func TestRemoteTags(t *testing.T) {
+	ws := newTestWorkspace(t)
+	// 远端仓库：轻量 v1.0 / v9 + annotated rel-1.0
+	src := ws.MakeGitRepoWith("src", GitRepoSpec{Branch: "main", Tags: []string{"v1.0", "v9"}})
+	directGit(t, src, "tag", "-a", "rel-1.0", "-m", "annotated")
+
+	repo := ws.MakeGitRepo("repo")
+	directAddRemote(t, repo, "origin", src)
+	// 本地独有 tag 只进 refs/tags，不应出现在远端查询结果里
+	directGit(t, repo, "tag", "local-only")
+
+	tags, err := RemoteTags(repo, "origin")
+	if err != nil {
+		t.Fatalf("RemoteTags 出错: %v", err)
+	}
+	var names []string
+	byName := make(map[string]RemoteTag)
+	for _, tag := range tags {
+		names = append(names, tag.Name)
+		byName[tag.Name] = tag
+	}
+	if !reflect.DeepEqual(names, []string{"rel-1.0", "v1.0", "v9"}) {
+		t.Fatalf("远端 tag 名 = %v（按名排序，不含本地独有 local-only）", names)
+	}
+	rel := byName["rel-1.0"]
+	if rel.Sha == rel.Commit || len(rel.Sha) != 40 || len(rel.Commit) != 40 {
+		t.Fatalf("annotated tag 应 Sha≠Commit（tag 对象 / 剥壳 commit）: %+v", rel)
+	}
+	if v := byName["v1.0"]; v.Sha != v.Commit || len(v.Sha) != 40 {
+		t.Fatalf("轻量 tag 应 Sha==Commit: %+v", v)
+	}
+}
+
+// TestRemoteTags_NonRepoAndBadRemote 非仓库降级 (nil,nil)；不存在的 remote 名
+// 被 git 当作路径解析失败，报真实错误而非静默空清单。
+func TestRemoteTags_NonRepoAndBadRemote(t *testing.T) {
+	ws := newTestWorkspace(t)
+	if tags, err := RemoteTags(ws.Mkdir("empty"), "origin"); err != nil || tags != nil {
+		t.Fatalf("非仓库应返回 (nil,nil)，实际 (%v,%v)", tags, err)
+	}
+	repo := ws.MakeGitRepo("repo")
+	if _, err := RemoteTags(repo, "no-such-remote"); err == nil {
+		t.Fatal("不存在的 remote 名应报错")
+	}
+}
+
+// TestParseLsRemoteTags 解析 `ls-remote --tags` 输出：剥壳行回填 Commit、
+// 孤剥壳行与坏行跳过、空输出为 nil。
+func TestParseLsRemoteTags(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want []RemoteTag
+	}{
+		{"空输出", "", nil},
+		{"轻量 tag 单行", "abc\trefs/tags/v1.0\n",
+			[]RemoteTag{{Name: "v1.0", Sha: "abc", Commit: "abc"}}},
+		{"annotated 双行合并", "tagobj\trefs/tags/r\ncommit\trefs/tags/r^{}\n",
+			[]RemoteTag{{Name: "r", Sha: "tagobj", Commit: "commit"}}},
+		{"孤剥壳行跳过", "commit\trefs/tags/x^{}\n", nil},
+		{"无 tab 坏行跳过", "garbage\n", nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := parseLsRemoteTags(c.in); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("parseLsRemoteTags(%q) = %+v，期望 %+v", c.in, got, c.want)
+			}
+		})
+	}
+}
+
 // TestRefs_UpstreamTrack Refs 单进程顺带取回本地分支的 upstream 跟踪信息：
 // 分叉分支的 ahead/behind、同步分支零值、upstream 指向已删远端分支的 gone。
 func TestRefs_UpstreamTrack(t *testing.T) {

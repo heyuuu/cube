@@ -1,11 +1,13 @@
 package git
 
-// ref 查询：本地与远程分支 / tag / 默认分支 / HEAD 与父提交 / ahead-behind。
-// remote 配置查询（remote -v）在 remote.go。执行核与错误约定见 run.go。
+// ref 查询：本地与远程分支 / tag（本地 refs 与远端 ls-remote 实查）/ 默认分支 /
+// HEAD 与父提交 / ahead-behind。remote 配置查询（remote -v）在 remote.go。
+// 执行核与错误约定见 run.go。
 
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -186,6 +188,60 @@ func Refs(path string) (*RefsResult, error) {
 	// 整体 TrimSpace 会把末行的分隔符一起咬掉，造成末行字段错位
 	result := BuildRefs(strings.Split(strings.TrimRight(out, "\n"), "\n"))
 	return result, nil
+}
+
+// RemoteTag 远端仓库的一条 tag（RemoteTags 的 ls-remote 实时查询结果）。
+type RemoteTag struct {
+	Name   string `json:"name"`   // tag 短名（refs/tags/ 前缀已剥）
+	Sha    string `json:"sha"`    // ref 直接指向的对象（annotated tag 为 tag 对象本身）
+	Commit string `json:"commit"` // 剥壳后的 commit；轻量 tag 与 Sha 相同
+}
+
+// RemoteTags 实时查询 remote 端的 tag 清单（git ls-remote --tags <remote>，走网络）。
+// 与 Refs().Tags 是两套口径：Refs 读本地 refs/tags/*（上次 fetch 留下的副本），
+// 本函数问远端「现在」有什么——可发现远端独有、本地未 fetch 的 tag；本地独有
+// tag 反之不会出现在结果里。annotated tag 的双行输出（tag 对象 + ^{} 剥壳
+// commit）合并为一条。结果按名字排序。非仓库返回 (nil, nil)；remote 名不存在、
+// 网络失败等报真实错误，由调用方决定降级。
+func RemoteTags(path string, remote string) ([]RemoteTag, error) {
+	if !isGitRepo(path) {
+		return nil, nil
+	}
+	out, err := runOut(path, "ls-remote", "--tags", remote)
+	if err != nil {
+		return nil, err
+	}
+	tags := parseLsRemoteTags(out)
+	sort.Slice(tags, func(i, j int) bool { return tags[i].Name < tags[j].Name })
+	return tags, nil
+}
+
+// lsRemotePeelSuffix annotated tag 剥壳行（refs/tags/x^{}）的后缀，指向 commit。
+const lsRemotePeelSuffix = "^{}"
+
+// parseLsRemoteTags 解析 `git ls-remote --tags` 输出，每行 "<sha>\trefs/tags/<name>"；
+// annotated tag 额外带剥壳行 "<commit>\trefs/tags/<name>^{}"，回填进同名条目的
+// Commit 字段。无法解析的行跳过。
+func parseLsRemoteTags(out string) []RemoteTag {
+	index := make(map[string]int) // tag 名 → tags 下标，剥壳行回填 Commit 用
+	var tags []RemoteTag
+	for _, line := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
+		sha, refname, ok := strings.Cut(line, "\t")
+		if !ok {
+			continue
+		}
+		peeled := strings.HasSuffix(refname, lsRemotePeelSuffix)
+		name := strings.TrimPrefix(strings.TrimSuffix(refname, lsRemotePeelSuffix), RefTagsPrefix)
+		if peeled {
+			if i, ok := index[name]; ok {
+				tags[i].Commit = sha
+			}
+			continue
+		}
+		index[name] = len(tags)
+		tags = append(tags, RemoteTag{Name: name, Sha: sha, Commit: sha})
+	}
+	return tags
 }
 
 // HeadRef 返回 HEAD 指向的 ref 全名。正常为 refs/heads/*；git 只强制 HEAD 在
