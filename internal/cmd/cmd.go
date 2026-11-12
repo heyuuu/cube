@@ -21,7 +21,6 @@ import (
 	"cube/internal/cmd/server"
 	"cube/internal/cmd/tpl"
 	"cube/internal/cmd/ui"
-	"cube/internal/cmd/workspace"
 	"cube/internal/config"
 	"cube/internal/logger"
 	"cube/internal/version"
@@ -58,13 +57,13 @@ func newRootCmd(a *app.App) *cobra.Command {
 		Long: `cube —— 面向个人开发者的本地多项目管理工具（Web UI 优先，CLI 简单可行兜底）。
 
 命令按领域分组：
-  - 项目：list(列表) info(详情) open(打开) init/clone(初始化) check(检查)
+  - 项目：list(列表) info(详情) open(打开) init/clone(初始化) config(项目配置) check(检查)
   - opener：openers(列表) open-path(打开路径) diff(对比)
   - git：push(批量推送) pull(批量拉取)
   - Web：server(本地服务) ui(打开 Web UI) openapi(导出 API spec)
 
 配置默认在 ~/.config/cube/（dev 为 cube-dev），全局 flag --config 可覆盖配置文件路径，--debug 开 debug 日志。
---local 让 query 缺省的命令（info/open/path/workspace init）以当前目录定位项目，
+--local 让 query 缺省的命令（info/open/path/project config）以当前目录定位项目，
 等同在命令末尾补 query 为 "."。`,
 		// 惰性装配：命令真正执行前才 Init（config→logger→app），
 		// --help / 未知命令等不触发 RunE 的路径全程零装配。
@@ -107,8 +106,7 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(ui.NewCmd(a))     // ui 相关 (打开具体页面)
 
 	// project 相关
-	cmd.AddCommand(project.NewCmd(a))   // project 相关
-	cmd.AddCommand(workspace.NewCmd(a)) // 项目 workspace 管理(项目 .cube/cube.json 管理)
+	cmd.AddCommand(project.NewCmd(a)) // project 相关
 
 	// tpl 相关
 	cmd.AddCommand(tpl.NewCmd(a))

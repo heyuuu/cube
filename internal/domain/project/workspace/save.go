@@ -32,7 +32,7 @@ func SaveRules(root string, rules []cubefile.WorkspaceRule) error {
 		rules = []cubefile.WorkspaceRule{}
 	}
 	for _, rule := range rules {
-		if err := validateRule(rule); err != nil {
+		if err := ValidateRule(rule); err != nil {
 			return err
 		}
 	}
@@ -44,8 +44,9 @@ func Reset(root string) error {
 	return cubefile.ResetWorkspaceRules(root)
 }
 
-// validateRule 规则结构校验：path 必填、相对、不逃逸出根。
-func validateRule(rule cubefile.WorkspaceRule) error {
+// ValidateRule 规则结构校验：path 必填、相对、不逃逸出根。
+// 供 SaveRules 写侧校验与调用方（如 `project config` 添加规则）的输入期校验共用。
+func ValidateRule(rule cubefile.WorkspaceRule) error {
 	if rule.Path == "" {
 		return errors.New("workspace 规则缺 path")
 	}

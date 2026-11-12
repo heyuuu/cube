@@ -29,7 +29,7 @@ var defaultWorkspaceDeclares = []WorkspaceRule{
 // LoadWorkspaceRules 读取当前根（项目根或 worktree 根）的 workspace 规则。
 // 节/文件缺失时返回默认配置；其他异常返回空结果避免过多干扰影响。
 func LoadWorkspaceRules(root string) []WorkspaceRule {
-	rules, err := store.LoadSection[[]WorkspaceRule](path(root), workspaceSection)
+	rules, err := store.LoadSection[[]WorkspaceRule](FilePath(root), workspaceSection)
 	if err == nil {
 		return rules
 	} else if store.IsStoreMissing(err) { // 配置不存在时
@@ -43,17 +43,17 @@ func LoadWorkspaceRules(root string) []WorkspaceRule {
 // WorkspaceRulesDeclared 报告 workspaces 节是否已显式声明
 // （文件/节缺失或坏 JSON 均为 false——坏 JSON 时规则读侧同样降级为空）。
 func WorkspaceRulesDeclared(root string) bool {
-	_, err := store.LoadSection[[]WorkspaceRule](path(root), workspaceSection)
+	_, err := store.LoadSection[[]WorkspaceRule](FilePath(root), workspaceSection)
 	return err == nil
 }
 
 // SaveWorkspaceRules 保存当前根的 workspace 规则（整节覆盖，未知节由 store 保留；
 // nil 会删节——空清单请传初始化过的切片）。
 func SaveWorkspaceRules(root string, declares []WorkspaceRule) error {
-	return store.SaveSection(path(root), workspaceSection, declares)
+	return store.SaveSection(FilePath(root), workspaceSection, declares)
 }
 
 // ResetWorkspaceRules 重置当前根的 workspace 配置(删除段以走默认逻辑)
 func ResetWorkspaceRules(root string) error {
-	return store.DeleteSection(path(root), workspaceSection)
+	return store.DeleteSection(FilePath(root), workspaceSection)
 }

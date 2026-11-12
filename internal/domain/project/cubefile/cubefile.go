@@ -13,6 +13,7 @@ import (
 
 const cubeFileName = ".cube/cube.json"
 
-func path(root string) string {
+// FilePath 返回 root 的 cube.json 文件路径（供展示与提示引用；节级读写走各节 API）。
+func FilePath(root string) string {
 	return filepath.Join(root, cubeFileName)
 }
