@@ -66,6 +66,26 @@ func TestDiffLine(t *testing.T) {
 			wantNew:  "新增内容",
 			newGreen: "新增内容",
 		},
+		{
+			// 裸 LCS 会以中间重复的 0 为锚点拆出红30/白0/红0 碎块，
+			// 合并后应是一整段红/绿。
+			name:     "重复字符不拆碎块",
+			old:      "server.port = 3000",
+			new:      "server.port = 8080",
+			wantOld:  "server.port = 3000",
+			wantNew:  "server.port = 8080",
+			oldRed:   "300",
+			newGreen: "808",
+		},
+		{
+			name:     "超长输入走前后缀截断路径",
+			old:      strings.Repeat("a", 1100) + "X",
+			new:      strings.Repeat("a", 1100) + "Y",
+			wantOld:  strings.Repeat("a", 1100) + "X",
+			wantNew:  strings.Repeat("a", 1100) + "Y",
+			oldRed:   "X",
+			newGreen: "Y",
+		},
 	}
 
 	for _, tt := range tests {
@@ -133,6 +153,21 @@ func TestDiffSegments(t *testing.T) {
 			new:          "不同步",
 			wantOldSpans: []diffSpan{{"未", true}, {"同步", false}},
 			wantNewSpans: []diffSpan{{"不", true}, {"同步", false}},
+		},
+		{
+			// 共同的 o 夹在变更之间，应并入两侧，整词标红/标绿。
+			name:         "夹在变更间的短公共段并入",
+			old:          "Code",
+			new:          "work",
+			wantOldSpans: []diffSpan{{"Code", true}},
+			wantNewSpans: []diffSpan{{"work", true}},
+		},
+		{
+			name:         "多个短公共段一并并入",
+			old:          "e bug now",
+			new:          "at issue later",
+			wantOldSpans: []diffSpan{{"e bug now", true}},
+			wantNewSpans: []diffSpan{{"at issue later", true}},
 		},
 	}
 
