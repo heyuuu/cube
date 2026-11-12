@@ -32,8 +32,8 @@ func newIntentInfosStore(settingsFile string) IntentInfosStore {
 		Openers       []string `json:"openers,omitempty"`
 	}
 
-	// 内部存储，持久化存储为 map[Intent]Spec，内存中为 []IntentInfo
-	// 此处仅数据结构转换，不在此校验
+	// 存储细节压缩在此：落盘为 map[Intent]Spec（稀疏，空条目省略），内存为
+	// []IntentInfo（稠密固定序）；此处只做形状转换，校验在写边界与 OnChange 级联
 	s := store.WrapperStore[map[Intent]Spec, []IntentInfo](
 		store.SectionStore[map[Intent]Spec](settingsFile, intentsSection),
 		func(m map[Intent]Spec) ([]IntentInfo, error) {

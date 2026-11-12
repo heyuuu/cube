@@ -11,7 +11,7 @@ import (
 	"cube/pkg/fuzzy"
 )
 
-// Service opener 领域服务：openers 节现读（直读不缓存，改完即生效）+ 模糊检索。
+// Service opener 领域服务：openers / openerIntents 两节现读（直读不缓存，改完即生效）+ 模糊检索。
 type Service struct {
 	openersStore     OpenersStore
 	intentInfosStore IntentInfosStore
@@ -33,7 +33,7 @@ func NewServiceWithExecutor(cfg *config.Config, executor Executor) *Service {
 	openersStore := newOpenersStore(cfg.SettingsFile())
 	intentInfosStore := newIntentInfosStore(cfg.SettingsFile())
 
-	// opener 配置变更时触发 intent 移除不合法数据
+	// openers 节每次落盘后级联清理 intents 失效引用（Save/SaveAll/Delete 共用此通道）
 	openersStore.OnChange(func(openers []Opener) error {
 		intentInfos, changed := normalizeIntentInfos(intentInfosStore.All(), openers)
 		if changed {
@@ -118,12 +118,13 @@ func (s *Service) DeleteOpener(spec Opener) error {
 	return s.openersStore.Delete(spec)
 }
 
-// 返回原始的全部意图状态（固定序）
+// intentInfos 现读全部意图条目（稠密固定序；不含 Intents() 的缺省候选合成）。
 func (s *Service) intentInfos() []IntentInfo {
 	return s.intentInfosStore.All()
 }
 
-// 获取指定 intent 的信息
+// intentInfo 取单个意图条目（先校验 intent 合法）。稠密存储下合法 intent 恒存在，
+// 「未配置」分支实际不可达，仅作 Find 契约的防御。
 func (s *Service) intentInfo(intent Intent) (IntentInfo, error) {
 	var zero IntentInfo
 	if _, err := ParseIntent(string(intent)); err != nil {
@@ -138,14 +139,14 @@ func (s *Service) intentInfo(intent Intent) (IntentInfo, error) {
 	return info, nil
 }
 
-// Intents 合成全部意图状态（固定序），原始数据的业务封装
-// 目前仅做了缺省候选, openers 缺省回退为「声明了对应 role 的全部 opener」
+// Intents 返回全部意图状态（固定序）。唯一的读侧合成是缺省候选：openers 为空时
+// 回退为「声明了对应 role 的全部 opener」（openers 节顺序）；失效引用不在读侧
+// 过滤——清理收敛在 openers 落盘的 OnChange 级联，失效默认由 DefaultOpener 调用时校验。
 func (s *Service) Intents() []IntentInfo {
 	infos := s.intentInfosStore.All()
 
 	for i, info := range infos {
 		if len(info.Openers) == 0 {
-			// 缺省候选 = 声明了对应 role 的全部 opener（openers 节顺序）
 			role := info.Intent.Role()
 			infos[i].Openers = xslices.Map(s.RoleOpeners(role), openerName)
 		}
@@ -196,15 +197,14 @@ func (s *Service) SaveIntentDefault(intent Intent, openerName string) error {
 	return s.intentInfosStore.Save(info)
 }
 
-// DeleteIntentDefault 清除某 intent 的默认 opener（候选 openers 清单如有则保留）。
-// 幂等，若之前未配置默认 opener 也不会报错
+// DeleteIntentDefault 清除某 intent 的默认 opener（候选 openers 清单如有则保留）；
+// 幂等——未配置默认时也不报错。
 func (s *Service) DeleteIntentDefault(intent Intent) error {
 	info, err := s.intentInfo(intent)
 	if err != nil {
 		return err
 	}
 
-	// 无需修改的情况
 	if info.DefaultOpener == "" {
 		return nil
 	}

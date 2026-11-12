@@ -7,7 +7,7 @@ import (
 	"github.com/heyuuu/x/xstd/xslices"
 )
 
-// Intent 打开意图（场景枚举，开放增长）：defaults（openerIntents 节）的键空间，
+// Intent 打开意图（场景枚举，开放增长）：openerIntents 节的键空间，
 // 由调用点按发起场景选定。每个 intent 必然映射唯一 role（intent 的动作模板与
 // 参数校验都由该 role 承载）；反之一个 role 可被多个 intent 复用
 // （terminal/git/workbench 都复用 open-dir 的动作声明）。
@@ -76,17 +76,20 @@ func intentNames() []string {
 	return parts
 }
 
-// IntentInfo intents API 的输出条目：合成后的意图状态（默认 + 候选清单）。
+// IntentInfo 意图状态的统一内存形状（默认 opener + 候选清单）：intent store 的
+// 内存形态与 Intents() 的输出条目共用。稠密列表（intentOrder 固定序，未配置的
+// intent 也在场），空条目落盘时整条省略。
 type IntentInfo struct {
 	Intent        Intent
 	DefaultOpener string
 	Openers       []string
 }
 
-// 规范化处理 []IntentInfo，仅保留合法值
+// normalizeIntentInfos 清理失效引用：默认/候选指向的 opener 不存在或不支持该
+// intent 的 role 即清为空，返回是否发生改动。由 openers 节落盘后的 OnChange
+// 级联调用（见 NewServiceWithExecutor），保证 intents 不悬挂引用。
 func normalizeIntentInfos(infos []IntentInfo, openers []Opener) (result []IntentInfo, changed bool) {
 	openerMap := xslices.ToMap(openers, func(o Opener) (string, *Opener) { return o.Name, &o })
-	// 检验 openerName 是否有效，如果无效则修改为空字符串
 	normalizeOpener := func(intent Intent, openerName string) string {
 		if openerName == "" {
 			return ""
