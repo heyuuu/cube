@@ -85,3 +85,16 @@ func doFetch(repoPath string, remote git.Remote) error {
 	fmt.Println(" 完成")
 	return nil
 }
+
+// buildRemoteBranchMap 把远程分支列表组织成 map[branch]set[remote]，便于 O(1) 查询
+// 「某 remote 是否有某分支」。
+func buildRemoteBranchMap(refs *git.RefsResult) map[string]map[string]bool {
+	m := make(map[string]map[string]bool)
+	for _, ref := range refs.Remotes {
+		if m[ref.Branch] == nil {
+			m[ref.Branch] = make(map[string]bool)
+		}
+		m[ref.Branch][ref.Remote] = true
+	}
+	return m
+}

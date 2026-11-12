@@ -7,7 +7,6 @@ import (
 	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 	"cube/pkg/tui"
 )
@@ -138,7 +137,7 @@ func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remote git.
 	// fetch 后重读 refs，拿到最新 remote-tracking；远端没有同名分支的显示 ↑0 ↓0 会误导（像是已同步），跳过
 	remoteBranches := map[string]map[string]bool{}
 	if fresh, err := git.Refs(repoPath); err == nil {
-		remoteBranches = cmdutil.BuildRemoteBranchMap(fresh)
+		remoteBranches = buildRemoteBranchMap(fresh)
 	}
 
 	type refItem struct {

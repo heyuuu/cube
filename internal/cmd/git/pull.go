@@ -8,7 +8,6 @@ import (
 	"github.com/heyuuu/x/xstd/xslices"
 	"github.com/spf13/cobra"
 
-	"cube/internal/cmd/cmdutil"
 	"cube/pkg/git"
 	"cube/pkg/tui"
 )
@@ -148,7 +147,7 @@ func pullCandidates(repoPath string, remoteName string) ([]branchDiff, error) {
 	}
 
 	// 候选 = 与指定 remote 同名的本地分支（其它 remote 的同名分支不参与）
-	remoteHasBranch := cmdutil.BuildRemoteBranchMap(repoRefs)
+	remoteHasBranch := buildRemoteBranchMap(repoRefs)
 	var diffs []branchDiff
 	for _, ref := range repoRefs.Locals {
 		b := ref.Branch
