@@ -26,21 +26,7 @@ func (s *Service) CheckTarget(targetPath string) error {
 // OpenSource 解析模板源引用为可用源：本地绝对路径直读（开发态）/ 名字查注册表
 // 临时 clone（发布态）。同时加载模板清单，非法源结构在此时报错（先于任何交互）。
 func (s *Service) OpenSource(sourceRef string) (*Source, error) {
-	dir, cleanup, err := loadSourceDir(sourceRef, s.TplSources())
-	if err != nil {
-		return nil, err
-	}
-
-	// 加载模板列表
-	templates, rootTpl, err := LoadSourceTemplates(dir)
-	if err != nil {
-		if cleanup != nil {
-			cleanup()
-		}
-		return nil, err
-	}
-
-	return &Source{dir: dir, cleanup: cleanup, templates: templates, rootTpl: rootTpl}, nil
+	return openSource(sourceRef, s.TplSources())
 }
 
 // Generate 渲染模板到 targetPath（vars 需已收集齐）并执行 init 命令，返回生成文件数。

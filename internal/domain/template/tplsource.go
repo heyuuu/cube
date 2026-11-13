@@ -20,15 +20,17 @@ type TplSource struct {
 // name 会进入 CLI 引用语法（@name/tpl），禁路径分隔符与空白等歧义字符。
 var tplSourceNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$`)
 
-// ValidateTplSource 校验一条模板源（写侧收敛，坏数据中文错误不落文件）。
-func ValidateTplSource(src TplSource) error {
+// normalizeTplSource 校验一条模板源（写侧收敛，坏数据中文错误不落文件）。
+func normalizeTplSource(src TplSource) (TplSource, error) {
+	src.Name = strings.TrimSpace(src.Name)
+	src.RepoURL = strings.TrimSpace(src.RepoURL)
 	if !tplSourceNamePattern.MatchString(strings.TrimSpace(src.Name)) {
-		return fmt.Errorf("source 名非法: %q（需字母或数字开头，仅含字母/数字/-/_，最长 32）", src.Name)
+		return src, fmt.Errorf("source 名非法: %q（需字母或数字开头，仅含字母/数字/-/_，最长 32）", src.Name)
 	}
 	if err := validateTplSourceURL(src.RepoURL); err != nil {
-		return err
+		return src, err
 	}
-	return nil
+	return src, nil
 }
 
 // validateTplSourceURL 校验 repoURL 是可 clone 的 git 地址：git@host:path / https://host:path /

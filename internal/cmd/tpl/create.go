@@ -21,8 +21,8 @@ import (
 // <模板源> 可省略（单参数形态 = 目标路径，默认源交互选模板），由首字符零歧义区分形态（提案 1045）：
 //  1. `@<source>/<tpl>` 命名源的指定模板；`@<source>` 命名源交互选模板（npm scope 式 @ 前缀）
 //  2. `<本地路径>`      . ~/ / 开头，直读模板目录（开发态：正在编辑的模板仓库）
-//  3. `<tpl>`           裸名，默认源 core 的指定模板
-//  4. 省略              默认源 core，交互选模板
+//  3. `<tpl>`           裸名，默认源 default 的指定模板
+//  4. 省略              默认源 default，交互选模板
 //
 // 用户交互（选模板/提问变量）收敛在本层：domain 只暴露无交互的分阶段 API
 // （CheckTarget → OpenSource → Source.Template → CheckVars → Generate）。
@@ -36,15 +36,15 @@ func newCreateCmd(a *app.App) *cobra.Command {
 --var key=value：模板变量，可多次。传未声明的变量报错，缺的交互提问。
 
 模板源（可省略）四种写法：
-  @core/go-service   命名源 core 的 go-service 模板（源在设置页「模板源」配置）
-  go-service         默认源 core 的 go-service 模板
+  @work/go-service   命名源 work 的 go-service 模板（源在设置页「模板源」配置）
+  go-service         默认源 default 的 go-service 模板
   ~/code/tpl-dev     本地模板目录直读（开发态：不 clone，吃未推送的改动；目录在 git 仓库内时按 .gitignore 过滤，与 clone 口径一致）
-  省略               默认源 core，交互选模板
+  省略               默认源 default，交互选模板
 
 示例：
   cube create ~/code/new-app                     # 默认源交互选模板
   cube create go-service ~/code/new-app --var author=heyu
-  cube create @core/go-service ~/code/new-app
+  cube create @work/go-service ~/code/new-app
   cube create @work ~/code/new-app
   cube create ~/code/tpl-dev ~/code/new-app`,
 		Args: cobra.RangeArgs(1, 2),
@@ -161,13 +161,13 @@ func parseCliTpl(cliTpl string) (sourceRef string, tplName string, err error) {
 
 	// 完全缺省（单参数形态）→ 默认源交互选模板
 	if cliTpl == "" {
-		return template.DefaultSource, "", nil
+		return template.DefaultSourceName, "", nil
 	}
 	// 裸名 → 默认源；带 / 的既非路径也非 @ 引用，提前拦截（否则要 clone 完才在模板查找处报错）
 	if strings.Contains(cliTpl, "/") {
 		return "", "", fmt.Errorf("命名源引用请用 @source/模板名 形式: %q", cliTpl)
 	}
-	return template.DefaultSource, cliTpl, nil
+	return template.DefaultSourceName, cliTpl, nil
 }
 
 // promptVars 收集模板变量：cliVars 优先；未提供的用 prompt 交互提问

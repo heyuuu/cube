@@ -101,7 +101,7 @@ export function TplSourceSection() {
   const [deleting, setDeleting] = useState<TplSource | null>(null);
 
   const list = sources.data?.list ?? [];
-  const defaultSource = sources.data?.defaultSource ?? 'core';
+  const defaultSource = sources.data?.defaultSource ?? 'default';
   // 拖拽排序 = 按新顺序整节提交（list 行与提交单项同构，原样回交）
   const d = useDragOrder(
     (s: TplSource) => s.name,

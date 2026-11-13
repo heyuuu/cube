@@ -35,7 +35,9 @@ func makeTplRepo(t *testing.T, ws *testfixture.Workspace) string {
 	return repo
 }
 
-func TestLoadSourceTemplates(t *testing.T) {
+// TestOpenDirSource 目录源两形态加载：根模板（template.yaml 在源根，唯一模板名固定）
+// 与模板库（templates/ 下含 meta 的子目录，过滤无 meta/.开头/非目录项）。
+func TestOpenDirSource(t *testing.T) {
 	sourcePath := makeTestDir(t, map[string]string{
 		// 正常项
 		"templates/go-cli/" + MetaFileName: "version: 1\n",
@@ -52,83 +54,87 @@ func TestLoadSourceTemplates(t *testing.T) {
 		"docs/readme.md":      "无关目录",
 	})
 
-	paths, isRoot, err := LoadSourceTemplates(sourcePath)
+	src, err := openDirSource(sourcePath)
 	if err != nil {
-		t.Fatalf("LoadSourceTemplates 报错: %v", err)
+		t.Fatalf("openDirSource 报错: %v", err)
 	}
 
-	if isRoot {
-		t.Fatal("templates/ 形态不应报告根模板")
+	// 模板库形态：无根模板名，清单只含合法模板目录
+	if src.RootTemplateName() != "" {
+		t.Fatalf("模板库形态 RootTemplateName 应为空, got %q", src.RootTemplateName())
 	}
-	if len(paths) != 2 {
-		t.Fatalf("模板数 = %d, want 2 (过滤无 meta/.开头/文件), got %v", len(paths), paths)
+	if names := src.Names(); len(names) != 2 || names[0] != "go-cli" || names[1] != "lib-a" {
+		t.Fatalf("模板清单不符: %v", names)
 	}
-	if paths["go-cli"] != filepath.Join(sourcePath, "templates/go-cli") {
-		t.Fatalf("go-cli 路径不符: %q", paths["go-cli"])
-	}
-	if _, ok := paths["lib-b"]; ok {
-		t.Fatal("无 template.yaml 的目录不应被识别为模板")
-	}
-	if _, ok := paths[".hidden"]; ok {
-		t.Fatal(". 开头目录应被跳过")
+	if got := src.templates["go-cli"]; got != filepath.Join(sourcePath, "templates/go-cli") {
+		t.Fatalf("go-cli 模板目录不符: %q", got)
 	}
 
-	// 根模板形态：template.yaml 在源根，源根即模板目录（值曾误存 meta 文件名，端到端必挂）
+	// 根模板形态：源根即模板目录（值曾误存 meta 文件名，端到端必挂）
 	rootPath := makeTestDir(t, map[string]string{
 		MetaFileName: "version: 1\n",
 		"main.go":    "package main",
 	})
-	rootPaths, isRoot, err := LoadSourceTemplates(rootPath)
+	rootSrc, err := openDirSource(rootPath)
 	if err != nil {
 		t.Fatalf("根模板形态加载报错: %v", err)
 	}
-	if !isRoot || len(rootPaths) != 1 || rootPaths[RootTplName] != rootPath {
-		t.Fatalf("根模板形态不符: isRoot=%v paths=%v want {%q: 源根}", isRoot, rootPaths, RootTplName)
+	if name := rootSrc.RootTemplateName(); name != RootTplName {
+		t.Fatalf("根模板名 = %q, want %q", name, RootTplName)
+	}
+	if got := rootSrc.templates[RootTplName]; got != rootPath {
+		t.Fatalf("根模板目录应为源根: %q", got)
+	}
+	if _, err := rootSrc.Template(RootTplName); err != nil {
+		t.Fatalf("根模板应可加载: %v", err)
 	}
 
-	// 不存在的 source 目录
-	if _, _, err := LoadSourceTemplates(filepath.Join(t.TempDir(), "missing")); err == nil || !strings.Contains(err.Error(), "不是合法模板来源") {
+	// 不存在的路径 / 不合法结构
+	if _, err := openDirSource(filepath.Join(t.TempDir(), "missing")); err == nil || !strings.Contains(err.Error(), "模板源路径不存在") {
+		t.Fatalf("不存在的路径应报中文错误, got %v", err)
+	}
+	if _, err := openDirSource(makeTestDir(t, map[string]string{"readme.md": "无结构"})); err == nil || !strings.Contains(err.Error(), "不是合法模板来源") {
 		t.Fatalf("期望“不是合法模板来源”错误, got %v", err)
 	}
 }
 
-// TestLoadSourceDir 三形态解析：本地路径直读 / 名字查注册表临时 clone / 未注册报错。
-func TestLoadSourceDir(t *testing.T) {
+// TestOpenSource 源引用两形态解析：本地路径直读（无 cleanup）/ 注册名查注册表临时 clone
+// （Cleanup 删临时目录）；未注册名中文报错。
+func TestOpenSource(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := makeTplRepo(t, ws)
-	sources := []TplSource{{Name: "core", RepoURL: repo}}
+	sources := []TplSource{{Name: "lib", RepoURL: repo}}
 
-	// 本地绝对路径：直读，无 cleanup
-	dir, cleanup, err := loadSourceDir(repo, sources)
-	if err != nil || dir != repo || cleanup != nil {
-		t.Fatalf("路径形态应直读原路径无 cleanup: dir=%s cleanup=%v err=%v", dir, cleanup != nil, err)
+	// 本地绝对路径：直读原路径，Cleanup 空操作
+	local, err := openSource(repo, sources)
+	if err != nil || local.dir != repo {
+		t.Fatalf("路径形态应直读原路径: dir=%s err=%v", local.dir, err)
+	}
+	local.Cleanup()
+	if _, err := os.Stat(repo); err != nil {
+		t.Fatalf("本地路径形态 Cleanup 不应删除原目录: %v", err)
 	}
 
 	// 不存在的本地路径
-	if _, _, err := loadSourceDir(filepath.Join(ws.Dir, "missing"), sources); err == nil || !strings.Contains(err.Error(), "模板源路径不存在") {
+	if _, err := openSource(filepath.Join(ws.Dir, "missing"), sources); err == nil || !strings.Contains(err.Error(), "模板源路径不存在") {
 		t.Fatalf("不存在的路径应报中文错误, got %v", err)
 	}
 
-	// 名字：查注册表 → 临时 clone，cleanup 后目录删除
-	cloned, cleanup, err := loadSourceDir("core", sources)
+	// 注册名：查注册表 → 临时 clone，Cleanup 后目录删除
+	cloned, err := openSource("lib", sources)
 	if err != nil {
 		t.Fatalf("命名源解析失败: %v", err)
 	}
-	if cloned == repo || !xos.IsDir(filepath.Join(cloned, "templates", "hello")) {
-		t.Fatalf("应 clone 到新目录且含模板: cloned=%s", cloned)
+	if cloned.dir == repo || !xos.IsDir(filepath.Join(cloned.dir, "templates", "hello")) {
+		t.Fatalf("应 clone 到新目录且含模板: %s", cloned.dir)
 	}
-	cleanup()
-	if _, err := os.Stat(cloned); !os.IsNotExist(err) {
-		t.Fatalf("cleanup 后临时目录应删除: %s, err=%v", cloned, err)
+	cloned.Cleanup()
+	if _, err := os.Stat(cloned.dir); !os.IsNotExist(err) {
+		t.Fatalf("Cleanup 后临时目录应删除: %s, err=%v", cloned.dir, err)
 	}
 
-	// 未注册名：中文错误；缺省源缺配置时附建议地址
-	_, _, err = loadSourceDir("work", sources)
-	if err == nil || !strings.Contains(err.Error(), "未找到指定模板源: work") || strings.Contains(err.Error(), DefaultSourceRepoURL) {
-		t.Fatalf("普通源未注册应报错且不含建议地址, got %v", err)
-	}
-	_, _, err = loadSourceDir("core", nil)
-	if err == nil || !strings.Contains(err.Error(), DefaultSourceRepoURL) {
-		t.Fatalf("缺省源未注册应附建议地址, got %v", err)
+	// 未注册名：中文错误
+	if _, err := openSource("work", sources); err == nil || !strings.Contains(err.Error(), "未找到指定模板源: work") {
+		t.Fatalf("未注册源应报错, got %v", err)
 	}
 }

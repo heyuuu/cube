@@ -3,6 +3,8 @@ package handlers
 import (
 	"strings"
 	"testing"
+
+	"cube/internal/domain/template"
 )
 
 // TestTplSourceListEmpty 空配置时 list 返回空数组（nil 切片序列化为 []）+ 默认源名。
@@ -14,8 +16,8 @@ func TestTplSourceListEmpty(t *testing.T) {
 	if out.List == nil || len(out.List) != 0 {
 		t.Fatalf("空配置应返回 []（nil 序列化）, got %#v", out.List)
 	}
-	if out.DefaultSource != "core" {
-		t.Fatalf("defaultSource 应为常量 core 的值, got %q", out.DefaultSource)
+	if out.DefaultSource != template.DefaultSourceName {
+		t.Fatalf("defaultSource 应为常量 %q 的值, got %q", template.DefaultSourceName, out.DefaultSource)
 	}
 }
 

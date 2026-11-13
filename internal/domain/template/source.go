@@ -2,8 +2,10 @@ package template
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/heyuuu/x/xstd/xmaps"
@@ -12,22 +14,39 @@ import (
 	"cube/pkg/git"
 )
 
-// DefaultSource 缺省模板源名（免配置即可 create 的体验兜底）。
-const DefaultSource = "core"
-
-// DefaultSourceRepoURL 缺省源的官方仓库地址（源缺配置时报错附建议用）。
-const DefaultSourceRepoURL = "git@github.com:heyuuu/cube-templates.git"
+// DefaultSourceName 缺省模板源名（免配置即可 create 的体验兜底）。
+const DefaultSourceName = "default"
 
 // RootTplName 根模板形态的模板名（template.yaml 在源根时整个源即一个模板，名固定，无选择语义）。
-const RootTplName = "default"
+const RootTplName = "<root>"
 
 // Source 已解析的可用模板源（本地路径直读或临时 clone 的仓库），含模板清单。
 // 用完须调用 Cleanup（临时 clone 目录删除；本地路径形态为空操作，可无条件 defer）。
 type Source struct {
 	dir       string
 	cleanup   func()
-	templates map[string]string // 模板名 → 模板目录（LoadSourceTemplates 口径）
+	templates map[string]string // 模板名 → 模板目录（loadSourceTemplates 口径）
 	rootTpl   bool              // 根模板形态（template.yaml 在源根，整个源即唯一模板）
+}
+
+func newSingleSource(dir string) *Source {
+	return &Source{
+		dir:       dir,
+		templates: map[string]string{RootTplName: dir},
+		rootTpl:   true,
+	}
+}
+
+func newLibrarySource(dir string, templates map[string]string) *Source {
+	return &Source{
+		dir:       dir,
+		templates: maps.Clone(templates),
+		rootTpl:   false,
+	}
+}
+
+func (s *Source) setCleanup(cleanup func()) {
+	s.cleanup = cleanup
 }
 
 // Cleanup 释放源占用的资源；幂等，本地路径形态为空操作。
@@ -62,41 +81,82 @@ func (s *Source) Template(name string) (*Template, error) {
 	return LoadTemplate(tplPath)
 }
 
-// loadSourceDir 解析 sourceRef 为可用的模板源目录，返回目录与 cleanup（非 nil 时用后须调用）。
-// sourceRef 两种形态：本地绝对路径直读（开发态，不 clone）；名字查注册表后临时 clone（发布态）。
-func loadSourceDir(sourceRef string, sources []TplSource) (dir string, cleanup func(), err error) {
+// 根据 sourceRef 构建模板源对象
+// sourceRef 两种形态：本地绝对路径直读（开发态，不 clone）；注册名查注册表后临时 clone（发布态）。
+func openSource(sourceRef string, sources []TplSource) (*Source, error) {
 	// 本地绝对路径：直接使用，不产生需要清理的资源
 	if filepath.IsAbs(sourceRef) {
-		if !xos.IsDir(sourceRef) {
-			return "", nil, fmt.Errorf("模板源路径不存在或不为文件夹: %s", sourceRef)
-		}
-		return sourceRef, nil, nil
+		return openDirSource(sourceRef)
 	}
 
-	// 名字：查 tplSources 注册表拿 repoURL
-	src := findTplSource(sources, sourceRef)
-	if src == nil {
-		return "", nil, missingSourceErr(sourceRef)
+	// 注册名：查 tplSources 注册表拿 repoURL
+	idx := slices.IndexFunc(sources, func(s TplSource) bool { return s.Name == sourceRef })
+	if idx < 0 {
+		return nil, fmt.Errorf("未找到指定模板源: %s（可在设置页「模板源」配置）", sourceRef)
 	}
-	return cloneSource(src.RepoURL)
+	return openRepoSource(sources[idx].RepoURL)
 }
 
-// findTplSource 在注册表中按 name 查找（name 已在写侧保证唯一）。
-func findTplSource(sources []TplSource, name string) *TplSource {
-	for i, src := range sources {
-		if src.Name == name {
-			return &sources[i]
-		}
+// 将指定目录作为 source 加载模板
+// 根模板形态：template.yaml 在源根，整个源即唯一模板（名固定 RootTplName，源根即模板目录）；
+// 模板库形态：templates/ 下各含 template.yaml 的子目录为模板，目录名为模板名。
+func openDirSource(dir string) (*Source, error) {
+	if !xos.IsDir(dir) {
+		return nil, fmt.Errorf("模板源路径不存在或不为文件夹: %s", dir)
 	}
-	return nil
+
+	// 根模板形态
+	if xos.IsFile(filepath.Join(dir, MetaFileName)) {
+		return newSingleSource(dir), nil
+	}
+
+	// 模板库形态 (默认 templates/* 为各模板地址)
+	tplRoot := filepath.Join(dir, "templates")
+	if !xos.IsDir(tplRoot) {
+		return nil, fmt.Errorf("%s 不是合法模板来源：根目录无 template.yaml，也无 templates/ 子目录", dir)
+	}
+
+	// 读取子目录
+	entries, err := os.ReadDir(tplRoot)
+	if err != nil {
+		return nil, fmt.Errorf("读取 templates/ 目录失败: %w", err)
+	}
+
+	// 遍历并记录符合条件的路径
+	templates := make(map[string]string)
+	for _, e := range entries {
+		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		// 通过 MetaFileName 是否存在判断是否为 template 目录
+		tplPath := filepath.Join(tplRoot, e.Name())
+		if !xos.IsFile(filepath.Join(tplPath, MetaFileName)) {
+			continue
+		}
+		// 添加到结果
+		templates[e.Name()] = tplPath
+	}
+	return newLibrarySource(dir, templates), nil
 }
 
-// missingSourceErr 未注册的源引用错误；缺省源缺配置时附建议地址（来自常量，core 是体验兜底）。
-func missingSourceErr(name string) error {
-	if name == DefaultSource {
-		return fmt.Errorf("未找到指定模板源: %s（可在设置页「模板源」配置，默认源建议: %s）", name, DefaultSourceRepoURL)
+// 按指定 repoURL 加载模板
+func openRepoSource(repoURL string) (*Source, error) {
+	dir, cleanup, err := cloneSource(repoURL)
+	if err != nil {
+		return nil, err
 	}
-	return fmt.Errorf("未找到指定模板源: %s（可在设置页「模板源」配置）", name)
+
+	src, err := openDirSource(dir)
+	if err != nil {
+		if cleanup != nil {
+			cleanup()
+		}
+		return nil, err
+	}
+
+	// 挂载 cleanup
+	src.setCleanup(cleanup)
+	return src, nil
 }
 
 // cloneSource 浅克隆模板仓库到系统临时目录，cleanup 删除整个临时目录（clone 失败时自清理）。
@@ -112,41 +172,4 @@ func cloneSource(repoURL string) (dir string, cleanup func(), err error) {
 		return "", nil, fmt.Errorf("拉取模板源失败: url=%s err=%w", repoURL, err)
 	}
 	return dir, cleanup, nil
-}
-
-// LoadSourceTemplates 加载 source 下的模板，返回 Map<模板名, 模板路径> 与是否根模板形态。
-// 根模板形态：template.yaml 在源根，整个源即唯一模板（名固定 RootTplName，源根即模板目录）；
-// 模板库形态：templates/ 下各含 template.yaml 的子目录为模板，目录名为模板名。
-func LoadSourceTemplates(sourcePath string) (map[string]string, bool, error) {
-	// 根模板形态
-	if xos.IsFile(filepath.Join(sourcePath, MetaFileName)) {
-		return map[string]string{RootTplName: sourcePath}, true, nil
-	}
-	// 模板库形态 (默认 templates/* 为各模板地址)
-	tplRoot := filepath.Join(sourcePath, "templates")
-	if !xos.IsDir(tplRoot) {
-		return nil, false, fmt.Errorf("%s 不是合法模板来源：根目录无 template.yaml，也无 templates/ 子目录", sourcePath)
-	}
-
-	// 读取子目录
-	entries, err := os.ReadDir(tplRoot)
-	if err != nil {
-		return nil, false, fmt.Errorf("读取 templates/ 目录失败: %w", err)
-	}
-
-	// 遍历并记录符合条件的路径
-	result := make(map[string]string)
-	for _, e := range entries {
-		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
-			continue
-		}
-		// 通过 MetaFileName 是否存在判断是否为 template 目录
-		tplPath := filepath.Join(tplRoot, e.Name())
-		if !xos.IsFile(filepath.Join(tplPath, MetaFileName)) {
-			continue
-		}
-		// 添加到结果
-		result[e.Name()] = tplPath
-	}
-	return result, false, nil
 }

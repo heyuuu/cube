@@ -32,7 +32,7 @@ func TestValidateTplSource(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := ValidateTplSource(c.src)
+			_, err := normalizeTplSource(c.src)
 			if c.wantErr == "" {
 				if err != nil {
 					t.Fatalf("应通过, got %v", err)

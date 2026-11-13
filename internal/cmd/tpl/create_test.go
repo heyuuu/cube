@@ -28,9 +28,9 @@ func TestParseCliTpl(t *testing.T) {
 		{"绝对路径", "/tmp/tpl", "/tmp/tpl", "", "", false},
 
 		// 裸名：默认源
-		{"裸名 → 默认源", "go-cli", "core", "go-cli", "", false},
+		{"裸名 → 默认源", "go-cli", "default", "go-cli", "", false},
 		{"裸名带 / 提前拦截", "core/go-cli", "", "", "@source/模板名", false},
-		{"空串 → 默认源交互选", "", "core", "", "", false},
+		{"空串 → 默认源交互选", "", "default", "", "", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

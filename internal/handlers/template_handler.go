@@ -26,7 +26,7 @@ func (h *TemplateHandler) Register(r *server.Routes) {
 }
 
 // TplSourceListResult template/source/list 出参：列表 + 默认源名（前端标注「默认」用，
-// 事实源是 template.DefaultSource 常量，避免前端硬编码）。
+// 事实源是 template.DefaultSourceName 常量，避免前端硬编码）。
 type TplSourceListResult struct {
 	List          []template.TplSource `json:"list"`
 	DefaultSource string               `json:"defaultSource"`
@@ -35,7 +35,7 @@ type TplSourceListResult struct {
 func (h *TemplateHandler) sourceList(_ struct{}) (TplSourceListResult, error) {
 	return TplSourceListResult{
 		List:          h.templateService.TplSources(),
-		DefaultSource: template.DefaultSource,
+		DefaultSource: template.DefaultSourceName,
 	}, nil
 }
 
