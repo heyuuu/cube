@@ -26,6 +26,7 @@ func genAPI(method, domain, baseName string) error {
 	if err != nil {
 		return err
 	}
+	baseMethod := lowerFirst(baseExported)
 
 	handlerFile := "internal/handlers/" + domain + "_handler.go"
 	src, err := os.ReadFile(handlerFile)
@@ -40,7 +41,7 @@ func genAPI(method, domain, baseName string) error {
 		fmt.Sprintf("%q", route),
 		exported + baseExported + "Input",
 		exported + baseExported + "Output",
-		domain + baseExported + "(",
+		baseMethod + "(",
 	} {
 		if strings.Contains(text, ident) {
 			return fmt.Errorf("%s 已包含 %s，拒绝重复生成", handlerFile, strings.Trim(ident, `"(`))
@@ -58,6 +59,7 @@ func genAPI(method, domain, baseName string) error {
 		"exported":     exported,
 		"baseName":     baseName,
 		"baseExported": baseExported,
+		"baseMethod":   baseMethod,
 		"recv":         recv,
 		"handlerType":  handlerType,
 	}

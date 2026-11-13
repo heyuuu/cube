@@ -18,7 +18,7 @@ type {{.domain}}{{.baseExported}}Output struct {
 	// TODO: 输出字段，如 Result string `json:"result"`
 }
 
-func ({{.recv}} *{{.handlerType}}) {{.domain}}{{.baseExported}}(input {{.domain}}{{.baseExported}}Input) ({{.domain}}{{.baseExported}}Output, error) {
+func ({{.recv}} *{{.handlerType}}) {{.baseMethod}}(input {{.domain}}{{.baseExported}}Input) ({{.domain}}{{.baseExported}}Output, error) {
 	// TODO: 业务逻辑（可调 {{.recv}}.{{.domain}}Service）
 	return {{.domain}}{{.baseExported}}Output{}, nil
 }

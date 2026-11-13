@@ -88,6 +88,16 @@ func exportName(s string) string {
 	return b.String()
 }
 
+// lowerFirst 首字母转小写：RunDiff → runDiff（handler 方法名为私有风格）。
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToLower(r[0])
+	return string(r)
+}
+
 /* template */
 
 //go:embed tpl
