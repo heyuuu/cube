@@ -2,13 +2,11 @@ package template
 
 import (
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
-	"slices"
-	"sort"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xmaps"
 	"github.com/heyuuu/x/xstd/xos"
 
 	"cube/pkg/git"
@@ -32,14 +30,13 @@ type Source struct {
 func (s *Source) Cleanup() {
 	if s.cleanup != nil {
 		s.cleanup()
+		s.cleanup = nil
 	}
 }
 
 // Names 返回源内全部模板名（字典序，交互选择候选用）。
 func (s *Source) Names() []string {
-	names := slices.Collect(maps.Keys(s.templates))
-	sort.Strings(names)
-	return names
+	return xmaps.SortedKeys(s.templates)
 }
 
 // Template 按名加载模板；不存在时报错附可用清单。

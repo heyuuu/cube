@@ -73,10 +73,13 @@ func newCreateCmd(a *app.App) *cobra.Command {
 			}
 
 			svc := a.TemplateService()
+
 			// 路径预检先行——clone、交互都可能耗时，不能跑完才发现路径非法
 			if err := svc.CheckTarget(target); err != nil {
 				return err
 			}
+
+			// 加载模板源
 			src, err := svc.OpenSource(sourceRef)
 			if err != nil {
 				return err
@@ -85,8 +88,7 @@ func newCreateCmd(a *app.App) *cobra.Command {
 
 			// 未指名模板时交互选择
 			if tplName == "" {
-				names := src.Names()
-				tplName, err = tui.SelectItem("选择模板", names, func(n string) string { return n })
+				tplName, err = tui.SelectItem("选择模板", src.Names(), func(n string) string { return n })
 				if err != nil {
 					return err
 				}
@@ -114,48 +116,6 @@ func newCreateCmd(a *app.App) *cobra.Command {
 	cmd.Flags().StringSliceVarP(&cliVars, "var", "v", nil, "模板变量 key=value（可多次）")
 
 	return cmd
-}
-
-// promptVars 收集模板变量：cliVars 优先；未提供的用 prompt 交互提问
-// （default 预填，required 拒绝空值）。cliVars 里的未声明 key 视为拼写错误报错
-// （先于逐项提问暴露，校验在 domain 的 CheckVars）。
-func promptVars(tpl *template.Template, cliVars map[string]string) (map[string]string, error) {
-	if err := tpl.CheckVars(cliVars); err != nil {
-		return nil, err
-	}
-
-	vars := make(map[string]string, len(tpl.Meta().Variables))
-	for _, decl := range tpl.Meta().Variables {
-		if v, ok := cliVars[decl.Name]; ok {
-			vars[decl.Name] = v
-			continue
-		}
-
-		var validate func(string) error
-		if decl.Required && decl.Default == "" {
-			validate = func(v string) error {
-				if v == "" {
-					return fmt.Errorf("%s 为必填项", decl.Prompt)
-				}
-				return nil
-			}
-		}
-
-		title := decl.Prompt
-		if title == "" {
-			title = decl.Name
-		}
-
-		v, err := tui.Input(title, decl.Default, "", validate)
-		if err != nil {
-			return nil, err
-		}
-		if v == "" && decl.Default != "" {
-			v = decl.Default
-		}
-		vars[decl.Name] = v
-	}
-	return vars, nil
 }
 
 // parseCliVars 解析 --var key=value 为 map，非法格式报错。
@@ -203,4 +163,47 @@ func parseCliTpl(cliTpl string) (sourceRef string, tplName string, err error) {
 		return "", "", fmt.Errorf("命名源引用请用 @source/模板名 形式: %q", cliTpl)
 	}
 	return template.DefaultSource, cliTpl, nil
+}
+
+// promptVars 收集模板变量：cliVars 优先；未提供的用 prompt 交互提问
+// （default 预填，required 拒绝空值）。cliVars 里的未声明 key 视为拼写错误报错
+// （先于逐项提问暴露，校验在 domain 的 CheckVars）。
+func promptVars(tpl *template.Template, cliVars map[string]string) (map[string]string, error) {
+	if err := tpl.CheckVars(cliVars); err != nil {
+		return nil, err
+	}
+
+	// 按定义属性遍历变量并处理
+	vars := make(map[string]string, len(tpl.Meta().Variables))
+	for _, decl := range tpl.Meta().Variables {
+		if v, ok := cliVars[decl.Name]; ok {
+			vars[decl.Name] = v
+			continue
+		}
+
+		var validate func(string) error
+		if decl.Required && decl.Default == "" {
+			validate = func(v string) error {
+				if v == "" {
+					return fmt.Errorf("%s 为必填项", decl.Prompt)
+				}
+				return nil
+			}
+		}
+
+		title := decl.Prompt
+		if title == "" {
+			title = decl.Name
+		}
+
+		v, err := tui.Input(title, decl.Default, "", validate)
+		if err != nil {
+			return nil, err
+		}
+		if v == "" && decl.Default != "" {
+			v = decl.Default
+		}
+		vars[decl.Name] = v
+	}
+	return vars, nil
 }

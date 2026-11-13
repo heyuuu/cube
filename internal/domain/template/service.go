@@ -30,6 +30,8 @@ func (s *Service) OpenSource(sourceRef string) (*Source, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 加载模板列表
 	templates, err := LoadSourceTemplates(dir)
 	if err != nil {
 		if cleanup != nil {
@@ -37,19 +39,24 @@ func (s *Service) OpenSource(sourceRef string) (*Source, error) {
 		}
 		return nil, err
 	}
+
 	return &Source{dir: dir, cleanup: cleanup, templates: templates}, nil
 }
 
 // Generate 渲染模板到 targetPath（vars 需已收集齐）并执行 init 命令，返回生成文件数。
 // 模板选择与变量收集的交互在 cmd 层编排，domain 不做用户交互。
 func (s *Service) Generate(tpl *Template, targetPath string, vars map[string]string) (int, error) {
+	// 写入目标目录
 	count, err := Render(tpl, targetPath, vars)
 	if err != nil {
 		return count, err
 	}
+
+	// 执行初始化
 	if err := runInit(tpl, targetPath, vars); err != nil {
 		return count, err
 	}
+
 	return count, nil
 }
 
