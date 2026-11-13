@@ -1,12 +1,9 @@
 package server
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
-	"cube/internal/server/client"
 	"cube/pkg/tui"
 )
 
@@ -18,15 +15,15 @@ func newStatusCmd(a *app.App) *cobra.Command {
 		Short: "查看 server 运行状态",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return runServerStatus(a)
+			baseURL := a.Server().ServerURL()
+			return runServerStatus(baseURL)
 		},
 	}
 	return cmd
 }
 
-func runServerStatus(a *app.App) error {
-	client := client.NewClient(a.Server().ServerURL())
-	st := client.Status()
+func runServerStatus(baseURL string) error {
+	st := serverStatus(baseURL)
 
 	// print server status
 	state := "未运行"
@@ -37,11 +34,11 @@ func runServerStatus(a *app.App) error {
 		state = "运行中"
 		serverVersion = st.Version
 		serverInstance = st.Instance
-		url = a.Server().ServerURL()
+		url = baseURL
 	}
 	tui.PrintTable(
-		[]string{"状态", "端口", "版本", "实例", "访问地址"},
-		[][]string{{state, fmt.Sprintf("%d", a.Server().Port()), serverVersion, serverInstance, url}},
+		[]string{"状态", "版本", "实例", "访问地址"},
+		[][]string{{state, serverVersion, serverInstance, url}},
 	)
 	return nil
 }

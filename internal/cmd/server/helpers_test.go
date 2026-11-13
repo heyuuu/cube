@@ -1,7 +1,8 @@
-package client
+package server
 
-// Client 集成测试：用 httptest 起 mock cube server 覆盖 Status 三态与 Stop 流程
-// （shutdown 后确认下线 / 被新实例接管）。token 鉴权走真实 Gen/Verify 配对。
+// server 探活/关停 helper 集成测试：用 httptest 起 mock cube server 覆盖
+// serverStatus 三态与 serverStop 流程（shutdown 后确认下线 / 被新实例接管）。
+// token 鉴权走真实 Gen/Verify 配对。
 
 import (
 	"encoding/json/v2"
@@ -16,7 +17,7 @@ import (
 )
 
 // startMockCubeServer 起一个 httptest server 模拟 cube 的 status 端点。
-// status==200 且 app=="cube" 时被 Client.Status 判为在跑。
+// status==200 且 app=="cube" 时被 serverStatus 判为在跑。
 func startMockCubeServer(t *testing.T, version string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -31,9 +32,9 @@ func startMockCubeServer(t *testing.T, version string) *httptest.Server {
 	return srv
 }
 
-func TestClientStatus_Running(t *testing.T) {
+func TestServerStatus_Running(t *testing.T) {
 	srv := startMockCubeServer(t, "v9.9.9")
-	st := NewClient(srv.URL).Status()
+	st := serverStatus(srv.URL)
 	if !st.Running {
 		t.Error("cube server 在跑应判 Running=true")
 	}
@@ -45,14 +46,14 @@ func TestClientStatus_Running(t *testing.T) {
 	}
 }
 
-func TestClientStatus_NotRunning(t *testing.T) {
+func TestServerStatus_NotRunning(t *testing.T) {
 	// 端口 1 几乎肯定没监听
-	if st := NewClient("http://127.0.0.1:1").Status(); st.Running {
+	if st := serverStatus("http://127.0.0.1:1"); st.Running {
 		t.Error("连不上应判 Running=false")
 	}
 }
 
-func TestClientStatus_NotCube(t *testing.T) {
+func TestServerStatus_NotCube(t *testing.T) {
 	// 模拟别的服务（app != "cube"）
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, _ *http.Request) {
@@ -61,13 +62,13 @@ func TestClientStatus_NotCube(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	if st := NewClient(srv.URL).Status(); st.Running {
+	if st := serverStatus(srv.URL); st.Running {
 		t.Error("app!=cube 应判 Running=false（端口上的不是 cube）")
 	}
 }
 
-func TestClientStop_NotRunning(t *testing.T) {
-	stopped, _, err := NewClient("http://127.0.0.1:1").Stop()
+func TestServerStop_NotRunning(t *testing.T) {
+	stopped, _, err := serverStop("http://127.0.0.1:1")
 	if err != nil {
 		t.Errorf("停一个没在跑的 server 不应报错: %v", err)
 	}
@@ -76,9 +77,9 @@ func TestClientStop_NotRunning(t *testing.T) {
 	}
 }
 
-// TestClientStop_ShutdownAndConfirm 验证 Stop 能触发 shutdown 端点并确认旧实例下线。
+// TestServerStop_ShutdownAndConfirm 验证 serverStop 能触发 shutdown 端点并确认旧实例下线。
 // 用一个可控的 mock server：收到 shutdown 后停止响应 status（端口空出，无新实例接管）。
-func TestClientStop_ShutdownAndConfirm(t *testing.T) {
+func TestServerStop_ShutdownAndConfirm(t *testing.T) {
 	alive := true
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, r *http.Request) {
@@ -108,9 +109,9 @@ func TestClientStop_ShutdownAndConfirm(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	stopped, replaced, err := NewClient(srv.URL).Stop()
+	stopped, replaced, err := serverStop(srv.URL)
 	if err != nil {
-		t.Fatalf("Stop 应成功: %v", err)
+		t.Fatalf("serverStop 应成功: %v", err)
 	}
 	if !stopped {
 		t.Error("应返回 stopped=true")
@@ -123,9 +124,9 @@ func TestClientStop_ShutdownAndConfirm(t *testing.T) {
 	}
 }
 
-// TestClientStop_ReplacedByNewInstance 模拟 launchctl 保活：旧实例 shutdown 后新实例立刻占回端口。
-// Stop 应按 instance 换人识别旧实例已下线，返回 stopped=true, replaced=true。
-func TestClientStop_ReplacedByNewInstance(t *testing.T) {
+// TestServerStop_ReplacedByNewInstance 模拟 launchctl 保活：旧实例 shutdown 后新实例立刻占回端口。
+// serverStop 应按 instance 换人识别旧实例已下线，返回 stopped=true, replaced=true。
+func TestServerStop_ReplacedByNewInstance(t *testing.T) {
 	instance := "old-inst"
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, _ *http.Request) {
@@ -150,9 +151,9 @@ func TestClientStop_ReplacedByNewInstance(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	stopped, replaced, err := NewClient(srv.URL).Stop()
+	stopped, replaced, err := serverStop(srv.URL)
 	if err != nil {
-		t.Fatalf("Stop 应成功: %v", err)
+		t.Fatalf("serverStop 应成功: %v", err)
 	}
 	if !stopped {
 		t.Error("旧实例已 shutdown，应返回 stopped=true")

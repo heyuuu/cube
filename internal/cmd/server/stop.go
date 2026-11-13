@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"cube/internal/app"
-	"cube/internal/server/client"
 )
 
 // newStopCmd `cube server stop`
@@ -17,8 +16,8 @@ func newStopCmd(a *app.App) *cobra.Command {
 		Short: "停止后台 server",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			client := client.NewClient(a.Server().ServerURL())
-			stopped, replaced, err := client.Stop()
+			baseURL := a.Server().ServerURL()
+			stopped, replaced, err := serverStop(baseURL)
 			if err != nil {
 				return err
 			}

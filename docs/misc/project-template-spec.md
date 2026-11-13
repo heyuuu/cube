@@ -441,7 +441,7 @@ docs/
 | **长连接会话**（PTY 终端、文件 watch 推送） | WebSocket | handler 注册走 Routes 的 Raw 口（不经 huma、不进 OpenAPI）；子进程生命周期挂 app 的 OnServerStop 钩子回收。**引入长连接是架构复杂度的临界点，单独权衡。** |
 | **TUI 交互**（多选、表单、表格） | huh + lipgloss | `pkg/tui` 独立工具包，CLI 出口的交互组件统一收口。 |
 | **Alfred / Raycast / Script Filter 集成** | JSON 输出 | cmd 下独立子命令组；配 usage 记录做 frecency 排序。 |
-| **server 进程管理** | HTTP 应用层（status/shutdown 端点 + HMAC 鉴权） | system handler + server/client 子包；探活验 `app` 字段防端口误占，stop 按 instance 标识判旧实例下线。不写 pid 文件、不 fork 后台。 |
+| **server 进程管理** | HTTP 应用层（status/shutdown 端点 + HMAC 鉴权） | system handler + cmd/server 内探活/关停 helper；探活验 `app` 字段防端口误占，stop 按 instance 标识判旧实例下线。不写 pid 文件、不 fork 后台。 |
 | **多 remote 批量操作** | 批量 API | 领域层加批量 service；注意并发/失败策略（全失败回滚 vs best-effort）。 |
 | **worktree 管理** | 领域子能力 | 物理位置约定 + 是否纳入扫描的约定需先决策。 |
 
