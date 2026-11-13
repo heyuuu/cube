@@ -106,7 +106,14 @@ func pickPushRefs(repoPath string, remote git.Remote) ([]refInfo, error) {
 		return nil, err
 	}
 
-	return tui.MultiSelectItem("选择待推送的分支/tag（空格勾选，回车确认）", candidates, refLabel)
+	// 默认选中的列表为主项目分支+所有可推送的 tag
+	defaults := xslices.Filter(refInfos, func(ref refInfo) bool {
+		return ref.IsMainCurrent() || ref.IsLocalTag()
+	})
+
+	return tui.MultiSelectItemWithDefaults(
+		"选择待推送的分支/tag（空格勾选，回车确认）", candidates, refLabel, defaults,
+	)
 }
 
 // confirmPushPlan 打印推送计划表并要求二次确认。返回 (是否确认, 错误)。
