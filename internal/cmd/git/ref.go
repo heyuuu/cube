@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/heyuuu/x/xstd/xmaps"
-	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/pkg/git"
 )
@@ -28,6 +27,8 @@ type refInfo struct {
 	name       string  // ref 短名(即 branch 或 tag 名)
 	localKind  RefKind // 本地 ref 种类
 	remoteKind RefKind // 远端 ref 种类
+	repoPath   string  // repo 主目录，冗余存储方便使用
+	remote     string  // remote 名，冗余存储方便使用
 	// 额外信息，不一定有值
 	ahead    int    // 仅 branch, 本地领先 commit 数
 	behind   int    // 仅 branch, 本地落后 commit 数
@@ -41,6 +42,8 @@ func (r refInfo) IsLocalTag() bool     { return r.localKind.IsTag() }
 func (r refInfo) RemoteExists() bool   { return r.remoteKind.Exists() }
 func (r refInfo) IsRemoteBranch() bool { return r.remoteKind.IsBranch() }
 func (r refInfo) IsRemoteTag() bool    { return r.remoteKind.IsTag() }
+func (r refInfo) IsMainCurrent() bool  { return r.worktree == r.repoPath }
+func (r refInfo) IsCheckout() bool     { return r.worktree != "" }
 
 // allRefInfos 构建所有 refInfo
 // - 基于本地 branch / tag 不可能同名，远端 branch / tag 不可能同名，但本地和远端可能出现 branch 和 tag 同名的假设，
@@ -93,6 +96,8 @@ func allRefInfos(repoPath string, remote string) ([]refInfo, error) {
 			name:       name,
 			localKind:  localKinds[name],
 			remoteKind: remoteKinds[name],
+			repoPath:   repoPath,
+			remote:     remote,
 		})
 	}
 	return refInfos, nil
@@ -139,34 +144,35 @@ func resolveRefExtraInfos(repoPath string, remote string, refInfos []refInfo) ([
 	return refInfos, nil
 }
 
-// getLocalRefInfos 获取指定的本地 ref 信息
-func getLocalRefInfos(refInfos []refInfo, flagRefs []string) ([]refInfo, error) {
-	refInfoMap := xslices.KeyBy(refInfos, refInfo.Name)
-
-	flagRefs = xslices.Unique(flagRefs)
-	result := make([]refInfo, 0, len(flagRefs))
-	for _, r := range flagRefs {
-		info, ok := refInfoMap[r]
-		if !ok || !info.LocalExists() {
-			return nil, fmt.Errorf("未找到本地分支/tag: %s", r)
+// refLabel 构造分支在多选列表里的展示文案：分支名 + 检出标记 + 同步状态。
+// * = 主工作树当前分支；⎇ = 检出于其它工作树（与前端 worktree 徽标同形）。
+func refLabel(ref refInfo) string {
+	if ref.IsLocalBranch() {
+		label := "branch: " + ref.name
+		if ref.IsMainCurrent() {
+			label = "* " + label
+		} else if ref.IsCheckout() {
+			label = "⎇ " + label
 		}
-		result = append(result, info)
-	}
-	return result, nil
-}
-
-// getRemoteRefInfos 获取指定的远端 ref 信息
-func getRemoteRefInfos(refInfos []refInfo, flagRefs []string) ([]refInfo, error) {
-	refInfoMap := xslices.KeyBy(refInfos, refInfo.Name)
-
-	flagRefs = xslices.Unique(flagRefs)
-	result := make([]refInfo, 0, len(flagRefs))
-	for _, r := range flagRefs {
-		info, ok := refInfoMap[r]
-		if !ok || !info.RemoteExists() {
-			return nil, fmt.Errorf("未找到远端分支/tag: %s", r)
+		if ref.IsRemoteBranch() {
+			var state string
+			switch {
+			case ref.ahead > 0 && ref.behind > 0:
+				state = "分叉"
+			case ref.behind > 0:
+				state = "落后"
+			case ref.ahead > 0:
+				state = "领先"
+			default:
+				state = "同步"
+			}
+			label += fmt.Sprintf("  (%s: ↑%d ↓%d)", state, ref.ahead, ref.behind)
 		}
-		result = append(result, info)
+		return label
 	}
-	return result, nil
+
+	if ref.IsLocalTag() {
+		return "tag: " + ref.name
+	}
+	return "missing: " + ref.name
 }

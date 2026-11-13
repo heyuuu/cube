@@ -130,6 +130,27 @@ func Fetch(dir string, remote string) error {
 	return err
 }
 
+// FetchAllTags 从 remote 拉取全部 tag 到本地 refs/tags/（git fetch --tags <remote>）。
+// 与 PushAllTags 对称地只增不覆盖：本地已有同名 tag 且指向不同 commit 时被拒绝
+// （would clobber existing tag）；远端已删、本地独有的 tag 不受影响。强制对齐已
+// 移动的 tag 属 git 原生命令范畴（git fetch --force）。
+func FetchAllTags(dir string, remote string) error {
+	_, err := runOut(dir, "fetch", "--tags", remote)
+	return err
+}
+
+// FetchTag 从 remote 拉取单个 tag 到本地 refs/tags/<tag>（git fetch <remote> tag <tag>）。
+// 同名本地 tag 已存在且指向不同 commit 时被拒绝（would clobber existing tag）。
+// 不保证「只落这一个 tag」：指向本次拉取历史内对象的其它 tag 会被 auto-follow
+// 顺带带下（fetch 的既有行为）。
+// 必须用 tag 关键字形式：短名 git fetch <remote> <tag> 只写 FETCH_HEAD、不落本地
+// tag——与 fetch 分支短名会顺带刷新 remote-tracking 的行为不对称，照抄 push 的
+// 短名直觉会静默无效。
+func FetchTag(dir string, remote string, tag string) error {
+	_, err := runOut(dir, "fetch", remote, "tag", tag)
+	return err
+}
+
 // FindGitRoot 从 dir 开始向上查找，返回最先出现 .git(文件或目录均可) 的目录。
 //
 // 与 git 自身的向上查找语义一致：能识别普通仓库的 .git 目录，也能识别 worktree /

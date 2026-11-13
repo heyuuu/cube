@@ -66,39 +66,26 @@ func pullFlow(path string) error {
 		return err
 	}
 
-	// 单选来源 remote（flag 优先 → 单 remote 自动 → 多 remote 手选，与 push 共用）
-	chosenRemote, err := pickRemote(repoPath)
+	// 选择目标 remote（单 remote 自动 → 多 remote 手选）
+	remote, err := pickRemote(repoPath)
 	if err != nil {
 		return err
 	}
 
-	// 先 fetch 一次刷新 remote-tracking：候选的领先/落后与后续本地快进都以它为
-	// 数据源（唯一网络往返）；失败即终止——没有新数据的拉取没有意义
-	if err = doFetch(repoPath, chosenRemote.Name); err != nil {
-		return err
-	}
-
-	// 候选分支：与该 remote 同名的本地分支及各自领先/落后数、检出位置
+	// 获取当前主目录分支
 	currentBranch := git.CurrentBranch(repoPath)
-	candidates, err := pullCandidates(repoPath, chosenRemote.Name)
-	if err != nil {
-		return err
-	}
-	if len(candidates) == 0 {
-		return fmt.Errorf("remote %s 上没有与本地同名的分支，无可拉取项", chosenRemote.Name)
-	}
 
-	// 多选分支（flag 优先，默认勾选远端领先的分支）
-	chosenBranches, err := pickPullBranches(candidates, currentBranch)
+	// 多选 ref（TUI 多选，默认当前分支；分支 ref 带该 remote 的真实 ahead/behind）
+	refs, err := pickPullRefs(repoPath, remote)
 	if err != nil {
 		return err
 	}
-	if len(chosenBranches) == 0 {
-		return errors.New("未选择任何分支")
+	if len(refs) == 0 {
+		return errors.New("未选择任何分支/tag")
 	}
 
 	// 展示拉取计划 + 二次确认
-	ok, err := confirmPullPlan(repoPath, chosenRemote, chosenBranches, candidates, currentBranch)
+	ok, err := confirmPullPlan(repoPath, remote, refs, currentBranch)
 	if err != nil {
 		return err
 	}
@@ -107,131 +94,52 @@ func pullFlow(path string) error {
 	}
 
 	// 执行：逐条本地快进并汇总结果
-	return runPull(repoPath, chosenRemote.Name, chosenBranches, candidates)
+	return runPull(repoPath, refs)
 }
 
-// branchDiff 描述一个本地分支相对某 remote 同名分支的领先/落后 commit 数，
-// 及其检出位置——决定更新路由（检出分支 git 拒绝被 fetch 更新，须走其工作树 merge）。
-type branchDiff struct {
-	Branch       string
-	Ahead        int    // 本地领先
-	Behind       int    // 本地落后（远端有更新）
-	CheckedOutAt string // 检出该分支的工作树绝对路径（含主工作树）；空串 = 未检出
-}
-
-// pullCandidates 计算与 remoteName 同名的本地分支列表及各自 ahead/behind 与检出位置。
-// ahead/behind 基于调用方刚 Fetch 刷新过的 remote-tracking，是真实数据。
-func pullCandidates(repoPath string, remoteName string) ([]branchDiff, error) {
-	repoRefs, err := git.Refs(repoPath)
-	if err != nil {
-		return nil, fmt.Errorf("读取 ref 列表失败: %w", err)
-	}
-	wts, err := git.WorktreeList(repoPath)
-	if err != nil {
-		return nil, fmt.Errorf("枚举工作树失败: %w", err)
-	}
-	checkedOut := make(map[string]string, len(wts))
-	for _, wt := range wts {
-		if wt.Branch != "" {
-			checkedOut[wt.Branch] = wt.Path
-		}
-	}
-
-	// 候选 = 与指定 remote 同名的本地分支（其它 remote 的同名分支不参与）
-	remoteHasBranch := buildRemoteBranchMap(repoRefs)
-	var diffs []branchDiff
-	for _, ref := range repoRefs.Locals {
-		b := ref.Branch
-		if !remoteHasBranch[b][remoteName] {
-			continue
-		}
-		ahead, behind, _ := git.AheadBehindRemote(repoPath, b, remoteName, b)
-		diffs = append(diffs, branchDiff{Branch: b, Ahead: ahead, Behind: behind, CheckedOutAt: checkedOut[b]})
-	}
-	return diffs, nil
-}
-
-// pickPullBranches 决定待拉取的分支集合：flag 显式指定优先（校验属于候选，重复去重），
-// 否则 TUI 多选，默认勾选 pullDefaultBranches 的结果。
-func pickPullBranches(candidates []branchDiff, currentBranch string) ([]string, error) {
-	picked, err := tui.MultiSelectItemWithDefaults(
-		"选择待拉取的分支（空格勾选，回车确认）",
-		candidates,
-		func(d branchDiff) string { return pullBranchLabel(d, currentBranch) },
-		pullDefaultBranches(candidates, currentBranch),
-	)
+// pickPullBranches 决定待拉取的分支集合 TUI 多选，默认勾选 pullDefaultBranches 的结果。
+func pickPullRefs(repoPath string, remote git.Remote) ([]refInfo, error) {
+	refInfos, err := allRefInfos(repoPath, remote.Name)
 	if err != nil {
 		return nil, err
 	}
-	return xslices.Map(picked, func(d branchDiff) string { return d.Branch }), nil
-}
 
-// pullDefaultBranches 计算多选列表的默认勾选项：远端领先的分支；
-// 都不落后时退回当前分支（拉取最常见的就是更新当前分支）。
-func pullDefaultBranches(candidates []branchDiff, currentBranch string) []branchDiff {
-	var defaults []branchDiff
-	for _, d := range candidates {
-		if d.Behind > 0 {
-			defaults = append(defaults, d)
+	// 默认展示的 pull 列表为 本地和远端都存在的分支 + 本地不存在且远端存在的 tag
+	candidates := xslices.Filter(refInfos, func(ref refInfo) bool {
+		if ref.IsLocalBranch() && ref.IsRemoteBranch() {
+			return true
+		} else if !ref.LocalExists() && ref.IsRemoteTag() {
+			return true
 		}
+		return false
+	})
+	if len(candidates) == 0 {
+		return nil, errors.New("仓库无任何待选推送分支或 tag")
 	}
-	if len(defaults) == 0 && currentBranch != "" {
-		for _, d := range candidates {
-			if d.Branch == currentBranch {
-				defaults = append(defaults, d)
-				break
-			}
-		}
-	}
-	return defaults
-}
 
-// pullBranchLabel 构造分支在多选列表里的展示文案：分支名 + 检出标记 + 同步状态。
-// * = 主工作树当前分支；⎇ = 检出于其它工作树（与前端 worktree 徽标同形）。
-func pullBranchLabel(d branchDiff, currentBranch string) string {
-	name := d.Branch
-	switch {
-	case d.Branch == currentBranch:
-		name = "* " + name
-	case d.CheckedOutAt != "":
-		name = "⎇ " + name
+	// 补充 ref 额外信息用于展示
+	candidates, err = resolveRefExtraInfos(repoPath, remote.Name, candidates)
+	if err != nil {
+		return nil, err
 	}
-	var state string
-	switch {
-	case d.Ahead > 0 && d.Behind > 0:
-		state = fmt.Sprintf("分叉：本地领先 %d / 落后 %d", d.Ahead, d.Behind)
-	case d.Behind > 0:
-		state = fmt.Sprintf("落后 %d", d.Behind)
-	case d.Ahead > 0:
-		state = fmt.Sprintf("本地领先 %d", d.Ahead)
-	default:
-		state = "已同步"
-	}
-	return fmt.Sprintf("branch: %s  (%s)", name, state)
+
+	return tui.MultiSelectItem("选择待拉取的分支/tag（空格勾选，回车确认）", candidates, refLabel)
 }
 
 // confirmPullPlan 打印拉取计划表并要求二次确认。返回 (是否确认, 错误)。
-func confirmPullPlan(repoPath string, remote git.Remote, branches []string, candidates []branchDiff, currentBranch string) (bool, error) {
-	checkoutAt := branchCheckoutMap(candidates)
-
+func confirmPullPlan(repoPath string, remote git.Remote, refs []refInfo, currentBranch string) (bool, error) {
 	fmt.Println()
 	fmt.Printf("仓库: %s\n", repoPath)
 	fmt.Printf("Remote: %s  (%s)\n", remote.Name, remote.Fetch)
 	fmt.Println("拉取计划（仅快进，分叉的分支会失败跳过）：")
-	rows := make([][]string, 0, len(branches))
-	for _, b := range branches {
-		rows = append(rows, []string{b, pullMethodText(b, checkoutAt[b], currentBranch)})
-	}
-	tui.PrintTable([]string{"Ref", "方式"}, rows)
+	tui.PrintTable([]string{"Ref", "方式"}, xslices.Map(refs, func(r refInfo) []string {
+		return []string{
+			r.name,
+			pullMethodText(r.name, r.worktree, currentBranch),
+		}
+	}))
 	fmt.Println()
-	return tui.ConfirmInlineDefault(fmt.Sprintf("确认从 %s 拉取以上 %d 个分支？", remote.Name, len(branches)), true)
-}
-
-// branchCheckoutMap 从候选构建 分支→检出工作树路径 映射。
-func branchCheckoutMap(candidates []branchDiff) map[string]string {
-	return xslices.ToMap(candidates, func(d branchDiff) (string, string) {
-		return d.Branch, d.CheckedOutAt
-	})
+	return tui.ConfirmInlineDefault(fmt.Sprintf("确认从 %s 拉取以上 %d 个分支/tag？", remote.Name, len(refs)), true)
 }
 
 // pullMethodText 返回分支在计划表中的更新方式：检出分支在其工作树 merge --ff-only，
@@ -250,20 +158,27 @@ func pullMethodText(branch string, checkoutAt string, currentBranch string) stri
 // runPull 逐条执行本地快进，best-effort：单条失败不中断后续（同 push），最后汇总。
 // 检出分支在其检出的工作树 merge --ff-only（git 拒绝 fetch 更新任何检出的分支），
 // 未检出分支从本地 remote-tracking fetch 快进。
-func runPull(repoPath string, remoteName string, branches []string, candidates []branchDiff) error {
-	checkoutAt := branchCheckoutMap(candidates)
-
+func runPull(repoPath string, refs []refInfo) error {
 	failed := 0
-	for i, b := range branches {
-		fmt.Printf("\n[%d/%d] ", i+1, len(branches))
+	for i, ref := range refs {
+		fmt.Printf("\n[%d/%d] ", i+1, len(refs))
 		var err error
-		if wt := checkoutAt[b]; wt != "" {
-			fmt.Printf("git -C %s merge --ff-only %s/%s\n", wt, remoteName, b)
-			err = git.MergeFfOnly(wt, remoteName+"/"+b)
-		} else {
-			fmt.Printf("git fetch . %s/%s:%s\n", remoteName, b, b)
-			err = git.FastForwardFromTracking(repoPath, remoteName, b)
+		remote := ref.remote
+		if ref.IsLocalBranch() {
+			branch := ref.name
+			if ref.worktree != "" {
+				fmt.Printf("git -C %s merge --ff-only %s/%s\n", ref.worktree, remote, branch)
+				err = git.MergeFfOnly(ref.worktree, remote+"/"+branch)
+			} else {
+				fmt.Printf("git fetch . %s/%s:%s\n", remote, branch, branch)
+				err = git.FastForwardFromTracking(repoPath, remote, branch)
+			}
+		} else if ref.IsLocalTag() {
+			tag := ref.name
+			fmt.Printf("git fetch %s tag %s\n", remote, tag)
+			err = git.FetchTag(ref.worktree, remote, tag)
 		}
+
 		if err != nil {
 			failed++
 			fmt.Printf("  ✗ 失败: %v\n", err)
@@ -271,7 +186,7 @@ func runPull(repoPath string, remoteName string, branches []string, candidates [
 	}
 
 	fmt.Println()
-	fmt.Printf("完成：%d 条成功，%d 条失败。\n", len(branches)-failed, failed)
+	fmt.Printf("完成：%d 条成功，%d 条失败。\n", len(refs)-failed, failed)
 	if failed > 0 {
 		return fmt.Errorf("有 %d 条拉取失败，请检查上方输出", failed)
 	}
