@@ -128,6 +128,25 @@ func TestTemplateWalkFileInGitRepo(t *testing.T) {
 	}
 }
 
+// CheckVars：--var 传入未声明的 key 报拼写错误，已声明 key 通过。
+func TestTemplateCheckVars(t *testing.T) {
+	tpl := makeTestTpl(t, map[string]string{
+		MetaFileName: "version: 1\nvariables:\n  - name: name\n    required: true\n",
+		"main.go":    "package main",
+	})
+
+	if err := tpl.CheckVars(map[string]string{"name": "x"}); err != nil {
+		t.Fatalf("已声明变量不应报错: %v", err)
+	}
+	if err := tpl.CheckVars(nil); err != nil {
+		t.Fatalf("无 cliVars 不应报错: %v", err)
+	}
+	err := tpl.CheckVars(map[string]string{"unknownVar": "x"})
+	if err == nil || !strings.Contains(err.Error(), "未在 template.yaml 中声明") {
+		t.Fatalf("拼写错误应报错, got %v", err)
+	}
+}
+
 func TestTemplateReadFile(t *testing.T) {
 	tpl := loadTestTemplate(t)
 

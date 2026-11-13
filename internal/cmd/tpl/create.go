@@ -9,6 +9,7 @@ import (
 	"cube/internal/app"
 	"cube/internal/cmd/cmdutil"
 	"cube/internal/domain/template"
+	"cube/pkg/tui"
 )
 
 // cmd `cube tpl create`（模板引擎：命名 git 源 / 本地目录，单模板或模板集）
@@ -22,6 +23,9 @@ import (
 //  2. `<本地路径>`      . ~/ / 开头，直读模板目录（开发态：正在编辑的模板仓库）
 //  3. `<tpl>`           裸名，默认源 core 的指定模板
 //  4. 省略              默认源 core，交互选模板
+//
+// 用户交互（选模板/提问变量）收敛在本层：domain 只暴露无交互的分阶段 API
+// （CheckTarget → OpenSource → Source.Template → CheckVars → Generate）。
 func newCreateCmd(a *app.App) *cobra.Command {
 	var cliVars []string
 	cmd := &cobra.Command{
@@ -68,15 +72,90 @@ func newCreateCmd(a *app.App) *cobra.Command {
 				return fmt.Errorf("解析目标路径失败: %w", err)
 			}
 
-			// 创建模板
 			svc := a.TemplateService()
-			return svc.Create(sourceRef, tplName, target, vars)
+			// 路径预检先行——clone、交互都可能耗时，不能跑完才发现路径非法
+			if err := svc.CheckTarget(target); err != nil {
+				return err
+			}
+			src, err := svc.OpenSource(sourceRef)
+			if err != nil {
+				return err
+			}
+			defer src.Cleanup() // 临时 clone 目录用后即删（失败路径同样清理）
+
+			// 未指名模板时交互选择
+			if tplName == "" {
+				names := src.Names()
+				tplName, err = tui.SelectItem("选择模板", names, func(n string) string { return n })
+				if err != nil {
+					return err
+				}
+			}
+			tpl, err := src.Template(tplName)
+			if err != nil {
+				return err
+			}
+
+			// 收集变量：--var 优先，缺的交互提问
+			vars, err = promptVars(tpl, vars)
+			if err != nil {
+				return err
+			}
+
+			count, err := svc.Generate(tpl, target, vars)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("已生成 %d 个文件到 %s\n", count, target)
+			return nil
 		},
 	}
 
 	cmd.Flags().StringSliceVarP(&cliVars, "var", "v", nil, "模板变量 key=value（可多次）")
 
 	return cmd
+}
+
+// promptVars 收集模板变量：cliVars 优先；未提供的用 prompt 交互提问
+// （default 预填，required 拒绝空值）。cliVars 里的未声明 key 视为拼写错误报错
+// （先于逐项提问暴露，校验在 domain 的 CheckVars）。
+func promptVars(tpl *template.Template, cliVars map[string]string) (map[string]string, error) {
+	if err := tpl.CheckVars(cliVars); err != nil {
+		return nil, err
+	}
+
+	vars := make(map[string]string, len(tpl.Meta().Variables))
+	for _, decl := range tpl.Meta().Variables {
+		if v, ok := cliVars[decl.Name]; ok {
+			vars[decl.Name] = v
+			continue
+		}
+
+		var validate func(string) error
+		if decl.Required && decl.Default == "" {
+			validate = func(v string) error {
+				if v == "" {
+					return fmt.Errorf("%s 为必填项", decl.Prompt)
+				}
+				return nil
+			}
+		}
+
+		title := decl.Prompt
+		if title == "" {
+			title = decl.Name
+		}
+
+		v, err := tui.Input(title, decl.Default, "", validate)
+		if err != nil {
+			return nil, err
+		}
+		if v == "" && decl.Default != "" {
+			v = decl.Default
+		}
+		vars[decl.Name] = v
+	}
+	return vars, nil
 }
 
 // parseCliVars 解析 --var key=value 为 map，非法格式报错。

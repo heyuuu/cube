@@ -112,3 +112,18 @@ func (t *Template) walkDir(fn func(rel string) error) error {
 func (t *Template) ReadFile(relPath string) ([]byte, error) {
 	return os.ReadFile(filepath.Join(t.path, relPath))
 }
+
+// CheckVars 校验外部传入的变量名（--var）：未在 template.yaml 声明的 key 视为拼写错误。
+// 由 cmd 层在交互收集之前调用，让拼写错误先于逐项提问暴露。
+func (t *Template) CheckVars(cliVars map[string]string) error {
+	varNameSet := make(map[string]struct{}, len(t.meta.Variables))
+	for _, v := range t.meta.Variables {
+		varNameSet[v.Name] = struct{}{}
+	}
+	for name := range cliVars {
+		if _, exists := varNameSet[name]; !exists {
+			return fmt.Errorf("变量 %q 未在 template.yaml 中声明（检查拼写）", name)
+		}
+	}
+	return nil
+}

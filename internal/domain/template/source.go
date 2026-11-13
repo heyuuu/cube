@@ -2,8 +2,11 @@ package template
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 
 	"github.com/heyuuu/x/xstd/xos"
@@ -16,6 +19,37 @@ const DefaultSource = "core"
 
 // DefaultSourceRepoURL 缺省源的官方仓库地址（源缺配置时报错附建议用）。
 const DefaultSourceRepoURL = "git@github.com:heyuuu/cube-templates.git"
+
+// Source 已解析的可用模板源（本地路径直读或临时 clone 的仓库），含模板清单。
+// 用完须调用 Cleanup（临时 clone 目录删除；本地路径形态为空操作，可无条件 defer）。
+type Source struct {
+	dir       string
+	cleanup   func()
+	templates map[string]string // 模板名 → 模板目录（LoadSourceTemplates 口径）
+}
+
+// Cleanup 释放源占用的资源；幂等，本地路径形态为空操作。
+func (s *Source) Cleanup() {
+	if s.cleanup != nil {
+		s.cleanup()
+	}
+}
+
+// Names 返回源内全部模板名（字典序，交互选择候选用）。
+func (s *Source) Names() []string {
+	names := slices.Collect(maps.Keys(s.templates))
+	sort.Strings(names)
+	return names
+}
+
+// Template 按名加载模板；不存在时报错附可用清单。
+func (s *Source) Template(name string) (*Template, error) {
+	tplPath, ok := s.templates[name]
+	if !ok {
+		return nil, fmt.Errorf("模板 %q 不存在，可用模板: %v", name, strings.Join(s.Names(), ", "))
+	}
+	return LoadTemplate(tplPath)
+}
 
 // loadSourceDir 解析 sourceRef 为可用的模板源目录，返回目录与 cleanup（非 nil 时用后须调用）。
 // sourceRef 两种形态：本地绝对路径直读（开发态，不 clone）；名字查注册表后临时 clone（发布态）。

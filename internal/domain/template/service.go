@@ -17,23 +17,40 @@ func NewService(cfg *config.Config) *Service {
 	}
 }
 
-// Create 生成项目到 targetPath。
-// sourceRef 为模板源引用：@语法解析后的名字或本地绝对路径（cmd 层已定形态）。
-func (s *Service) Create(sourceRef string, tplName string, targetPath string, cliVars map[string]string) error {
-	// 目标路径预检先行——clone、交互都可能耗时，不能让它们跑完才发现路径非法
-	if err := validateTarget(targetPath); err != nil {
-		return err
-	}
+// CheckTarget 预检目标路径（已存在时必须是空目录，防覆盖既有内容）。
+// 由 cmd 层在 OpenSource/交互之前调用——clone、交互都可能耗时，不能跑完才发现路径非法。
+func (s *Service) CheckTarget(targetPath string) error {
+	return validateTarget(targetPath)
+}
 
-	sourcePath, cleanup, err := loadSourceDir(sourceRef, s.TplSources())
-	if cleanup != nil {
-		defer cleanup() // 临时 clone 目录用后即删（失败路径同样清理）
-	}
+// OpenSource 解析模板源引用为可用源：本地绝对路径直读（开发态）/ 名字查注册表
+// 临时 clone（发布态）。同时加载模板清单，非法源结构在此时报错（先于任何交互）。
+func (s *Service) OpenSource(sourceRef string) (*Source, error) {
+	dir, cleanup, err := loadSourceDir(sourceRef, s.TplSources())
 	if err != nil {
-		return err
+		return nil, err
 	}
+	templates, err := LoadSourceTemplates(dir)
+	if err != nil {
+		if cleanup != nil {
+			cleanup()
+		}
+		return nil, err
+	}
+	return &Source{dir: dir, cleanup: cleanup, templates: templates}, nil
+}
 
-	return Create(sourcePath, tplName, targetPath, cliVars)
+// Generate 渲染模板到 targetPath（vars 需已收集齐）并执行 init 命令，返回生成文件数。
+// 模板选择与变量收集的交互在 cmd 层编排，domain 不做用户交互。
+func (s *Service) Generate(tpl *Template, targetPath string, vars map[string]string) (int, error) {
+	count, err := Render(tpl, targetPath, vars)
+	if err != nil {
+		return count, err
+	}
+	if err := runInit(tpl, targetPath, vars); err != nil {
+		return count, err
+	}
+	return count, nil
 }
 
 // --- 模板源配置（settings.json tplSources 节，forge 同款形态） ---

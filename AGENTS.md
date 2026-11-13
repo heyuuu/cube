@@ -138,7 +138,7 @@ ws.MakeProjectDir("scanroot/g1/proj", testfixture.WithGodot())
    - `MakeXxx()` → 返回 `Xxx`（值类型，单返回值）。
    - `InitXxx()` → 用于构造时需要返回 `error` 等额外值的情况（即 `(*Xxx, error)` 或 `(Xxx, error)`）。
    - 解析/加载类函数不在本约定范围内，保留 `ParseXxx` / `LoadXxx` 等既有命名（如 `ParseRepoUrl`、`snapshot.Load`）。
-8. 写表用 `tui.PrintTable`，交互选择用 `tui.SelectItem`，保持 CLI 输出风格一致。
+8. 写表用 `tui.PrintTable`，交互选择用 `tui.SelectItem`，保持 CLI 输出风格一致。**用户交互只出现在 cmd 层**——domain 不 import `pkg/tui`，交互式流程编排（选择/提问）属出口层职责；domain 暴露无交互的分阶段 API，由 cmd 层串联（参考 template domain 的 `CheckTarget → OpenSource → Source.Template → Generate` 拆分）。
 9. **优先复用 `pkg/` 下的辅助函数**，能力收敛在各工具子包内，不在调用方就地重造：
     - 动手前先 grep 对应 pkg 子包；缺什么就**在该子包里加新函数**，而不是在 `cmd/` / domain 里实现。例：git 读写统一走 `pkg/git`（读按主题分文件：`refs.go` 分支/tag/ahead-behind、`remote.go` 远端配置、`status.go` 工作区状态、`tree.go` / `diff.go` / `log.go` / `worktree.go` 各主题查询、共享执行核 `run.go`；写：clone / push / commit / fetch 等，见 `git.go`）；路径处理走 `pkg/pathkit`；切片运算走 `pkg/slicekit`。
     - pkg 子包内的函数必须**足够内聚且无副作用**：只依赖入参做纯运算，不读进程状态、不读环境。与环境强相关的副作用（`os.Getwd()` / `os.Getenv()` / 读 `~` / 当前时间等）只允许出现在**职责就是处理环境的包**（如 `pkg/pathkit` 展开 `~`、`internal/config` 读配置目录；`pkg/git` 的 `runOut` 为子进程显式构造环境属于其执行职责，不算读环境）；其它子包（`pkg/git` 的纯解析函数 / `pkg/slicekit` 等）一律不得调用这类函数。参数处理、cwd 解析、交互编排属于 `cmd` 层职责，不沉淀进 pkg 子包。

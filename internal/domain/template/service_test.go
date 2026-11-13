@@ -9,8 +9,8 @@ import (
 	"cube/internal/testfixture"
 )
 
-// TestServiceCreateFromGitSource E2E：注册表指向本地仓库，按名引用走临时 clone 全链路生成。
-func TestServiceCreateFromGitSource(t *testing.T) {
+// TestServiceOpenSourceAndGenerate E2E：注册表指向本地仓库，按名引用走临时 clone 全链路生成。
+func TestServiceOpenSourceAndGenerate(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	repo := makeTplRepo(t, ws)
 	s := NewService(ws.Cfg)
@@ -19,10 +19,25 @@ func TestServiceCreateFromGitSource(t *testing.T) {
 		t.Fatalf("注册模板源失败: %v", err)
 	}
 
+	src, err := s.OpenSource("core")
+	if err != nil {
+		t.Fatalf("open source 失败: %v", err)
+	}
+	defer src.Cleanup()
+
+	// 模板清单
+	if names := src.Names(); len(names) != 1 || names[0] != "hello" {
+		t.Fatalf("模板清单不符: %v", names)
+	}
+
 	// 正常生成：变量注入 patterns 替换
+	tpl, err := src.Template("hello")
+	if err != nil {
+		t.Fatalf("加载模板失败: %v", err)
+	}
 	target := ws.Join("out", "app")
-	if err := s.Create("core", "hello", target, map[string]string{"name": "app"}); err != nil {
-		t.Fatalf("create 失败: %v", err)
+	if count, err := s.Generate(tpl, target, map[string]string{"name": "app"}); err != nil || count != 1 {
+		t.Fatalf("generate 失败: count=%d err=%v", count, err)
 	}
 	data, err := os.ReadFile(filepath.Join(target, "hello.txt"))
 	if err != nil || string(data) != "hello app\n" {
@@ -30,30 +45,28 @@ func TestServiceCreateFromGitSource(t *testing.T) {
 	}
 
 	// 指定不存在的模板
-	if err := s.Create("core", "nope", ws.Join("out", "b"), nil); err == nil || !strings.Contains(err.Error(), "模板") {
+	if _, err := src.Template("nope"); err == nil || !strings.Contains(err.Error(), "模板") {
 		t.Fatalf("不存在的模板应报错, got %v", err)
 	}
 
 	// 未注册源
-	if err := s.Create("work", "hello", ws.Join("out", "c"), nil); err == nil || !strings.Contains(err.Error(), "未找到指定模板源") {
+	if _, err := s.OpenSource("work"); err == nil || !strings.Contains(err.Error(), "未找到指定模板源") {
 		t.Fatalf("未注册源应报错, got %v", err)
 	}
 }
 
-// TestServiceCreateTargetPrecheck 预检先行：目标路径非法时不发起 clone（注册表指向坏地址也不应报拉取错误）。
-func TestServiceCreateTargetPrecheck(t *testing.T) {
+// TestServiceCheckTarget 预检：目标已存在且非空时报路径错误（cmd 层先于 clone/交互调用）。
+func TestServiceCheckTarget(t *testing.T) {
 	ws := testfixture.NewWorkspace(t)
 	s := NewService(ws.Cfg)
-	// 注册一个不可 clone 的源：若预检没先行，会先撞 clone 失败而不是路径错误
-	if err := s.SaveTplSource(TplSource{Name: "core", RepoURL: ws.Join("no-such-repo")}); err != nil {
-		t.Fatalf("注册模板源失败: %v", err)
-	}
 
-	// 目标已存在且非空
 	occupied := ws.Mkdir("occupied")
 	ws.WriteFile(filepath.Join("occupied", "x.txt"), []byte("x"))
-	err := s.Create("core", "hello", occupied, nil)
-	if err == nil || !strings.Contains(err.Error(), "目标目录非空") {
-		t.Fatalf("非空目标应先报路径错误（而非 clone 失败）, got %v", err)
+	if err := s.CheckTarget(occupied); err == nil || !strings.Contains(err.Error(), "目标目录非空") {
+		t.Fatalf("非空目标应报路径错误, got %v", err)
+	}
+
+	if err := s.CheckTarget(ws.Join("out", "free")); err != nil {
+		t.Fatalf("不存在的目标路径应通过预检, got %v", err)
 	}
 }
