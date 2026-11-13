@@ -20,7 +20,6 @@ import (
 	"cube/internal/cmd/project"
 	"cube/internal/cmd/server"
 	"cube/internal/cmd/tpl"
-	"cube/internal/cmd/ui"
 	"cube/internal/config"
 	"cube/internal/logger"
 	"cube/internal/version"
@@ -101,9 +100,8 @@ func newRootCmd(a *app.App) *cobra.Command {
 func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(newVersionCmd())
 
-	// web server 相关
-	cmd.AddCommand(server.NewCmd(a)) // server 状态、启停 / 生成 openapi
-	cmd.AddCommand(ui.NewCmd(a))     // ui 相关 (打开具体页面)
+	// server 状态、启停 / 生成 openapi / 打开具体 ui 界面
+	cmd.AddCommand(server.NewCmd(a))
 
 	// project 相关
 	cmd.AddCommand(project.NewCmd(a))
@@ -143,6 +141,10 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 		// git
 		"push": "git push",
 		"pull": "git pull",
+		// server:
+		"ui":        "server ui",
+		"md":        "server md",
+		"workbench": "server workbench",
 	}
 	for name, alias := range aliases {
 		registerAliasCommand(cmd, name, alias)

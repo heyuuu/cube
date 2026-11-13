@@ -28,6 +28,10 @@ func NewCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(newStatusCmd(a))  // status
 	cmd.AddCommand(newOpenapiCmd(a)) // openapi
 
+	cmd.AddCommand(newUiCmd(a))        // ui
+	cmd.AddCommand(newMdCmd(a))        // md
+	cmd.AddCommand(newWorkbenchCmd(a)) // workbench
+
 	/* <<subcommand inject point>> */
 
 	return cmd
