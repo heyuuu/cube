@@ -40,7 +40,7 @@ func TestValidateHost(t *testing.T) {
 }
 
 func TestValidKind(t *testing.T) {
-	for _, k := range Kinds() {
+	for _, k := range allKinds {
 		if !ValidKind(k) {
 			t.Errorf("kind %q 应合法", k)
 		}

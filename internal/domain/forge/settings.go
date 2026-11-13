@@ -17,6 +17,7 @@ const forgesSection = "forges"
 const accountsSection = "forgeAccounts"
 
 type ForgesStore = *xstore.KeyedSliceStore[Forge]
+
 type AccountsStore = *xstore.KeyedSliceStore[Account]
 
 func newForgesStore(settingsFile string) ForgesStore {
@@ -30,7 +31,7 @@ func newForgesStore(settingsFile string) ForgesStore {
 				return f, err
 			}
 			if !ValidKind(f.Kind) {
-				return f, fmt.Errorf("forge kind 未知: %q（合法值：%s）", f.Kind, strings.Join(Kinds(), " / "))
+				return f, fmt.Errorf("forge kind 未知: %q（合法值：%s）", f.Kind, strings.Join(allKinds, " / "))
 			}
 			if err := icons.ValidateIcon(f.Icon); err != nil {
 				return f, fmt.Errorf("forge icon 配置错误: %s", err)

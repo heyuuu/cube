@@ -27,9 +27,9 @@ type Service struct {
 
 // NewService 由 Config 装配 Service（DI 注入用），拉取缓存落 cache/forge-repos.json。
 func NewService(cfg *config.Config) *Service {
-	repoCache := newRepoCache(filepath.Join(cfg.CacheDir(), "forge-repos.json"))
-	accountsStore := newAccountsStore(cfg.SettingsFile())
 	forgesStore := newForgesStore(cfg.SettingsFile())
+	accountsStore := newAccountsStore(cfg.SettingsFile())
+	repoCache := newRepoCache(filepath.Join(cfg.CacheDir(), "forge-repos.json"))
 
 	accountsStore.OnChange(func(accounts []Account) error {
 		live := make(map[string]bool, len(accounts))

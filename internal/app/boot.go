@@ -22,8 +22,8 @@ func bootFactories() []any {
 		opener.NewService,
 		usage.NewService,
 		workbench.NewService,
-		template.NewService,
 		forge.NewService,
+		template.NewService,
 
 		/* <<service-factory inject point>> */
 		/* 上面是 generate 脚本注入点标识，不要删除 */
@@ -55,8 +55,8 @@ func (a *App) OpenerService() *opener.Service { return mustGet[*opener.Service](
 // UsageService 返回 usage 服务单例（Init 后可用）。
 func (a *App) UsageService() *usage.Service { return mustGet[*usage.Service](a) }
 
-// TemplateService 返回 template 服务单例（Init 后可用）。
-func (a *App) TemplateService() *template.Service { return mustGet[*template.Service](a) }
-
 // ForgeService 返回 forge 服务单例（Init 后可用）。
 func (a *App) ForgeService() *forge.Service { return mustGet[*forge.Service](a) }
+
+// TemplateService 返回 template 服务单例（Init 后可用）。
+func (a *App) TemplateService() *template.Service { return mustGet[*template.Service](a) }
