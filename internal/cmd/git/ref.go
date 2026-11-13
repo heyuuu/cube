@@ -47,6 +47,12 @@ func (r refInfo) IsRemoteTag() bool    { return r.remoteKind.IsTag() }
 // 输出的 []refInfo 不会有 name 相同的 refInfo，但是 localKind 和 remoteKind 可能分别是 RefBranch 和 RefTag，需要注意
 // - 本函数只构建基础信息，额外信息不一定有值；如需额外信息，需要调用 resolveRefExtraInfos 补充额外信息
 func allRefInfos(repoPath string, remote string) ([]refInfo, error) {
+	// 先 fetch 一次刷新 remote-tracking，使本地的 refs 信息保持最新
+	if err := doFetch(repoPath, remote); err != nil {
+		return nil, err
+	}
+
+	// 收集 ref 信息
 	refs, err := git.Refs(repoPath)
 	if err != nil {
 		return nil, fmt.Errorf("读取 ref 列表失败: %w", err)
@@ -94,11 +100,23 @@ func allRefInfos(repoPath string, remote string) ([]refInfo, error) {
 
 // resolveRefExtraInfos 完善 refInfos 的额外信息，修改原始 slice
 // 建议在过滤后最后一步调用，因为这个函数会 O(n) 级别调用子进程
-func resolveRefExtraInfos(repoPath string, remote string, refInfos []refInfo) error {
+func resolveRefExtraInfos(repoPath string, remote string, refInfos []refInfo) ([]refInfo, error) {
+	// 没有本地分支时提前返回
+	hasLocalBranch := false
+	for _, info := range refInfos {
+		if info.IsLocalBranch() {
+			hasLocalBranch = true
+			break
+		}
+	}
+	if !hasLocalBranch {
+		return refInfos, nil
+	}
+
 	// 查找分支在本地的检出目录
 	wts, err := git.WorktreeList(repoPath)
 	if err != nil {
-		return fmt.Errorf("枚举工作树失败: %w", err)
+		return nil, fmt.Errorf("枚举工作树失败: %w", err)
 	}
 	branchWorktrees := make(map[string]string, len(wts))
 	for _, wt := range wts {
@@ -108,21 +126,24 @@ func resolveRefExtraInfos(repoPath string, remote string, refInfos []refInfo) er
 	}
 
 	for i, info := range refInfos {
+		if !info.IsLocalBranch() {
+			continue
+		}
+
 		if info.LocalExists() && info.RemoteExists() {
 			info.ahead, info.behind, _ = git.AheadBehindRemote(repoPath, info.name, remote, info.name)
 		}
-		if info.IsLocalBranch() {
-			info.worktree = branchWorktrees[info.Name()]
-		}
+		info.worktree = branchWorktrees[info.Name()]
 		refInfos[i] = info
 	}
-	return nil
+	return refInfos, nil
 }
 
 // getLocalRefInfos 获取指定的本地 ref 信息
 func getLocalRefInfos(refInfos []refInfo, flagRefs []string) ([]refInfo, error) {
 	refInfoMap := xslices.KeyBy(refInfos, refInfo.Name)
 
+	flagRefs = xslices.Unique(flagRefs)
 	result := make([]refInfo, 0, len(flagRefs))
 	for _, r := range flagRefs {
 		info, ok := refInfoMap[r]
@@ -138,6 +159,7 @@ func getLocalRefInfos(refInfos []refInfo, flagRefs []string) ([]refInfo, error) 
 func getRemoteRefInfos(refInfos []refInfo, flagRefs []string) ([]refInfo, error) {
 	refInfoMap := xslices.KeyBy(refInfos, refInfo.Name)
 
+	flagRefs = xslices.Unique(flagRefs)
 	result := make([]refInfo, 0, len(flagRefs))
 	for _, r := range flagRefs {
 		info, ok := refInfoMap[r]

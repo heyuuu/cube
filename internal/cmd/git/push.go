@@ -99,7 +99,7 @@ const refAllTags = "--tags"
 //     显示 "↑2 ↓0"）；tag 无此语义。fetch 失败（网络不通等）打警告降级为不显示，
 //     不阻断选择。
 func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remote git.Remote) ([]string, error) {
-	if err := doFetch(repoPath, remote); err != nil {
+	if err := doFetch(repoPath, remote.Name); err != nil {
 		return nil, err
 	}
 

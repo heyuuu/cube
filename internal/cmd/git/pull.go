@@ -74,7 +74,7 @@ func pullFlow(path string) error {
 
 	// 先 fetch 一次刷新 remote-tracking：候选的领先/落后与后续本地快进都以它为
 	// 数据源（唯一网络往返）；失败即终止——没有新数据的拉取没有意义
-	if err = doFetch(repoPath, chosenRemote); err != nil {
+	if err = doFetch(repoPath, chosenRemote.Name); err != nil {
 		return err
 	}
 
