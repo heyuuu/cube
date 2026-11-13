@@ -4,6 +4,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"cube/internal/testfixture"
+	"cube/pkg/git"
 )
 
 func loadTestTemplate(t *testing.T) *Template {
@@ -79,6 +82,49 @@ func TestTemplateWalkFile(t *testing.T) {
 	sortStrings(got)
 	if !equalStrings(got, want) {
 		t.Fatalf("WalkFile 结果不符:\ngot  %v\nwant %v\nraw %v", got, want, files)
+	}
+}
+
+// 仓库内模板目录按 git 视角遍历：忽略项（目录级/文件级）不进结果，
+// 未跟踪未忽略的新文件可见（开发态吃未提交改动），与 clone 口径对齐。
+// 非仓库目录的降级遍历由 TestTemplateWalkFile 覆盖（t.TempDir 不在仓库内）。
+func TestTemplateWalkFileInGitRepo(t *testing.T) {
+	ws := testfixture.NewWorkspace(t)
+	repo := ws.MakeGitRepo("tpl-repo")
+	ws.WriteFile(filepath.Join("tpl-repo", MetaFileName), []byte("version: 1\n"))
+	ws.WriteFile(filepath.Join("tpl-repo", "main.go"), []byte("package main"))
+	ws.WriteFile(filepath.Join("tpl-repo", ".gitignore"), []byte("node_modules/\nscratch.log\n"))
+	// 忽略项：目录整体忽略 + 未跟踪的文件级忽略（tracked 文件不受 .gitignore 影响，
+	// ls-files 与 clone 都会包含，此处不测该形态）
+	ws.WriteFile(filepath.Join("tpl-repo", "node_modules", "dep", "index.js"), []byte("junk"))
+	ws.WriteFile(filepath.Join("tpl-repo", "scratch.log"), []byte("junk"))
+	if err := git.Add(repo, MetaFileName, "main.go", ".gitignore"); err != nil {
+		t.Fatalf("git add 失败: %v", err)
+	}
+	if err := git.Commit(repo, "add template"); err != nil {
+		t.Fatalf("git commit 失败: %v", err)
+	}
+	// commit 后再写：保持未跟踪未忽略
+	ws.WriteFile(filepath.Join("tpl-repo", "draft.md"), []byte("draft"))
+
+	tpl, err := LoadTemplate(repo)
+	if err != nil {
+		t.Fatalf("LoadTemplate 报错: %v", err)
+	}
+
+	var files []string
+	err = tpl.WalkFile(func(rel string) error {
+		files = append(files, rel)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WalkFile 报错: %v", err)
+	}
+
+	sortStrings(files)
+	want := []string{".gitignore", "draft.md", "main.go"}
+	if !equalStrings(files, want) {
+		t.Fatalf("WalkFile git 视角结果不符:\ngot  %v\nwant %v", files, want)
 	}
 }
 

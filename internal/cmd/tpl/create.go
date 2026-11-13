@@ -34,7 +34,7 @@ func newCreateCmd(a *app.App) *cobra.Command {
 模板源（可省略）四种写法：
   @core/go-service   命名源 core 的 go-service 模板（源在设置页「模板源」配置）
   go-service         默认源 core 的 go-service 模板
-  ~/code/tpl-dev     本地模板目录直读（开发态：不 clone，吃未推送的改动）
+  ~/code/tpl-dev     本地模板目录直读（开发态：不 clone，吃未推送的改动；目录在 git 仓库内时按 .gitignore 过滤，与 clone 口径一致）
   省略               默认源 core，交互选模板
 
 示例：

@@ -3,10 +3,13 @@ package template
 import (
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/heyuuu/x/xstd/xos"
+
+	"cube/pkg/git"
 )
 
 // Template 模板
@@ -49,7 +52,35 @@ func (t *Template) Path() string { return t.path }
 func (t *Template) Meta() *Meta { return t.meta }
 
 // WalkFile 遍历模板内文件（以相对路径回调，跳过 .git 与 template.yaml，目录不回调）。
+// 模板目录在 git 仓库内时按 git 视角取文件（tracked + 未跟踪未忽略，忽略链整条
+// 生效），与 clone 发布态的内容口径对齐——node_modules/构建产物等不进生成结果；
+// 仓库外目录（如 zip 解压的裸模板）降级普通遍历。
 func (t *Template) WalkFile(fn func(rel string) error) error {
+	files, err := git.ListFilesUnder(t.path)
+	if err != nil {
+		slog.Warn("git 列举模板文件失败，降级普通遍历", "path", t.path, "err", err)
+	}
+	if files != nil {
+		for _, abs := range files {
+			rel, err := filepath.Rel(t.path, abs)
+			if err != nil {
+				return err
+			}
+			// ls-files 不会输出 .git 内部文件，meta 过滤与 walkDir 同口径（任意层级同名文件不算模板内容）
+			if filepath.Base(rel) == MetaFileName {
+				continue
+			}
+			if err := fn(rel); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return t.walkDir(fn)
+}
+
+// walkDir 降级遍历（目录不在 git 仓库内）：WalkDir 全量，跳过 .git 与 template.yaml。
+func (t *Template) walkDir(fn func(rel string) error) error {
 	err := filepath.WalkDir(t.path, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
