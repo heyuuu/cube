@@ -18,12 +18,16 @@ const DefaultSource = "core"
 // DefaultSourceRepoURL 缺省源的官方仓库地址（源缺配置时报错附建议用）。
 const DefaultSourceRepoURL = "git@github.com:heyuuu/cube-templates.git"
 
+// RootTplName 根模板形态的模板名（template.yaml 在源根时整个源即一个模板，名固定，无选择语义）。
+const RootTplName = "default"
+
 // Source 已解析的可用模板源（本地路径直读或临时 clone 的仓库），含模板清单。
 // 用完须调用 Cleanup（临时 clone 目录删除；本地路径形态为空操作，可无条件 defer）。
 type Source struct {
 	dir       string
 	cleanup   func()
 	templates map[string]string // 模板名 → 模板目录（LoadSourceTemplates 口径）
+	rootTpl   bool              // 根模板形态（template.yaml 在源根，整个源即唯一模板）
 }
 
 // Cleanup 释放源占用的资源；幂等，本地路径形态为空操作。
@@ -37,6 +41,16 @@ func (s *Source) Cleanup() {
 // Names 返回源内全部模板名（字典序，交互选择候选用）。
 func (s *Source) Names() []string {
 	return xmaps.SortedKeys(s.templates)
+}
+
+// RootTemplateName 根模板名；模板库形态返回空串。cmd 层据此在未指名模板时
+// 直接选中根模板、跳过交互——自动选中挂在源的结构声明上（template.yaml 在根），
+// 不挂在模板数量上：模板库只有一个模板是暂时状态，库增长不应改变交互行为。
+func (s *Source) RootTemplateName() string {
+	if s.rootTpl {
+		return RootTplName
+	}
+	return ""
 }
 
 // Template 按名加载模板；不存在时报错附可用清单。
@@ -100,22 +114,24 @@ func cloneSource(repoURL string) (dir string, cleanup func(), err error) {
 	return dir, cleanup, nil
 }
 
-// LoadSourceTemplates 加载 source 下的模板，返回 Map<模板名, 模板路径>
-func LoadSourceTemplates(sourcePath string) (map[string]string, error) {
-	// 单模板 source (根目录即为唯一模板目录)
+// LoadSourceTemplates 加载 source 下的模板，返回 Map<模板名, 模板路径> 与是否根模板形态。
+// 根模板形态：template.yaml 在源根，整个源即唯一模板（名固定 RootTplName，源根即模板目录）；
+// 模板库形态：templates/ 下各含 template.yaml 的子目录为模板，目录名为模板名。
+func LoadSourceTemplates(sourcePath string) (map[string]string, bool, error) {
+	// 根模板形态
 	if xos.IsFile(filepath.Join(sourcePath, MetaFileName)) {
-		return map[string]string{"default": MetaFileName}, nil
+		return map[string]string{RootTplName: sourcePath}, true, nil
 	}
-	// 多模板 source (默认 templates/* 为各模板地址)
+	// 模板库形态 (默认 templates/* 为各模板地址)
 	tplRoot := filepath.Join(sourcePath, "templates")
 	if !xos.IsDir(tplRoot) {
-		return nil, fmt.Errorf("%s 不是合法模板来源：根目录无 template.yaml，也无 templates/ 子目录", sourcePath)
+		return nil, false, fmt.Errorf("%s 不是合法模板来源：根目录无 template.yaml，也无 templates/ 子目录", sourcePath)
 	}
 
 	// 读取子目录
 	entries, err := os.ReadDir(tplRoot)
 	if err != nil {
-		return nil, fmt.Errorf("读取 templates/ 目录失败: %w", err)
+		return nil, false, fmt.Errorf("读取 templates/ 目录失败: %w", err)
 	}
 
 	// 遍历并记录符合条件的路径
@@ -132,5 +148,5 @@ func LoadSourceTemplates(sourcePath string) (map[string]string, error) {
 		// 添加到结果
 		result[e.Name()] = tplPath
 	}
-	return result, nil
+	return result, false, nil
 }

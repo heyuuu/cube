@@ -86,11 +86,16 @@ func newCreateCmd(a *app.App) *cobra.Command {
 			}
 			defer src.Cleanup() // 临时 clone 目录用后即删（失败路径同样清理）
 
-			// 未指名模板时交互选择
+			// 未指名模板时：根模板形态唯一确定直接选中；模板库形态交互选择
+			// （库即使当前只有一个模板也仍交互——自动选中挂在源的结构声明上，不挂在数量上）
 			if tplName == "" {
-				tplName, err = tui.SelectItem("选择模板", src.Names(), func(n string) string { return n })
-				if err != nil {
-					return err
+				if name := src.RootTemplateName(); name != "" {
+					tplName = name
+				} else {
+					tplName, err = tui.SelectItem("选择模板", src.Names(), func(n string) string { return n })
+					if err != nil {
+						return err
+					}
 				}
 			}
 			tpl, err := src.Template(tplName)

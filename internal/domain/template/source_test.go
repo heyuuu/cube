@@ -52,11 +52,14 @@ func TestLoadSourceTemplates(t *testing.T) {
 		"docs/readme.md":      "无关目录",
 	})
 
-	paths, err := LoadSourceTemplates(sourcePath)
+	paths, isRoot, err := LoadSourceTemplates(sourcePath)
 	if err != nil {
 		t.Fatalf("LoadSourceTemplates 报错: %v", err)
 	}
 
+	if isRoot {
+		t.Fatal("templates/ 形态不应报告根模板")
+	}
 	if len(paths) != 2 {
 		t.Fatalf("模板数 = %d, want 2 (过滤无 meta/.开头/文件), got %v", len(paths), paths)
 	}
@@ -70,8 +73,21 @@ func TestLoadSourceTemplates(t *testing.T) {
 		t.Fatal(". 开头目录应被跳过")
 	}
 
+	// 根模板形态：template.yaml 在源根，源根即模板目录（值曾误存 meta 文件名，端到端必挂）
+	rootPath := makeTestDir(t, map[string]string{
+		MetaFileName: "version: 1\n",
+		"main.go":    "package main",
+	})
+	rootPaths, isRoot, err := LoadSourceTemplates(rootPath)
+	if err != nil {
+		t.Fatalf("根模板形态加载报错: %v", err)
+	}
+	if !isRoot || len(rootPaths) != 1 || rootPaths[RootTplName] != rootPath {
+		t.Fatalf("根模板形态不符: isRoot=%v paths=%v want {%q: 源根}", isRoot, rootPaths, RootTplName)
+	}
+
 	// 不存在的 source 目录
-	if _, err := LoadSourceTemplates(filepath.Join(t.TempDir(), "missing")); err == nil || !strings.Contains(err.Error(), "不是合法模板来源") {
+	if _, _, err := LoadSourceTemplates(filepath.Join(t.TempDir(), "missing")); err == nil || !strings.Contains(err.Error(), "不是合法模板来源") {
 		t.Fatalf("期望“不是合法模板来源”错误, got %v", err)
 	}
 }

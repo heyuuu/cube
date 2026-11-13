@@ -32,7 +32,7 @@ func (s *Service) OpenSource(sourceRef string) (*Source, error) {
 	}
 
 	// 加载模板列表
-	templates, err := LoadSourceTemplates(dir)
+	templates, rootTpl, err := LoadSourceTemplates(dir)
 	if err != nil {
 		if cleanup != nil {
 			cleanup()
@@ -40,7 +40,7 @@ func (s *Service) OpenSource(sourceRef string) (*Source, error) {
 		return nil, err
 	}
 
-	return &Source{dir: dir, cleanup: cleanup, templates: templates}, nil
+	return &Source{dir: dir, cleanup: cleanup, templates: templates, rootTpl: rootTpl}, nil
 }
 
 // Generate 渲染模板到 targetPath（vars 需已收集齐）并执行 init 命令，返回生成文件数。
