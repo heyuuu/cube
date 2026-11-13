@@ -25,6 +25,8 @@ func NewCmd(a *app.App) *cobra.Command {
 
 	cmd.AddCommand(newDoctorCmd(a)) // doctor
 
+	cmd.AddCommand(newRefreshCmd(a)) // refresh
+
 	/* <<subcommand inject point>> */
 
 	return cmd
