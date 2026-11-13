@@ -13,58 +13,39 @@ import (
 
 // newPushCmd 是 `cube git push` 命令入口。
 //
-// 行为：path 定位 git 仓库（缺省当前目录，linked worktree 归并主工作树根，
-// 不要求已收录），选择单个目标 remote（同 pull：仅 1 个时自动选中，多个时
-// 交互单选——一次只推一个 remote，多 remote 分次执行），把多个分支 / tag
-// 批量推送。ref 通过 TUI 多选交互确认，当前分支默认勾选，分支标签带相对
-// 该 remote 的真实 ahead/behind（选择前 fetch 刷新，失败降级不显示）。
+// 行为：path 定位 git 仓库，选择单个目标 remote，把多个分支 / tag 批量推送。
+// ref 通过 TUI 多选交互确认，当前分支默认勾选，分支标签带相对该 remote 的真实 ahead/behind（选择前 fetch 刷新，失败降级不显示）。
 // 最后展示推送计划并二次确认后执行。
-//
-// 非 TTY 环境（脚本）下可改用 flag 显式指定：--remote / --ref（可多次），
-// 此时跳过对应交互；--force 启用 --force-with-lease。
 func newPushCmd() *cobra.Command {
-	var (
-		remote string
-		refs   []string
-		force  bool
-		yes    bool
-	)
 	cmd := &cobra.Command{
 		Use:   "push [path]",
 		Short: "把选中的分支/tag 批量推送到选中的 remote",
 		Long: `把多个分支 / tag 批量推送到选中的单个 remote。
 
-path 指定目标 git 仓库（绝对路径或以 . 开头的相对路径，裸短名不识别；
-不传为当前目录；linked worktree 归并到主工作树根），不要求是 cube 已收录的项目。
+path 指定目标 git 仓库（绝对路径或以 . 开头的相对路径，裸短名不识别；不传为当前目录；linked worktree 归并到主工作树根），不要求是 cube 已收录的项目。
 
-remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选
-（同 pull，一次只推一个 remote；要推多个 remote 分次执行）。
-ref 默认通过 TUI 多选交互确认：默认勾选当前分支；分支标签带相对该
-remote 的真实 ahead/behind（选择前自动 fetch 刷新，失败降级为不显示）。
-执行前展示推送计划并二次确认。
-
-非 TTY 环境（脚本）改用 flag 显式指定：--remote / --ref
-（后者可多次指定），跳过对应交互；--force 走 --force-with-lease，
---yes 跳过最终确认。单条 push 失败不中断，最后汇总结果。`,
+remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单，一次只推一个 remote；要推多个 remote 分次执行。
+ref 默认通过 TUI 多选交互确认：默认勾选当前分支；分支标签带相对该 remote 的真实 ahead/behind（选择前自动 fetch 刷新，失败降级为不显示）。
+执行前展示推送计划并二次确认。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			err := pushFlow(xslices.Get(args, 0), remote, refs, force, yes)
+			if !tui.IsTTY() {
+				return errors.New("此命令只支持交互环境(tty)下使用")
+			}
+
+			err := pushFlow(xslices.Get(args, 0))
 			if errors.Is(err, tui.ErrUserAborted) {
 				return nil
 			}
 			return err
 		},
 	}
-	cmd.Flags().StringVarP(&remote, "remote", "r", "", "目标 remote（多个 remote 时必选，仅 1 个可省略）")
-	cmd.Flags().StringArrayVarP(&refs, "ref", "b", nil, "待推送的 ref：分支名/tag 名（可多次指定；传 --tags 表示全部 tag；默认交互多选）")
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "强制推送（使用 --force-with-lease）")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "跳过最终确认，直接推送")
 	return cmd
 }
 
 // pushFlow 推送主流程：定位仓库 → 收集候选 → 选 remote/ref → 确认 → 逐条推送。
 // 交互取消（ErrUserAborted）上抛，由 RunE 统一转 nil。
-func pushFlow(path string, flagRemote string, flagRefs []string, force bool, yes bool) error {
+func pushFlow(path string) error {
 	// 定位 git 仓库主工作树根（worktree 归并）
 	repoPath, err := resolveGitRoot(path)
 	if err != nil {
@@ -79,13 +60,13 @@ func pushFlow(path string, flagRemote string, flagRefs []string, force bool, yes
 	}
 
 	// 选择目标 remote（同 pull：flag 优先 → 单 remote 自动 → 多 remote 手选）
-	chosenRemote, err := pickRemote(repoPath, flagRemote)
+	chosenRemote, err := pickRemote(repoPath)
 	if err != nil {
 		return err
 	}
 
 	// 选择 ref（flag 优先，否则 TUI 多选，默认当前分支；标签带该 remote 的真实 ahead/behind）
-	chosenRefs, err := pickRefs(repoPath, repoRefs, headRef, chosenRemote, flagRefs)
+	chosenRefs, err := pickRefs(repoPath, repoRefs, headRef, chosenRemote)
 	if err != nil {
 		return err
 	}
@@ -94,18 +75,16 @@ func pushFlow(path string, flagRemote string, flagRefs []string, force bool, yes
 	}
 
 	// 展示推送计划 + 二次确认
-	if !yes {
-		ok, err := confirmPlan(repoPath, chosenRemote, chosenRefs, force)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return nil
-		}
+	ok, err := confirmPlan(repoPath, chosenRemote, chosenRefs)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
 	}
 
 	// 执行：逐条 push 并汇总结果
-	return runPush(repoPath, chosenRemote, chosenRefs, force)
+	return runPush(repoPath, chosenRemote, chosenRefs)
 }
 
 // refAllTags 候选哨兵值：代表一次性推送全部本地 tag（git push --tags），非真实 git ref。
@@ -119,17 +98,7 @@ const refAllTags = "--tags"
 //   - 分支标签带相对该 remote 的真实 ahead/behind（先 fetch 刷新 remote-tracking，
 //     显示 "↑2 ↓0"）；tag 无此语义。fetch 失败（网络不通等）打警告降级为不显示，
 //     不阻断选择。
-func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remote git.Remote, flagRefs []string) ([]string, error) {
-	if len(flagRefs) > 0 {
-		if err := validateFlagRefs(refs, flagRefs); err != nil {
-			return nil, err
-		}
-		return xslices.Unique(flagRefs), nil
-	}
-	if !tui.IsTTY() {
-		return nil, errors.New("非交互环境(tty)下必须通过 --ref 指定分支/tag")
-	}
-
+func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remote git.Remote) ([]string, error) {
 	if err := doFetch(repoPath, remote); err != nil {
 		return nil, err
 	}
@@ -185,26 +154,6 @@ func pickRefs(repoPath string, refs *git.RefsResult, headRef string, remote git.
 	return result, nil
 }
 
-// validateFlagRefs 校验 flag 指定的 ref 存在于本地（分支/tag 的短名或全名，或 --tags 哨兵）。
-// 拼错即时报错，不等到逐条 push 网络执行后才由 git 报错（对齐 pull 的候选校验）。
-func validateFlagRefs(refs *git.RefsResult, flagRefs []string) error {
-	valid := make(map[string]bool, len(refs.Locals)+len(refs.Tags))
-	for _, r := range refs.Locals {
-		valid[r.Name] = true
-		valid[r.ShortName] = true
-	}
-	for _, t := range refs.Tags {
-		valid[t.Name] = true
-		valid[t.ShortName] = true
-	}
-	for _, r := range flagRefs {
-		if r != refAllTags && !valid[r] {
-			return fmt.Errorf("未找到本地分支/tag: %s", r)
-		}
-	}
-	return nil
-}
-
 // aheadBehindSuffix 生成分支标签的 ahead/behind 后缀（真实值，依赖调用方已 fetch）。
 // 远端没有同名分支、或 fetch 失败时返回空串——显示 ↑0 ↓0 会误导为已同步。
 func aheadBehindSuffix(repoPath, branch string, remote git.Remote, remoteBranches map[string]map[string]bool) string {
@@ -216,13 +165,10 @@ func aheadBehindSuffix(repoPath, branch string, remote git.Remote, remoteBranche
 }
 
 // confirmPlan 打印推送计划表并要求二次确认。返回 (是否确认, 错误)。
-func confirmPlan(repoPath string, remote git.Remote, refs []string, force bool) (bool, error) {
+func confirmPlan(repoPath string, remote git.Remote, refs []string) (bool, error) {
 	fmt.Println()
 	fmt.Printf("仓库: %s\n", repoPath)
 	fmt.Printf("Remote: %s  (%s)\n", remote.Name, remote.Push)
-	if force {
-		fmt.Println("模式: 强制推送（--force-with-lease）")
-	}
 	fmt.Println("推送计划：")
 	rows := make([][]string, 0, len(refs))
 	for _, ref := range refs {
@@ -244,15 +190,15 @@ func refDisplayName(ref string) string {
 // runPush 逐条执行 git push 到选中的 remote，并打印汇总。
 //
 // 单条 push 失败不中断后续，全部跑完后若有失败则汇总返回一个 error。
-func runPush(repoPath string, remote git.Remote, refs []string, force bool) error {
+func runPush(repoPath string, remote git.Remote, refs []string) error {
 	failed := 0
 	for i, ref := range refs {
-		fmt.Printf("\n[%d/%d] git push %s %s%s\n", i+1, len(refs), remote.Name, refDisplayName(ref), forceFlagSuffix(force))
+		fmt.Printf("\n[%d/%d] git push %s %s\n", i+1, len(refs), remote.Name, refDisplayName(ref))
 		var err error
 		if ref == refAllTags {
-			err = git.PushAllTags(repoPath, remote.Name, force)
+			err = git.PushAllTags(repoPath, remote.Name, false)
 		} else {
-			err = git.Push(repoPath, remote.Name, ref, force)
+			err = git.Push(repoPath, remote.Name, ref, false)
 		}
 		if err != nil {
 			failed++
@@ -266,12 +212,4 @@ func runPush(repoPath string, remote git.Remote, refs []string, force bool) erro
 		return fmt.Errorf("有 %d 条 push 失败，请检查上方输出", failed)
 	}
 	return nil
-}
-
-// forceFlagSuffix 仅供日志展示用，返回 " --force-with-lease" 或空串。
-func forceFlagSuffix(force bool) string {
-	if force {
-		return " --force-with-lease"
-	}
-	return ""
 }

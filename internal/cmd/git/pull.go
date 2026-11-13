@@ -23,11 +23,6 @@ import (
 // 仅快进：本地与远端分叉的分支失败跳过，绝不产生 merge commit。
 // 单条失败不中断（同 push），最后汇总结果。
 func newPullCmd() *cobra.Command {
-	var (
-		remote string
-		refs   []string
-		yes    bool
-	)
 	cmd := &cobra.Command{
 		Use:   "pull [path]",
 		Short: "从选中的 remote 批量快进更新本地分支",
@@ -45,28 +40,26 @@ remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选
   - 检出分支（含主工作树与各 linked worktree 检出的）：
     git merge --ff-only <remote>/<branch>，在其检出所在的工作树执行
   - 未检出分支：git fetch . <remote>/<branch>:<branch>
-仅快进：分叉的分支失败跳过，不产生 merge commit。
-
-非 TTY 环境（脚本）改用 flag 显式指定：--remote / --ref（可多次），
-跳过对应交互；--yes 跳过最终确认。单条失败不中断，最后汇总结果。`,
+仅快进：分叉的分支失败跳过，不产生 merge commit。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			err := pullFlow(xslices.Get(args, 0), remote, refs, yes)
+			if !tui.IsTTY() {
+				return errors.New("此命令只支持交互环境(tty)下使用")
+			}
+
+			err := pullFlow(xslices.Get(args, 0))
 			if errors.Is(err, tui.ErrUserAborted) {
 				return nil
 			}
 			return err
 		},
 	}
-	cmd.Flags().StringVarP(&remote, "remote", "r", "", "拉取来源 remote（多个 remote 时必选，仅 1 个可省略）")
-	cmd.Flags().StringArrayVarP(&refs, "ref", "b", nil, "待拉取的分支名（可多次指定，默认交互多选）")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "跳过最终确认，直接拉取")
 	return cmd
 }
 
 // pullFlow 拉取主流程：定位仓库 → 选 remote → fetch 一次刷新跟踪 → 候选/多选
 // → 确认 → 逐条本地快进。交互取消（ErrUserAborted）上抛，由 RunE 统一转 nil。
-func pullFlow(path string, flagRemote string, flagRefs []string, yes bool) error {
+func pullFlow(path string) error {
 	// 定位 git 仓库主工作树根（worktree 归并）
 	repoPath, err := resolveGitRoot(path)
 	if err != nil {
@@ -74,7 +67,7 @@ func pullFlow(path string, flagRemote string, flagRefs []string, yes bool) error
 	}
 
 	// 单选来源 remote（flag 优先 → 单 remote 自动 → 多 remote 手选，与 push 共用）
-	chosenRemote, err := pickRemote(repoPath, flagRemote)
+	chosenRemote, err := pickRemote(repoPath)
 	if err != nil {
 		return err
 	}
@@ -96,7 +89,7 @@ func pullFlow(path string, flagRemote string, flagRefs []string, yes bool) error
 	}
 
 	// 多选分支（flag 优先，默认勾选远端领先的分支）
-	chosenBranches, err := pickPullBranches(candidates, currentBranch, flagRefs)
+	chosenBranches, err := pickPullBranches(candidates, currentBranch)
 	if err != nil {
 		return err
 	}
@@ -105,14 +98,12 @@ func pullFlow(path string, flagRemote string, flagRefs []string, yes bool) error
 	}
 
 	// 展示拉取计划 + 二次确认
-	if !yes {
-		ok, err := confirmPullPlan(repoPath, chosenRemote, chosenBranches, candidates, currentBranch)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return nil
-		}
+	ok, err := confirmPullPlan(repoPath, chosenRemote, chosenBranches, candidates, currentBranch)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
 	}
 
 	// 执行：逐条本地快进并汇总结果
@@ -162,24 +153,7 @@ func pullCandidates(repoPath string, remoteName string) ([]branchDiff, error) {
 
 // pickPullBranches 决定待拉取的分支集合：flag 显式指定优先（校验属于候选，重复去重），
 // 否则 TUI 多选，默认勾选 pullDefaultBranches 的结果。
-func pickPullBranches(candidates []branchDiff, currentBranch string, flagRefs []string) ([]string, error) {
-	if len(flagRefs) > 0 {
-		flagRefs = xslices.Unique(flagRefs)
-		valid := make(map[string]bool, len(candidates))
-		for _, d := range candidates {
-			valid[d.Branch] = true
-		}
-		for _, r := range flagRefs {
-			if !valid[r] {
-				return nil, fmt.Errorf("分支 %s 不在 remote 的同名分支候选中", r)
-			}
-		}
-		return flagRefs, nil
-	}
-	if !tui.IsTTY() {
-		return nil, errors.New("非交互环境(tty)下必须通过 --ref 指定分支")
-	}
-
+func pickPullBranches(candidates []branchDiff, currentBranch string) ([]string, error) {
 	picked, err := tui.MultiSelectItemWithDefaults(
 		"选择待拉取的分支（空格勾选，回车确认）",
 		candidates,
