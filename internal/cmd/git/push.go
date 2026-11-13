@@ -14,8 +14,9 @@ import (
 // newPushCmd 是 `cube git push` 命令入口。
 //
 // 行为：path 定位 git 仓库，选择单个目标 remote，把多个分支 / tag 批量推送。
-// ref 通过 TUI 多选交互确认，当前分支默认勾选，分支标签带相对该 remote 的真实 ahead/behind（选择前 fetch 刷新，失败降级不显示）。
-// 最后展示推送计划并二次确认后执行。
+// ref 通过 TUI 多选交互确认：候选为本地与远端都存在的分支（标签带相对该 remote 的
+// 真实 ahead/behind，选择前 fetch 刷新，失败即终止）和远端没有的本地 tag；
+// 默认勾选主工作树当前分支和全部待推送 tag。最后展示推送计划并二次确认后执行。
 func newPushCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "push [path]",
@@ -24,9 +25,9 @@ func newPushCmd() *cobra.Command {
 
 path 指定目标 git 仓库（绝对路径或以 . 开头的相对路径，裸短名不识别；不传为当前目录；linked worktree 归并到主工作树根），不要求是 cube 已收录的项目。
 
-remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单，一次只推一个 remote；要推多个 remote 分次执行。
-ref 默认通过 TUI 多选交互确认：默认勾选当前分支；分支标签带相对该 remote 的真实 ahead/behind（选择前自动 fetch 刷新，失败降级为不显示）。
-执行前展示推送计划并二次确认。`,
+remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选，一次只推一个 remote；要推多个 remote 分次执行。
+ref 通过 TUI 多选交互确认：候选为本地与远端都存在的分支（标签带相对该 remote 的真实 ahead/behind，选择前自动 fetch 刷新，失败即终止）与远端没有的本地 tag；默认勾选主工作树当前分支和全部待推送 tag。
+执行前展示推送计划并二次确认。仅支持 tty 环境。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if !tui.IsTTY() {
@@ -106,8 +107,9 @@ func pickPushRefs(repoPath string, remote git.Remote) ([]refInfo, error) {
 		return nil, err
 	}
 
-	// 默认选中的列表为主项目分支+所有可推送的 tag
-	defaults := xslices.Filter(refInfos, func(ref refInfo) bool {
+	// 默认选中主工作树当前分支 + 候选里全部待推送 tag；须从 candidates 过滤——
+	// refInfos 未 resolve 额外信息（worktree 恒空），按值匹配默认项会全部落空
+	defaults := xslices.Filter(candidates, func(ref refInfo) bool {
 		return ref.IsMainCurrent() || ref.IsLocalTag()
 	})
 

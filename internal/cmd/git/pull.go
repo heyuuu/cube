@@ -12,35 +12,38 @@ import (
 	"cube/pkg/tui"
 )
 
-// newPullCmd 是 `cube git pull` 命令入口（push 的反向：从单个 remote 批量更新本地分支）。
+// newPullCmd 是 `cube git pull` 命令入口（push 的反向：从单个 remote 批量更新本地分支/tag）。
 //
 // 行为：path 定位 git 仓库（规则同 push），选择一个来源 remote
 // （仅 1 个 remote 时自动选中，多个时交互单选），先 fetch 一次刷新跟踪分支
-// （唯一网络往返），多选分支后逐条本地快进：
+// （唯一网络往返），多选分支/tag 后逐条本地快进：
 //   - 检出分支：git merge --ff-only <remote>/<branch>（在其检出所在的工作树执行）
 //   - 未检出分支：git fetch . <remote>/<branch>:<branch>
+//   - tag：git fetch <remote> tag <tag>
 //
+// 默认勾选主工作树当前分支和全部待拉取 tag。
 // 仅快进：本地与远端分叉的分支失败跳过，绝不产生 merge commit。
 // 单条失败不中断（同 push），最后汇总结果。
 func newPullCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull [path]",
-		Short: "从选中的 remote 批量快进更新本地分支",
-		Long: `从单个 remote 批量拉取更新选中的分支（push 的反向命令）。
+		Short: "从选中的 remote 批量快进更新本地分支/tag",
+		Long: `从单个 remote 批量拉取更新选中的分支/tag（push 的反向命令）。
 
 path 指定目标 git 仓库（绝对路径或以 . 开头的相对路径，裸短名不识别；
 不传为当前目录；linked worktree 归并到主工作树根），不要求是 cube 已收录的项目。
 
 remote 选择：仅 1 个 remote 时自动选中；多个 remote 时交互单选。
-分支默认通过 TUI 多选交互确认：候选为与该 remote 同名的本地分支，
-默认勾选远端领先的分支（都不落后时默认当前分支）。
+分支/tag 通过 TUI 多选交互确认：候选为与该 remote 同名的本地分支（标签带
+真实 ahead/behind）和本地没有的远端 tag；默认勾选主工作树当前分支和全部待拉取 tag。
 
 执行模型：先对选中 remote 做一次 git fetch 刷新跟踪分支（唯一的网络
-往返，领先/落后与分叉判定均基于刷新后的真实数据），分支更新全部本地完成：
+往返，领先/落后与分叉判定均基于刷新后的真实数据），更新全部本地完成：
   - 检出分支（含主工作树与各 linked worktree 检出的）：
     git merge --ff-only <remote>/<branch>，在其检出所在的工作树执行
   - 未检出分支：git fetch . <remote>/<branch>:<branch>
-仅快进：分叉的分支失败跳过，不产生 merge commit。`,
+  - tag：git fetch <remote> tag <tag>
+仅快进：分叉的分支失败跳过，不产生 merge commit。仅支持 tty 环境。`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if !tui.IsTTY() {
@@ -97,7 +100,8 @@ func pullFlow(path string) error {
 	return runPull(repoPath, refs)
 }
 
-// pickPullBranches 决定待拉取的分支集合 TUI 多选，默认勾选 pullDefaultBranches 的结果。
+// pickPullRefs 决定待拉取的分支/tag 集合：TUI 多选，默认勾选主工作树当前分支
+// 与全部待拉取 tag（同 push 的 defaults 逻辑）。
 func pickPullRefs(repoPath string, remote git.Remote) ([]refInfo, error) {
 	refInfos, err := allRefInfos(repoPath, remote.Name)
 	if err != nil {
@@ -114,7 +118,7 @@ func pickPullRefs(repoPath string, remote git.Remote) ([]refInfo, error) {
 		return false
 	})
 	if len(candidates) == 0 {
-		return nil, errors.New("仓库无任何待选推送分支或 tag")
+		return nil, errors.New("仓库无任何待选拉取分支或 tag")
 	}
 
 	// 补充 ref 额外信息用于展示
@@ -123,8 +127,9 @@ func pickPullRefs(repoPath string, remote git.Remote) ([]refInfo, error) {
 		return nil, err
 	}
 
-	// 默认选中的列表为主项目分支+所有可拉取的 tag
-	defaults := xslices.Filter(refInfos, func(ref refInfo) bool {
+	// 默认选中主工作树当前分支 + 候选里全部待拉取 tag；须从 candidates 过滤——
+	// refInfos 未 resolve 额外信息（worktree 恒空），按值匹配默认项会全部落空
+	defaults := xslices.Filter(candidates, func(ref refInfo) bool {
 		return ref.IsMainCurrent() || ref.IsRemoteTag()
 	})
 
@@ -171,7 +176,7 @@ func runPull(repoPath string, refs []refInfo) error {
 		fmt.Printf("\n[%d/%d] ", i+1, len(refs))
 		var err error
 		remote := ref.remote
-		if ref.IsLocalBranch() {
+		if ref.IsRemoteBranch() {
 			branch := ref.name
 			if ref.worktree != "" {
 				fmt.Printf("git -C %s merge --ff-only %s/%s\n", ref.worktree, remote, branch)
@@ -180,10 +185,12 @@ func runPull(repoPath string, refs []refInfo) error {
 				fmt.Printf("git fetch . %s/%s:%s\n", remote, branch, branch)
 				err = git.FastForwardFromTracking(repoPath, remote, branch)
 			}
-		} else if ref.IsLocalTag() {
+		} else if ref.IsRemoteTag() {
+			// pull 候选 tag 是本地不存在的远端 tag（localKind=RefNotExists），
+			// 不能用 IsLocalTag 判断；目录用 repoPath，tag 的 worktree 恒空
 			tag := ref.name
 			fmt.Printf("git fetch %s tag %s\n", remote, tag)
-			err = git.FetchTag(ref.worktree, remote, tag)
+			err = git.FetchTag(repoPath, remote, tag)
 		}
 
 		if err != nil {

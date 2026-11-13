@@ -106,7 +106,7 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 	cmd.AddCommand(ui.NewCmd(a))     // ui 相关 (打开具体页面)
 
 	// project 相关
-	cmd.AddCommand(project.NewCmd(a)) // project 相关
+	cmd.AddCommand(project.NewCmd(a))
 
 	// tpl 相关
 	cmd.AddCommand(tpl.NewCmd(a))

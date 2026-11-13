@@ -126,7 +126,7 @@ func resolveRefExtraInfos(repoPath string, remote string, refInfos []refInfo) ([
 	branchWorktrees := make(map[string]string, len(wts))
 	for _, wt := range wts {
 		if wt.Branch != "" {
-			branchWorktrees[wt.Branch] = wt.Branch
+			branchWorktrees[wt.Branch] = wt.Path
 		}
 	}
 

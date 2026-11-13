@@ -1,4 +1,3 @@
-// Package git 提供 `cube git` 命令组，提供git相关命令
 package git
 
 import (
