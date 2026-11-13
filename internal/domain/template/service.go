@@ -1,6 +1,9 @@
 package template
 
 import (
+	"fmt"
+	"os"
+
 	"cube/internal/config"
 )
 
@@ -20,7 +23,19 @@ func NewService(cfg *config.Config) *Service {
 // CheckTarget 预检目标路径（已存在时必须是空目录，防覆盖既有内容）。
 // 由 cmd 层在 OpenSource/交互之前调用——clone、交互都可能耗时，不能跑完才发现路径非法。
 func (s *Service) CheckTarget(targetPath string) error {
-	return validateTarget(targetPath)
+	if info, err := os.Stat(targetPath); err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("目标路径已存在且不是目录: %s", targetPath)
+		}
+		entries, err := os.ReadDir(targetPath)
+		if err != nil {
+			return fmt.Errorf("读取目标目录失败: %w", err)
+		}
+		if len(entries) > 0 {
+			return fmt.Errorf("目标目录非空，拒绝覆盖: %s", targetPath)
+		}
+	}
+	return nil
 }
 
 // OpenSource 解析模板源引用为可用源：本地绝对路径直读（开发态）/ 名字查注册表

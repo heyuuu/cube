@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/heyuuu/x/xstd/xos"
@@ -123,6 +124,25 @@ func (t *Template) CheckVars(cliVars map[string]string) error {
 	for name := range cliVars {
 		if _, exists := varNameSet[name]; !exists {
 			return fmt.Errorf("变量 %q 未在 template.yaml 中声明（检查拼写）", name)
+		}
+	}
+	return nil
+}
+
+// runInit 逐条执行 init 命令（sh -c，cwd 为生成后的项目根，stdio 接终端），任一失败中止。
+func runInit(tpl *Template, target string, vars map[string]string) error {
+	cmds, err := interpolateInit(tpl.Meta().Init, vars)
+	if err != nil {
+		return err
+	}
+
+	for i, cmd := range cmds {
+		c := exec.Command("sh", "-c", cmd)
+		c.Dir = target
+		c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
+		fmt.Printf("init[%d]: %s\n", i+1, cmd)
+		if err := c.Run(); err != nil {
+			return fmt.Errorf("init 第 %d 条命令失败（已中止后续命令）: %q: %w", i+1, cmd, err)
 		}
 	}
 	return nil
