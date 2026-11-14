@@ -12,7 +12,7 @@ import (
 	"cube/internal/domain/project"
 )
 
-// cmd `alfred project-search`
+// newProjectSearchCmd `cube alfred project-search` 命令。
 func newProjectSearchCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "project-search {query?* : 项目名，支持模糊匹配}",

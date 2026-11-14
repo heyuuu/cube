@@ -11,7 +11,7 @@ import (
 	"cube/internal/domain/opener"
 )
 
-// cmd `alfred project-open`
+// newProjectOpenCmd `cube alfred project-open` 命令。
 func newProjectOpenCmd(a *app.App) *cobra.Command {
 	var openerName string
 

@@ -22,5 +22,7 @@ func NewCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(newProjectOpenCmd(a))
 	cmd.AddCommand(newOpenerSearchCmd(a))
 
+	/* <<subcommand inject point>> */
+
 	return cmd
 }
