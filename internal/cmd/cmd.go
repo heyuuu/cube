@@ -123,7 +123,11 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 
 	// 绑定命令别名
 	aliases := map[string]string{
-		"openapi": "server openapi",
+		// server:
+		"openapi":   "server openapi",
+		"ui":        "server ui",
+		"md":        "server md",
+		"workbench": "server workbench",
 		// project
 		"list":   "project list",
 		"info":   "project info",
@@ -141,10 +145,8 @@ func registerSubCommands(cmd *cobra.Command, a *app.App) {
 		// git
 		"push": "git push",
 		"pull": "git pull",
-		// server:
-		"ui":        "server ui",
-		"md":        "server md",
-		"workbench": "server workbench",
+		// forge
+		"forges": "forge list",
 	}
 	for name, alias := range aliases {
 		registerAliasCommand(cmd, name, alias)
