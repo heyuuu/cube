@@ -106,7 +106,7 @@ type StatusInfo struct {
 // 获取服务端状态
 func serverStatus(baseURL string) StatusInfo {
 	api := buildURL(baseURL, "api/system/status", nil)
-	resp, err := doServerRequest[handlers.StatusResponse](http.MethodGet, api, nil)
+	resp, err := doServerRequest[handlers.SystemStatusOutput](http.MethodGet, api, nil)
 	if err != nil {
 		return StatusInfo{}
 	}
@@ -132,7 +132,7 @@ func serverStop(baseURL string) (stopped bool, replaced bool, err error) {
 	// 触发 shutdown 请求
 	api := buildURL(baseURL, "api/system/shutdown", nil)
 	_, err = doServerRequest[string](http.MethodPost, api, map[string]any{
-		"token": handlers.GenShutdownToken(instanceID, time.Now()),
+		"token": server.GenerateToken(instanceID, time.Now()),
 	})
 	if err != nil {
 		return false, false, fmt.Errorf("shutdown 请求失败: %w", err)

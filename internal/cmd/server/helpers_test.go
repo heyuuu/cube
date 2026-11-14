@@ -22,9 +22,9 @@ func startMockCubeServer(t *testing.T, version string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.MarshalWrite(w, server.Envelope[handlers.StatusResponse]{
+		_ = json.MarshalWrite(w, server.Envelope[handlers.SystemStatusOutput]{
 			Ok:   true,
-			Data: &handlers.StatusResponse{App: "cube", Version: version, Instance: "mock-inst"},
+			Data: &handlers.SystemStatusOutput{App: "cube", Version: version, Instance: "mock-inst"},
 		})
 	})
 	srv := httptest.NewServer(mux)
@@ -99,7 +99,7 @@ func TestServerStop_ShutdownAndConfirm(t *testing.T) {
 			Token string `json:"token"`
 		}
 		_ = json.UnmarshalRead(r.Body, &req)
-		if err := handlers.VerifyShutdownToken(req.Token, "old-inst", time.Now()); err != nil {
+		if err := server.VerifyToken(req.Token, "old-inst", time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -141,7 +141,7 @@ func TestServerStop_ReplacedByNewInstance(t *testing.T) {
 			Token string `json:"token"`
 		}
 		_ = json.UnmarshalRead(r.Body, &req)
-		if err := handlers.VerifyShutdownToken(req.Token, instance, time.Now()); err != nil {
+		if err := server.VerifyToken(req.Token, instance, time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
