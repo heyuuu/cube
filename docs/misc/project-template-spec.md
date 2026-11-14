@@ -86,7 +86,7 @@ github.com/spf13/cobra            v1.10+
 
 ```
 基础设施  internal/config / internal/logger / internal/version            所有层共享，不依赖上层
-独立工具  pkg/*（git / pathkit / slicekit / fuzzy / tui ...）             通用动作，不含业务实体，只依赖标准库/第三方
+独立工具  pkg/*（git / fuzzy / tui / xstore ...）                        通用动作，不含业务实体，只依赖标准库/第三方（通用 std 扩充可沉淀在外部共享包，如 heyuuu/x/xstd——xslices / xos 等）
 能力      internal/api / internal/server                          api 契约（路由注册/envelope/shutdown token）+ server 运行时（监听/优雅关闭），不含业务实体
 领域      internal/domain/<domain>/（含实体、规则、service）            业务核心，依赖能力+基础设施+pkg
 出口      internal/cmd / internal/handlers / web                    把领域包成 CLI / Web；handlers 只依赖 internal/api 契约，不依赖 server 运行时
@@ -96,9 +96,9 @@ github.com/spf13/cobra            v1.10+
 ### 依赖规则
 
 1. **基础设施层**（config/logger/version）：不 import 任何上层。
-2. **独立工具层**（pkg/*）：只依赖标准库/第三方，不含业务实体。子包必须**内聚且无副作用**——只对入参做纯运算，不读进程状态/环境。与环境强相关的副作用（`os.Getwd`、`os.Getenv`、展开 `~`、当前时间）只允许出现在职责就是处理环境的包里（如 `pathkit` 展开 `~`、`config` 读配置目录）。
+2. **独立工具层**（pkg/*）：只依赖标准库/第三方，不含业务实体。子包必须**内聚且无副作用**——只对入参做纯运算，不读进程状态/环境。与环境强相关的副作用（`os.Getwd`、`os.Getenv`、展开 `~`、当前时间）只允许出现在职责就是处理环境的包里（如 cmd 层的路径助手展开 `~`、`config` 收绝对路径读配置）。
 3. **领域层**（`internal/domain/*`）：依赖能力 + 基础设施 + pkg。domain 之间尽量不互相依赖；确需共享实体，下沉到 pkg 或基础设施层。
-4. **出口层**：`internal/cmd`（CLI）与 `web`（前端 embed）不互调；cmd 经 server 框架的 client 子包走 localhost HTTP 探活/关停属进程间通信，不算互调。业务 HTTP handler 统一在 `internal/handlers`（同包按 domain 分文件），依赖领域层与 server 框架。
+4. **出口层**：`internal/cmd`（CLI）与 `web`（前端 embed）不互调；cmd 对 server 进程走 localhost HTTP 探活/关停属进程间通信，不算互调。业务 HTTP handler 统一在 `internal/handlers`（同包按 domain 分文件），依赖领域层与 `internal/api` 契约，不依赖 server 运行时。
 5. **装配层**（`internal/app`）：唯一接线点。`app.New()` 返回空壳，root 命令的 `PersistentPreRunE` 调 `a.Init(...)` 完成组装（config 加载 → logger → DI 容器注册）——显式一次性构造 + CLI 侧惰性触发。**无全局单例、无 `app.Default()`、不在包级 `init()` 里反向依赖未就绪的服务**。
 
 ### 加新 domain 的「五处加法」流程
@@ -106,8 +106,8 @@ github.com/spf13/cobra            v1.10+
 加一个新领域，是**纯加法**，不动既有 domain：
 
 1. 领域包：`internal/domain/<domain>/`（实体 + service + 规则）
-2. CLI 子命令：`internal/cmd/<domain>.go` + root.go 注册
-3. Web handler：`internal/handlers/<domain>_handler.go`，实现 `Handler.Register(r *server.Routes)`
+2. CLI 命令组：`internal/cmd/<domain>/` 子目录（`NewCmd(a)` 入口）+ `internal/cmd/cmd.go` 的 root 注册
+3. Web handler：`internal/handlers/<domain>_handler.go`，实现 `api.Registerer` 的 `Register(r *api.Routes)`
 4. config 加节（如需）：在 `config.Config` 加字段 + 默认值
 5. 装配清单：`internal/app/boot.go` 的 serviceFactories / handlerFactories 加构造
 
@@ -138,15 +138,16 @@ internal/domain/<domain>/
 │   └── devtool/               # 脚手架工具（generate / tag 等开发命令）的独立入口
 ├── internal/
 │   ├── app/                   # 装配层：app.go（App/Init）、boot.go（DI 注册清单 + 注入点）、hooks.go（生命周期钩子）
-│   ├── cmd/                   # CLI 出口：root.go + 各命令文件（收 *app.App）
-│   ├── config/                # 基础设施：config 加载/默认值 + settings 节级 API + Paths 路径集
+│   ├── cmd/                   # CLI 出口：cmd.go（root 与注册）+ 各命令组子目录（收 *app.App）
+│   ├── config/                # 基础设施：config 加载/默认值 + Paths 路径集
 │   ├── logger/                # 基础设施：slog handler（文件 + debug stdio 双通道）
 │   ├── version/               # 基础设施：版本号（ldflags 注入）+ AppName 派生
-│   ├── server/                # 能力层：Server / Routes / envelope / TypedHandler（client/ 子包管进程探活关停）
+│   ├── api/                   # 能力层：Routes 注册器 / envelope / JSONHandler / shutdown 鉴权 token（契约，handlers 依赖它）
+│   ├── server/                # 能力层：Server 监听与优雅关闭（运行时，依赖 api 完成装配）
 │   ├── domain/<domain>/       # 领域层：每个 domain 一个包
 │   ├── handlers/              # 业务 HTTP handler 层：<domain>_handler.go 同包分文件 + system/static handler
 │   └── testfixture/           # 测试辅助（建临时仓库/目录）
-├── pkg/                       # 独立工具层：git / pathkit / slicekit / fuzzy / tui 等子包
+├── pkg/                       # 独立工具层：git / fuzzy / tui / xstore 等子包
 ├── web/                       # 前端工程 + embed 容器（embed.go，见 §8.2）
 ├── justfile                   # build / install / fmt / lint / test / dev / run / gen / tag / last-proposal
 ├── .air.toml                  # air 热重载配置
@@ -217,9 +218,9 @@ type Envelope[T any] struct {
 **注册口**（强制 `/api/` 前缀，自动从 path 推导 tag + operationId；handler 只写 `func(I) (O, error)`，envelope 由 `JSONHandler` 包装）：
 ```go
 // internal/handlers/<domain>_handler.go
-func (h *ProjectHandler) Register(r *server.Routes) {
-    r.Get("/api/project/list", "查询项目列表", server.JSONHandler(h.list))
-    r.Post("/api/project/save", "保存项目", server.JSONHandler(h.save))
+func (h *ProjectHandler) Register(r *api.Routes) {
+    r.Get("/api/project/list", "查询项目列表", api.JSONHandler(h.list))
+    r.Post("/api/project/save", "保存项目", api.JSONHandler(h.save))
 }
 ```
 
@@ -455,7 +456,7 @@ docs/
 2. **搭骨架**：照 §4 目录结构建空包；`go mod init <module>`；抄 justfile / .air.toml / .gitignore / web 工程脚手架。
 3. **后端起步**：
    - 写 `internal/config`（配置加载 + Paths）、`internal/logger`（双通道 handler）、`internal/version`（ldflags 变量 + AppName）。
-   - 写 `internal/app`（App 空壳 + Init 组装 DI）与 `internal/cmd/root.go`（PersistentPreRunE 惰性 Init）。
+   - 写 `internal/app`（App 空壳 + Init 组装 DI）与 `internal/cmd/cmd.go`（PersistentPreRunE 惰性 Init）。
    - 写第一个 domain（实体 + service）+ `internal/handlers/<domain>_handler.go`（用 Envelope 信封 + `r.Get` / `r.Post`）。
    - 跑 `<app> server start`，访问 `/docs` 确认 OpenAPI 生成正常。
 4. **前端起步**：
