@@ -17,8 +17,8 @@ func New{{.exported}}Handler({{.domain}}Service *{{.domain}}.Service) *{{.export
 }
 
 // Register 注册 {{.domain}} 领域路由。
-func (h *{{.exported}}Handler) Register(r *server.Routes) {
-	r.Get("/api/{{.domain}}/hello", "示例端点（mock）", server.JSONHandler(h.hello))
+func (h *{{.exported}}Handler) Register(r *api.Routes) {
+	r.Get("/api/{{.domain}}/hello", "示例端点（mock）", api.JSONHandler(h.hello))
 }
 
 // {{.exported}}HelloResult hello 端点输出。

@@ -1,4 +1,4 @@
-package server
+package api
 
 import (
 	"context"
@@ -15,6 +15,15 @@ import (
 	"cube/internal/version"
 )
 
+// Registerer 端点挂载契约：业务 handler 实现它，在 Register 里把自己的端点挂到
+// Routes，由 server.NewServer 收集 []Registerer 遍历调用完成装配。
+// 命名取单方法接口的 <Method>er 惯例（同 fmt.Stringer / prometheus.Registerer）；
+// 与 JSONHandler / RawHandler / TypedHandler 中「请求处理函数」义的 Handler 刻意
+// 分开——前者是装配期的挂载方，后者是请求期概念。
+type Registerer interface {
+	Register(r *Routes)
+}
+
 // Routes 路由注册器：持有 huma API 与底层 http mux，二者不对 handler 层暴露。
 //
 // handler 通过 Register(r *Routes) 注册路由：标准查询/动作走 Get / Post
@@ -27,8 +36,8 @@ type Routes struct {
 	mux *http.ServeMux
 }
 
-// newRoutes 构造注册器，同时完成 huma API 与 OpenAPI 文档的基础配置。
-func newRoutes() *Routes {
+// NewRoutes 构造路由注册器，同时完成 huma API 与 OpenAPI 文档的基础配置。
+func NewRoutes() *Routes {
 	mux := http.NewServeMux()
 
 	cfg := huma.DefaultConfig(version.AppName+" api", version.Version())
@@ -137,7 +146,7 @@ type Envelope[T any] struct {
 }
 
 // JSONHandler 包装 handler 并包 JSONOutput envelope——标准 JSON 端点的默认形态：
-// r.Get("/api/foo/list", "查询列表", web.JSONHandler(h.list))
+// r.Get("/api/foo/list", "查询列表", api.JSONHandler(h.list))
 func JSONHandler[I, O any](h func(I) (O, error)) TypedHandler {
 	return RawHandler(func(_ context.Context, input *I) (*JSONOutput[O], error) {
 		data, err := h(*input)

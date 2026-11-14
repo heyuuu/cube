@@ -4,8 +4,8 @@ import (
 	"errors"
 	"path/filepath"
 
+	"cube/internal/api"
 	"cube/internal/domain/usage"
-	"cube/internal/server"
 )
 
 // --- handler ---
@@ -22,9 +22,9 @@ func NewUsageHandler(service *usage.Service) *UsageHandler {
 }
 
 // Register 注册 usage 域全部路由。
-func (h *UsageHandler) Register(r *server.Routes) {
-	r.Get("/api/usage/recent-paths", "获取最近使用的路径清单（去重取最新，最近使用倒序）", server.JSONHandler(h.recentPaths))
-	r.Post("/api/usage/record", "补记一条使用记录（web 直开不经过后端记录的场景，如 url 型 opener 动作、workbench 进入）", server.JSONHandler(h.record))
+func (h *UsageHandler) Register(r *api.Routes) {
+	r.Get("/api/usage/recent-paths", "获取最近使用的路径清单（去重取最新，最近使用倒序）", api.JSONHandler(h.recentPaths))
+	r.Post("/api/usage/record", "补记一条使用记录（web 直开不经过后端记录的场景，如 url 型 opener 动作、workbench 进入）", api.JSONHandler(h.record))
 }
 
 func (h *UsageHandler) recentPaths(input struct {

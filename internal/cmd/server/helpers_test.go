@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"cube/internal/api"
 	"cube/internal/handlers"
-	"cube/internal/server"
 )
 
 // startMockCubeServer 起一个 httptest server 模拟 cube 的 status 端点。
@@ -22,7 +22,7 @@ func startMockCubeServer(t *testing.T, version string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/system/status", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.MarshalWrite(w, server.Envelope[handlers.SystemStatusOutput]{
+		_ = json.MarshalWrite(w, api.Envelope[handlers.SystemStatusOutput]{
 			Ok:   true,
 			Data: &handlers.SystemStatusOutput{App: "cube", Version: version, Instance: "mock-inst"},
 		})
@@ -99,7 +99,7 @@ func TestServerStop_ShutdownAndConfirm(t *testing.T) {
 			Token string `json:"token"`
 		}
 		_ = json.UnmarshalRead(r.Body, &req)
-		if err := server.VerifyToken(req.Token, "old-inst", time.Now()); err != nil {
+		if err := api.VerifyToken(req.Token, "old-inst", time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -141,7 +141,7 @@ func TestServerStop_ReplacedByNewInstance(t *testing.T) {
 			Token string `json:"token"`
 		}
 		_ = json.UnmarshalRead(r.Body, &req)
-		if err := server.VerifyToken(req.Token, instance, time.Now()); err != nil {
+		if err := api.VerifyToken(req.Token, instance, time.Now()); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

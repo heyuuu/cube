@@ -1,4 +1,4 @@
-package server
+package api
 
 import (
 	"crypto/hmac"
@@ -27,7 +27,7 @@ const tokenWindow = 5 * time.Second
 //  1. HMAC 比对（证明调用方持有 token）
 //  2. 时间戳在窗口内（防重放）
 //
-// 任一失败返回 error。供 server 端 shutdown handler 调用。
+// 任一失败返回 error。供 system/shutdown 端点校验（GenerateToken 在 CLI 停服侧生成）。
 func VerifyToken(token string, instanceID string, now time.Time) error {
 	payload, sig, ok := strings.Cut(token, ".")
 	if !ok {

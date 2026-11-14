@@ -8,9 +8,9 @@ import (
 
 	"github.com/heyuuu/x/xstd/xslices"
 
+	"cube/internal/api"
 	"cube/internal/domain/icons"
 	"cube/internal/domain/opener"
-	"cube/internal/server"
 )
 
 // --- dto ---
@@ -52,17 +52,17 @@ func NewOpenerHandler(service *opener.Service) *OpenerHandler {
 	}
 }
 
-// Register 注册 opener 域端点（实现 server.Handler）。
-func (h *OpenerHandler) Register(r *server.Routes) {
-	r.Get("/api/opener/list", "获取 opener 列表", server.JSONHandler(h.openerList))
-	r.Get("/api/opener/intents", "获取打开意图清单（intent → 默认 opener + 候选）", server.JSONHandler(h.openerIntents))
-	r.Post("/api/opener/open", "用指定 opener 打开任意文件或目录", server.JSONHandler(h.openerOpen))
-	r.Post("/api/opener/diff-open", "用指定 opener 对比两个路径（diff-dir/diff-file）", server.JSONHandler(h.openerDiffOpen))
-	r.Post("/api/opener/save", "新增或更新 opener（按 name 替换）", server.JSONHandler(h.openerSave))
-	r.Post("/api/opener/delete", "删除 opener（提交完整单项，按 name 定位）", server.JSONHandler(h.openerDelete))
-	r.Post("/api/opener/save-all", "整节覆盖 opener（提交即落盘，含顺序）", server.JSONHandler(h.openerSaveAll))
-	r.Post("/api/opener/intent-default/save", "设置某 intent 的默认 opener", server.JSONHandler(h.intentDefaultSave))
-	r.Post("/api/opener/intent-default/delete", "清除某 intent 的默认 opener", server.JSONHandler(h.intentDefaultDelete))
+// Register 注册 opener 域端点（实现 api.Registerer）。
+func (h *OpenerHandler) Register(r *api.Routes) {
+	r.Get("/api/opener/list", "获取 opener 列表", api.JSONHandler(h.openerList))
+	r.Get("/api/opener/intents", "获取打开意图清单（intent → 默认 opener + 候选）", api.JSONHandler(h.openerIntents))
+	r.Post("/api/opener/open", "用指定 opener 打开任意文件或目录", api.JSONHandler(h.openerOpen))
+	r.Post("/api/opener/diff-open", "用指定 opener 对比两个路径（diff-dir/diff-file）", api.JSONHandler(h.openerDiffOpen))
+	r.Post("/api/opener/save", "新增或更新 opener（按 name 替换）", api.JSONHandler(h.openerSave))
+	r.Post("/api/opener/delete", "删除 opener（提交完整单项，按 name 定位）", api.JSONHandler(h.openerDelete))
+	r.Post("/api/opener/save-all", "整节覆盖 opener（提交即落盘，含顺序）", api.JSONHandler(h.openerSaveAll))
+	r.Post("/api/opener/intent-default/save", "设置某 intent 的默认 opener", api.JSONHandler(h.intentDefaultSave))
+	r.Post("/api/opener/intent-default/delete", "清除某 intent 的默认 opener", api.JSONHandler(h.intentDefaultDelete))
 }
 
 func (h *OpenerHandler) openerList(_ struct{}) (ListResult[*OpenerDTO], error) {

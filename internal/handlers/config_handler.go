@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"cube/internal/api"
 	"cube/internal/config"
-	"cube/internal/server"
 )
 
 // ConfigHandler 配置查询领域的 HTTP handler。
@@ -16,8 +16,8 @@ func NewConfigHandler(cfg *config.Config) *ConfigHandler {
 }
 
 // Register 注册配置查询路由。
-func (h *ConfigHandler) Register(r *server.Routes) {
-	r.Get("/api/config", "获取配置信息", server.JSONHandler(h.getConfig))
+func (h *ConfigHandler) Register(r *api.Routes) {
+	r.Get("/api/config", "获取配置信息", api.JSONHandler(h.getConfig))
 }
 
 func (h *ConfigHandler) getConfig(_ struct{}) (config.Config, error) {

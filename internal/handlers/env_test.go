@@ -17,6 +17,7 @@ import (
 	"sync"
 	"testing"
 
+	"cube/internal/api"
 	"cube/internal/config"
 	"cube/internal/domain/forge"
 	"cube/internal/domain/opener"
@@ -71,7 +72,7 @@ func newTestEnv(t *testing.T) *testEnv {
 
 	srv := server.NewServer(
 		cfg,
-		[]server.Handler{
+		[]api.Registerer{
 			NewProjectHandler(projSvc, openerSvc, usageSvc),
 			NewOpenerHandler(openerSvc),
 			NewConfigHandler(cfg),

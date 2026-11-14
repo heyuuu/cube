@@ -3,8 +3,8 @@ package handlers
 import (
 	"encoding/base64"
 
+	"cube/internal/api"
 	"cube/internal/domain/icons"
-	"cube/internal/server"
 )
 
 // IconHandler icon 声明的通用辅助出口（提取图标）。icon 语义属 internal/domain/icons
@@ -16,9 +16,9 @@ func NewIconHandler() *IconHandler {
 	return &IconHandler{}
 }
 
-// Register 注册 icon 端点（实现 server.Handler）。
-func (h *IconHandler) Register(r *server.Routes) {
-	r.Post("/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", server.JSONHandler(h.iconExtract))
+// Register 注册 icon 端点（实现 api.Registerer）。
+func (h *IconHandler) Register(r *api.Routes) {
+	r.Post("/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", api.JSONHandler(h.iconExtract))
 }
 
 // IconExtractInput icon/extract 接口入参。source 由后端按形态分发：

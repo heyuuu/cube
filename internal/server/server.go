@@ -11,24 +11,20 @@ import (
 	"syscall"
 	"time"
 
+	"cube/internal/api"
 	"cube/internal/config"
 )
-
-// Handler 接口
-type Handler interface {
-	Register(r *Routes)
-}
 
 // Server 服务器，响应 api 请求
 type Server struct {
 	host   string
 	port   int
-	routes *Routes
+	routes *api.Routes
 }
 
 // NewServer 构造 Server：各 handler 完成路由注册，host 缺省为 localhost。
-func NewServer(c *config.Config, handlers []Handler) *Server {
-	routes := newRoutes()
+func NewServer(c *config.Config, handlers []api.Registerer) *Server {
+	routes := api.NewRoutes()
 
 	// 各 domain 注册自己的路由
 	for _, handler := range handlers {

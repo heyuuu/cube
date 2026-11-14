@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"cube/internal/server"
+	"cube/internal/api"
 	"cube/internal/version"
 )
 
@@ -35,10 +35,10 @@ func NewSystemHandler() *SystemHandler {
 	}
 }
 
-// Register 注册 system 端点（实现 server.Handler）。
-func (h *SystemHandler) Register(r *server.Routes) {
-	r.Get("/api/system/status", "服务身份探活", server.JSONHandler(h.status))
-	r.Post("/api/system/shutdown", "触发服务平滑关闭", server.JSONHandler(h.shutdown), server.WithoutOpenAPI())
+// Register 注册 system 端点（实现 api.Registerer）。
+func (h *SystemHandler) Register(r *api.Routes) {
+	r.Get("/api/system/status", "服务身份探活", api.JSONHandler(h.status))
+	r.Post("/api/system/shutdown", "触发服务平滑关闭", api.JSONHandler(h.shutdown), api.WithoutOpenAPI())
 }
 
 /**
@@ -73,13 +73,13 @@ type systemShutdownInput struct {
 // 信号由 Start 的 signal.Notify 接收，走与用户 Ctrl+C 完全相同的关闭路径。
 // 鉴权失败以 envelope ok:false 表达（JSONHandler 惯例），调用方解析 envelope 判定。
 func (h *SystemHandler) shutdown(input systemShutdownInput) (string, error) {
-	if err := server.VerifyToken(input.Body.Token, h.instance, time.Now()); err != nil {
+	if err := api.VerifyToken(input.Body.Token, h.instance, time.Now()); err != nil {
 		slog.Warn("shutdown 鉴权失败", "err", err)
 		return "", fmt.Errorf("鉴权失败: %w", err)
 	}
 
 	// 异步发信号不阻塞 handler 返回；goroutine 可能先于响应写出触发 SIGTERM，
-	// 但 Start 走 server.Shutdown graceful 关闭，会等在途响应写完
+	// 但 Start 的 graceful 关闭路径（http.Server.Shutdown）会等在途响应写完
 	go func() {
 		_ = syscall.Kill(os.Getpid(), syscall.SIGTERM)
 	}()

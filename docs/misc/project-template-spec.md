@@ -87,9 +87,9 @@ github.com/spf13/cobra            v1.10+
 ```
 基础设施  internal/config / internal/logger / internal/version            所有层共享，不依赖上层
 独立工具  pkg/*（git / pathkit / slicekit / fuzzy / tui ...）             通用动作，不含业务实体，只依赖标准库/第三方
-能力      internal/server                                        服务端框架，不含业务实体
+能力      internal/api / internal/server                          api 契约（路由注册/envelope/shutdown token）+ server 运行时（监听/优雅关闭），不含业务实体
 领域      internal/domain/<domain>/（含实体、规则、service）            业务核心，依赖能力+基础设施+pkg
-出口      internal/cmd / internal/handlers / web                    把领域包成 CLI / Web
+出口      internal/cmd / internal/handlers / web                    把领域包成 CLI / Web；handlers 只依赖 internal/api 契约，不依赖 server 运行时
 装配      internal/app / cmd/<app>/main                            唯一接线点
 ```
 
@@ -199,7 +199,7 @@ web/
 
 huma v2 的核心价值：**Go struct 的 tag 就是 OpenAPI schema 的来源**。写 handler 时声明输入输出 struct，OpenAPI 自动生成。
 
-**统一响应信封**（强制，所有 API 走同一形态，`internal/server/routes.go`）：
+**统一响应信封**（强制，所有 API 走同一形态，`internal/api/routes.go`）：
 ```go
 // JSONOutput api 标准输出结构
 type JSONOutput[T any] struct {

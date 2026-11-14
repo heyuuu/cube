@@ -3,8 +3,8 @@ package handlers
 import (
 	"github.com/heyuuu/x/xstd/xslices"
 
+	"cube/internal/api"
 	"cube/internal/domain/template"
-	"cube/internal/server"
 )
 
 // TemplateHandler 模板引擎的 HTTP 出口（模板源配置管理，settings.json tplSources 节）。
@@ -17,12 +17,12 @@ func NewTemplateHandler(templateService *template.Service) *TemplateHandler {
 	return &TemplateHandler{templateService: templateService}
 }
 
-// Register 注册 template 域端点（实现 server.Handler）。
-func (h *TemplateHandler) Register(r *server.Routes) {
-	r.Get("/api/template/source/list", "获取模板源列表（含默认源名）", server.JSONHandler(h.sourceList))
-	r.Post("/api/template/source/save", "新增或按 name 替换模板源", server.JSONHandler(h.sourceSave))
-	r.Post("/api/template/source/delete", "删除模板源（提交完整单项，按 name 定位）", server.JSONHandler(h.sourceDelete))
-	r.Post("/api/template/source/save-all", "整节覆盖模板源（提交即落盘，含顺序）", server.JSONHandler(h.sourceSaveAll))
+// Register 注册 template 域端点（实现 api.Registerer）。
+func (h *TemplateHandler) Register(r *api.Routes) {
+	r.Get("/api/template/source/list", "获取模板源列表（含默认源名）", api.JSONHandler(h.sourceList))
+	r.Post("/api/template/source/save", "新增或按 name 替换模板源", api.JSONHandler(h.sourceSave))
+	r.Post("/api/template/source/delete", "删除模板源（提交完整单项，按 name 定位）", api.JSONHandler(h.sourceDelete))
+	r.Post("/api/template/source/save-all", "整节覆盖模板源（提交即落盘，含顺序）", api.JSONHandler(h.sourceSaveAll))
 }
 
 // TplSourceListResult template/source/list 出参：列表 + 默认源名（前端标注「默认」用，

@@ -3,10 +3,10 @@ package handlers
 import (
 	"github.com/heyuuu/x/xstd/xslices"
 
+	"cube/internal/api"
 	"cube/internal/domain/forge"
 	"cube/internal/domain/icons"
 	"cube/internal/domain/project"
-	"cube/internal/server"
 )
 
 // ForgeHandler forge 配置管理的 HTTP 出口（1040 forge / 1041 account / 1042 forge 页）。
@@ -22,19 +22,19 @@ func NewForgeHandler(forgeService *forge.Service, projectService *project.Servic
 }
 
 // Register 注册 forge 域全部路由。
-func (h *ForgeHandler) Register(r *server.Routes) {
-	r.Get("/api/forge/list", "获取 forge 列表", server.JSONHandler(h.forgeList))
-	r.Post("/api/forge/save", "新增或按 host 替换 forge", server.JSONHandler(h.forgeSave))
-	r.Post("/api/forge/delete", "删除 forge（提交完整单项，按 host 定位，级联删其 account）", server.JSONHandler(h.forgeDelete))
-	r.Post("/api/forge/save-all", "整节覆盖 forge（提交即落盘，含顺序；被移除 forge 的 account 级联删除）", server.JSONHandler(h.forgeSaveAll))
+func (h *ForgeHandler) Register(r *api.Routes) {
+	r.Get("/api/forge/list", "获取 forge 列表", api.JSONHandler(h.forgeList))
+	r.Post("/api/forge/save", "新增或按 host 替换 forge", api.JSONHandler(h.forgeSave))
+	r.Post("/api/forge/delete", "删除 forge（提交完整单项，按 host 定位，级联删其 account）", api.JSONHandler(h.forgeDelete))
+	r.Post("/api/forge/save-all", "整节覆盖 forge（提交即落盘，含顺序；被移除 forge 的 account 级联删除）", api.JSONHandler(h.forgeSaveAll))
 
-	r.Get("/api/forge/account/list", "获取 forge account 列表（token 打码）", server.JSONHandler(h.accountList))
-	r.Post("/api/forge/account/save", "新增或按 forgeHost+username 替换 account", server.JSONHandler(h.accountSave))
-	r.Post("/api/forge/account/delete", "删除 account（提交完整单项，按 forgeHost+username 定位）", server.JSONHandler(h.accountDelete))
-	r.Post("/api/forge/account/save-all", "整节覆盖 account（提交即落盘，含顺序；掩码 token 沿用旧值）", server.JSONHandler(h.accountSaveAll))
-	r.Post("/api/forge/account/fetch", "拉取 account 名下全部远端仓库", server.JSONHandler(h.accountFetch))
+	r.Get("/api/forge/account/list", "获取 forge account 列表（token 打码）", api.JSONHandler(h.accountList))
+	r.Post("/api/forge/account/save", "新增或按 forgeHost+username 替换 account", api.JSONHandler(h.accountSave))
+	r.Post("/api/forge/account/delete", "删除 account（提交完整单项，按 forgeHost+username 定位）", api.JSONHandler(h.accountDelete))
+	r.Post("/api/forge/account/save-all", "整节覆盖 account（提交即落盘，含顺序；掩码 token 沿用旧值）", api.JSONHandler(h.accountSaveAll))
+	r.Post("/api/forge/account/fetch", "拉取 account 名下全部远端仓库", api.JSONHandler(h.accountFetch))
 
-	r.Get("/api/forge/overview", "forge 页聚合：全部 account 对账行 + 拉取元信息（只读缓存不外呼）", server.JSONHandler(h.forgeOverview))
+	r.Get("/api/forge/overview", "forge 页聚合：全部 account 对账行 + 拉取元信息（只读缓存不外呼）", api.JSONHandler(h.forgeOverview))
 }
 
 func (h *ForgeHandler) forgeList(_ struct{}) (ListResult[forge.Forge], error) {

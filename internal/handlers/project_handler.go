@@ -9,6 +9,7 @@ import (
 
 	"github.com/heyuuu/x/xstd/xslices"
 
+	"cube/internal/api"
 	"cube/internal/domain/icons"
 	"cube/internal/domain/opener"
 	"cube/internal/domain/project"
@@ -16,7 +17,6 @@ import (
 	"cube/internal/domain/project/snapshot"
 	"cube/internal/domain/project/workspace"
 	"cube/internal/domain/usage"
-	"cube/internal/server"
 )
 
 // --- dto ---
@@ -109,20 +109,20 @@ func NewProjectHandler(projectService *project.Service, openerService *opener.Se
 }
 
 // Register 注册 project 域全部路由。
-func (h *ProjectHandler) Register(r *server.Routes) {
-	r.Get("/api/project/list", "获取项目列表", server.JSONHandler(h.projectList))
-	r.Post("/api/project/open", "用指定 opener 打开已收录项目（记 usage；目标目录选择为 1030/1032 预留）", server.JSONHandler(h.projectOpen))
-	r.Get("/api/project/workspace/get", "获取项目 workspace 状态（生效清单读快照 / 规则清单）", server.JSONHandler(h.workspaceGet))
-	r.Post("/api/project/workspace/save", "保存 workspace 规则清单（.cube/cube.json）并即时重采集", server.JSONHandler(h.workspaceSave))
-	r.Post("/api/project/workspace/reset", "删除 workspaces 节恢复默认规则并即时重采集", server.JSONHandler(h.workspaceReset))
-	r.Get("/api/project/scan-rules", "获取扫描规则", server.JSONHandler(h.scanRules))
-	r.Get("/api/project/clone-rules", "获取 clone 规则", server.JSONHandler(h.cloneRules))
-	r.Post("/api/project/scan-rule/save", "新增或按 path 替换扫描规则", server.JSONHandler(h.scanRuleSave))
-	r.Post("/api/project/scan-rule/delete", "删除扫描规则（提交完整单项，按 path 定位）", server.JSONHandler(h.scanRuleDelete))
-	r.Post("/api/project/scan-rule/save-all", "整节覆盖扫描规则（提交即落盘，含顺序；成功后立即重扫）", server.JSONHandler(h.scanRuleSaveAll))
-	r.Post("/api/project/clone-rule/save", "新增或按 host+prefix 替换 clone 规则", server.JSONHandler(h.cloneRuleSave))
-	r.Post("/api/project/clone-rule/delete", "删除 clone 规则（提交完整单项，按 host+prefix 定位）", server.JSONHandler(h.cloneRuleDelete))
-	r.Post("/api/project/clone-rule/save-all", "整节覆盖 clone 规则（提交即落盘，含顺序）", server.JSONHandler(h.cloneRuleSaveAll))
+func (h *ProjectHandler) Register(r *api.Routes) {
+	r.Get("/api/project/list", "获取项目列表", api.JSONHandler(h.projectList))
+	r.Post("/api/project/open", "用指定 opener 打开已收录项目（记 usage；目标目录选择为 1030/1032 预留）", api.JSONHandler(h.projectOpen))
+	r.Get("/api/project/workspace/get", "获取项目 workspace 状态（生效清单读快照 / 规则清单）", api.JSONHandler(h.workspaceGet))
+	r.Post("/api/project/workspace/save", "保存 workspace 规则清单（.cube/cube.json）并即时重采集", api.JSONHandler(h.workspaceSave))
+	r.Post("/api/project/workspace/reset", "删除 workspaces 节恢复默认规则并即时重采集", api.JSONHandler(h.workspaceReset))
+	r.Get("/api/project/scan-rules", "获取扫描规则", api.JSONHandler(h.scanRules))
+	r.Get("/api/project/clone-rules", "获取 clone 规则", api.JSONHandler(h.cloneRules))
+	r.Post("/api/project/scan-rule/save", "新增或按 path 替换扫描规则", api.JSONHandler(h.scanRuleSave))
+	r.Post("/api/project/scan-rule/delete", "删除扫描规则（提交完整单项，按 path 定位）", api.JSONHandler(h.scanRuleDelete))
+	r.Post("/api/project/scan-rule/save-all", "整节覆盖扫描规则（提交即落盘，含顺序；成功后立即重扫）", api.JSONHandler(h.scanRuleSaveAll))
+	r.Post("/api/project/clone-rule/save", "新增或按 host+prefix 替换 clone 规则", api.JSONHandler(h.cloneRuleSave))
+	r.Post("/api/project/clone-rule/delete", "删除 clone 规则（提交完整单项，按 host+prefix 定位）", api.JSONHandler(h.cloneRuleDelete))
+	r.Post("/api/project/clone-rule/save-all", "整节覆盖 clone 规则（提交即落盘，含顺序）", api.JSONHandler(h.cloneRuleSaveAll))
 }
 
 func (h *ProjectHandler) projectList(_ struct{}) (ProjectListResult, error) {

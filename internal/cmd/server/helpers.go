@@ -14,8 +14,8 @@ import (
 
 	"github.com/heyuuu/x/xstd/xmaps"
 
+	"cube/internal/api"
 	"cube/internal/handlers"
-	"cube/internal/server"
 	"cube/internal/version"
 )
 
@@ -84,7 +84,7 @@ func doServerRequest[T any](method string, url string, body any) (*T, error) {
 	}
 
 	// 解析 json 结构
-	var out server.Envelope[T]
+	var out api.Envelope[T]
 	if err := json.UnmarshalRead(resp.Body, &out); err != nil {
 		return nil, fmt.Errorf("解析 response 结构失败: %w", err)
 	}
@@ -105,8 +105,8 @@ type StatusInfo struct {
 
 // 获取服务端状态
 func serverStatus(baseURL string) StatusInfo {
-	api := buildURL(baseURL, "api/system/status", nil)
-	resp, err := doServerRequest[handlers.SystemStatusOutput](http.MethodGet, api, nil)
+	statusURL := buildURL(baseURL, "api/system/status", nil)
+	resp, err := doServerRequest[handlers.SystemStatusOutput](http.MethodGet, statusURL, nil)
 	if err != nil {
 		return StatusInfo{}
 	}
@@ -130,9 +130,9 @@ func serverStop(baseURL string) (stopped bool, replaced bool, err error) {
 	instanceID := st.Instance
 
 	// 触发 shutdown 请求
-	api := buildURL(baseURL, "api/system/shutdown", nil)
-	_, err = doServerRequest[string](http.MethodPost, api, map[string]any{
-		"token": server.GenerateToken(instanceID, time.Now()),
+	shutdownURL := buildURL(baseURL, "api/system/shutdown", nil)
+	_, err = doServerRequest[string](http.MethodPost, shutdownURL, map[string]any{
+		"token": api.GenerateToken(instanceID, time.Now()),
 	})
 	if err != nil {
 		return false, false, fmt.Errorf("shutdown 请求失败: %w", err)
