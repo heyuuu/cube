@@ -58,6 +58,22 @@ func checkBaseName(base string) (string, error) {
 	return exportName(base), nil
 }
 
+// checkCommandName 校验 command 名（kebab-case，作 cobra Use，文件名经 fileName 转 snake_case），返回导出前缀：opener-search → OpenerSearch。
+func checkCommandName(name string) (string, error) {
+	if !baseNamePattern.MatchString(name) {
+		return "", fmt.Errorf("command 名只允许小写字母/数字与中划线（kebab-case，首尾与连续中划线不允许，如 opener-search）: %q", name)
+	}
+	return exportName(name), nil
+}
+
+// checkCommandGroup 校验 command 组名（小写单词，作包名与目录名，中划线不合法）。
+func checkCommandGroup(group string) error {
+	if !domainPattern.MatchString(group) {
+		return fmt.Errorf("command 组名只允许小写字母/数字且以字母开头（作包名，不支持中划线）: %q", group)
+	}
+	return nil
+}
+
 // checkMethod 校验 HTTP method 并返回路由注册方法名（Routes 层只提供 Get/Post）。
 func checkMethod(method string) (string, error) {
 	switch strings.ToUpper(method) {
@@ -68,6 +84,11 @@ func checkMethod(method string) (string, error) {
 	default:
 		return "", fmt.Errorf("method 只支持 GET/POST: %q", method)
 	}
+}
+
+// fileName 把 kebab-case 名转 Go 文件名惯用的 snake_case：opener-search → opener_search。
+func fileName(s string) string {
+	return strings.ReplaceAll(s, "-", "_")
 }
 
 // exportName 把小写/kebab-case 名转导出名：compare → Compare、run-diff → RunDiff。

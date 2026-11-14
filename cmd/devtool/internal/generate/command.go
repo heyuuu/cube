@@ -27,12 +27,12 @@ func genCommand(module string, args []string) error {
 	} else {
 		group, name = args[0], args[1]
 	}
-	exported, err := checkDomain(name)
+	exported, err := checkCommandName(name)
 	if err != nil {
 		return err
 	}
 	if group != "" {
-		if _, err := checkDomain(group); err != nil {
+		if err := checkCommandGroup(group); err != nil {
 			return err
 		}
 	}
@@ -59,7 +59,7 @@ func genCommand(module string, args []string) error {
 
 // genRootCommand 生成根命令文件并注入 root.go。
 func genRootCommand(data map[string]string) error {
-	target := "internal/cmd/" + data["name"] + ".go"
+	target := "internal/cmd/" + fileName(data["name"]) + ".go"
 	if _, err := os.Stat(target); err == nil {
 		return fmt.Errorf("目标文件已存在，拒绝覆盖: %s", target)
 	}
@@ -86,7 +86,7 @@ func genGroupCommand(data map[string]string) error {
 	group := data["group"]
 	groupDir := filepath.Join("internal/cmd", group)
 	groupCmdFile := filepath.Join(groupDir, "cmd.go")
-	target := filepath.Join(groupDir, data["name"]+".go")
+	target := filepath.Join(groupDir, fileName(data["name"])+".go")
 	if _, err := os.Stat(target); err == nil {
 		return fmt.Errorf("目标文件已存在，拒绝覆盖: %s", target)
 	}
