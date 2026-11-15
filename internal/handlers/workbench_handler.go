@@ -53,8 +53,8 @@ func (h *WorkbenchHandler) Register(r *api.Routes) {
 	r.Post("/api/workbench/branch/delete", "删除本地分支", api.JSONHandler(h.branchDelete))
 
 	// raw 文件读取：响应是原始字节 + 按扩展名的 Content-Type（图片预览用），
-	// 不套 JSONOutput envelope，透传输出走 RawHandler（Body []byte 直写）
-	r.Get("/api/workbench/file/raw", "读取文件原始内容", api.RawHandler(h.fileRaw))
+	// 不套 JSONOutput envelope，huma 签名的 handler 直接传 Get（Body []byte 直写）
+	r.Get("/api/workbench/file/raw", "读取文件原始内容", h.fileRaw)
 
 	// WebSocket：连接升级，需要原始控制 ResponseWriter，走 Raw（不进文档）
 	r.Raw("GET /api/workbench/pty", http.HandlerFunc(h.ptyWs))

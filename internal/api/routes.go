@@ -18,7 +18,7 @@ import (
 // Registerer 端点挂载契约：业务 handler 实现它，在 Register 里把自己的端点挂到
 // Routes，由 server.NewServer 收集 []Registerer 遍历调用完成装配。
 // 命名取单方法接口的 <Method>er 惯例（同 fmt.Stringer / prometheus.Registerer）；
-// 与 JSONHandler / RawHandler / TypedHandler 中「请求处理函数」义的 Handler 刻意
+// 与 JSONHandler / TypedHandler 中「请求处理函数」义的 Handler 刻意
 // 分开——前者是装配期的挂载方，后者是请求期概念。
 type Registerer interface {
 	Register(r *Routes)
@@ -27,7 +27,7 @@ type Registerer interface {
 // Routes 路由注册器：持有 huma API 与底层 http mux，二者不对 handler 层暴露。
 //
 // handler 通过 Register(r *Routes) 注册路由：标准查询/动作走 Get / Post
-// （输入/输出类型经 JSONHandler / RawHandler 包装携带，见 TypedHandler），
+// （泛型方法直接收 TypedHandler[I, O]，envelope 形态经 JSONHandler 包装），
 // 进 OpenAPI 文档，个别端点可用 WithoutOpenAPI 显式排除；需要原始控制
 // ResponseWriter 的端点（连接升级 / 二进制流）走 Raw，一律不进文档。
 // 换路由实现（如 chi）时只改本文件，handlers 包不感知。
@@ -83,24 +83,29 @@ func (r *Routes) OpenAPIJSON() ([]byte, error) {
 
 // --- 类型化路由（Get / Post）---
 
+func (r *Routes) route[I, O any](op huma.Operation, h TypedHandler[I, O], opts ...RouteOption) {
+	op = prepareOperation(op, opts...)
+	huma.Register(r.api, op, h)
+}
+
 // Get 注册 GET 查询路由
-func (r *Routes) Get(path string, summary string, h TypedHandler, opts ...RouteOption) {
-	op := prepareOperation(huma.Operation{
+func (r *Routes) Get[I, O any](path string, summary string, h TypedHandler[I, O], opts ...RouteOption) {
+	op := huma.Operation{
 		Method:  http.MethodGet,
 		Path:    path,
 		Summary: summary,
-	}, opts...)
-	h.registerOn(r, op)
+	}
+	r.route(op, h, opts...)
 }
 
 // Post 注册 POST 动作路由
-func (r *Routes) Post(path string, summary string, h TypedHandler, opts ...RouteOption) {
-	op := prepareOperation(huma.Operation{
+func (r *Routes) Post[I, O any](path string, summary string, h TypedHandler[I, O], opts ...RouteOption) {
+	op := huma.Operation{
 		Method:  http.MethodPost,
 		Path:    path,
 		Summary: summary,
-	}, opts...)
-	h.registerOn(r, op)
+	}
+	r.route(op, h, opts...)
 }
 
 // --- 原生路由（Raw）---
@@ -113,25 +118,10 @@ func (r *Routes) Raw(pattern string, h http.Handler) {
 
 // TypedHandler 及其使用
 
-// TypedHandler 携带输入/输出类型信息的 huma handler——Go 泛型不能定义在方法上，
-// 由包装函数（JSONHandler / RawHandler）把类型参数捕获进闭包，供 Get/Post 的
-// 非泛型方法触发注册；包装函数同时决定响应形态（envelope 与否）。
-type TypedHandler interface {
-	registerOn(r *Routes, op huma.Operation)
-}
-
-type typedRoute[I, O any] struct {
-	h func(context.Context, *I) (*O, error)
-}
-
-func (t typedRoute[I, O]) registerOn(r *Routes, op huma.Operation) {
-	huma.Register(r.api, op, t.h)
-}
-
-// RawHandler 把 huma 签名的 handler 装进非泛型载体。
-func RawHandler[I, O any](h func(context.Context, *I) (*O, error)) TypedHandler {
-	return typedRoute[I, O]{h: h}
-}
+// TypedHandler 携带输入/输出类型信息的 huma handler 签名。用类型别名而非
+// 新类型，huma 签名的普通函数（如 handler 方法）无需包装即可直接传入
+// Get / Post；需要 envelope 的标准 JSON 端点经 JSONHandler 包装。
+type TypedHandler[I, O any] = func(ctx context.Context, i *I) (*O, error)
 
 // JSONOutput api 标准输出结构
 type JSONOutput[T any] struct {
@@ -147,8 +137,8 @@ type Envelope[T any] struct {
 
 // JSONHandler 包装 handler 并包 JSONOutput envelope——标准 JSON 端点的默认形态：
 // r.Get("/api/foo/list", "查询列表", api.JSONHandler(h.list))
-func JSONHandler[I, O any](h func(I) (O, error)) TypedHandler {
-	return RawHandler(func(_ context.Context, input *I) (*JSONOutput[O], error) {
+func JSONHandler[I, O any](h func(I) (O, error)) TypedHandler[I, JSONOutput[O]] {
+	return func(_ context.Context, input *I) (*JSONOutput[O], error) {
 		data, err := h(*input)
 
 		var output JSONOutput[O]
@@ -162,7 +152,7 @@ func JSONHandler[I, O any](h func(I) (O, error)) TypedHandler {
 			output.Body.Data = &data
 		}
 		return &output, nil
-	})
+	}
 }
 
 // --- 通用选项与 operation 默认值 ---
@@ -174,11 +164,6 @@ type RouteOption func(*huma.Operation)
 // 端点（WebSocket 连接升级）或刻意不暴露的运维端点。路由功能不受影响。
 func WithoutOpenAPI() RouteOption {
 	return func(op *huma.Operation) { op.Hidden = true }
-}
-
-// WithSummary 覆盖默认 summary。
-func WithSummary(summary string) RouteOption {
-	return func(op *huma.Operation) { op.Summary = summary }
 }
 
 // prepareOperation 应用用户选项后补默认值（用户显式设置优先，不被覆盖），
