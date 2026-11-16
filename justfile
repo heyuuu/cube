@@ -110,11 +110,10 @@ run *args:
     go run {{ main_cmd }} {{ args }}
 
 # 执行 devtool 命令。
-# devtool 是独立 go module 且依赖仓库根相对路径（internal/... 与 go.mod），不能用 go -C run——
-# go -C 会把子进程 cwd 切到 cmd/devtool，导致读错 go.mod、找不到 internal/。改为 build 后从仓库根执行。
+# go -C 进入独立 module 才能构建运行，但它会把子进程 cwd 切到 cmd/devtool；
+# -W 把工具的路径基准（go.mod、internal/...、向上找 .git）钉回仓库根。
 devtool *args:
-    @mkdir -p tmp
-    go -C {{ devtool_cmd }} build -o ../../tmp/devtool . && ./tmp/devtool {{ args }}
+    go -C {{ devtool_cmd }} run . -W {{ justfile_directory() }} {{ args }}
 
 # 代码生成（生成逻辑在 cmd/devtool/generate/，模板在其 tpl/ 下）
 #   just gen domain <name>                      生成业务 domain 脚手架

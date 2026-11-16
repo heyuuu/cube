@@ -87,11 +87,17 @@ func exactArgs(n int) cobra.PositionalArgs {
 func resolveModule() (string, error) {
 	data, err := os.ReadFile("go.mod")
 	if err != nil {
-		return "", fmt.Errorf("读取 go.mod 失败（请在工具目录下执行）: %w", err)
+		return "", fmt.Errorf("读取 go.mod 失败（请在主项目根目录执行）: %w", err)
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		if after, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
-			return strings.TrimSpace(after), nil
+			module := strings.TrimSpace(after)
+			if module == "devtool" {
+				// 读到的是 devtool 自身的 go.mod——在 cmd/devtool 目录下直接 run 会走到这，
+				// 放过去会生成 devtool/... 的错误 import 路径，必须拦下
+				return "", fmt.Errorf("读到 devtool 自身的 go.mod，请在主项目根目录执行，或用 -W 指定主项目目录")
+			}
+			return module, nil
 		}
 	}
 	return "", fmt.Errorf("go.mod 里找不到 module 声明")
