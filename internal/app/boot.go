@@ -55,6 +55,9 @@ func (a *App) OpenerService() *opener.Service { return mustGet[*opener.Service](
 // UsageService 返回 usage 服务单例（Init 后可用）。
 func (a *App) UsageService() *usage.Service { return mustGet[*usage.Service](a) }
 
+// WorkbenchService 返回 workbench 服务单例（Init 后可用）。
+func (a *App) WorkbenchService() *workbench.Service { return mustGet[*workbench.Service](a) }
+
 // ForgeService 返回 forge 服务单例（Init 后可用）。
 func (a *App) ForgeService() *forge.Service { return mustGet[*forge.Service](a) }
 
