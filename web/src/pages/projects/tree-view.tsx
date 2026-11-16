@@ -1,8 +1,8 @@
+import { cn } from 'cn';
 // Projects 页·树视图行（根 = 分组目录、叶 = 项目）：与列表视图同源的单元格复用 cells。
 import { ChevronRight, Folder, FolderGit2 } from 'lucide-react';
 
 import { prettyPath } from '@/lib/path';
-import { cn } from '@/lib/utils';
 import { useProjectOpen } from '@/queries/project';
 import type { Opener, Project } from '@/api/client';
 import type { IconDecl } from '@/lib/icon';

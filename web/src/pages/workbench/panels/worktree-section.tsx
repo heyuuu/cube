@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 // git 树面板·工作副本状态区（提案 1011/1031）：worktree 分组（各自分支/ahead-behind/脏状态）、
 // 远端配置列表、分支行；副本行的打开动作组（快捷 intent + 全量下拉）。
 import {
@@ -33,7 +34,6 @@ import {
 import { useCopied } from '@/hooks/use-copied';
 import { usePersistentSet } from '@/hooks/use-local-pref';
 import { renderIcon } from '@/lib/icon';
-import { cn } from '@/lib/utils';
 import { filterTargets, quickIntents } from '@/pages/projects/shared';
 import { useIntentDefaultOpener, useOpenerList } from '@/queries/opener';
 import { useOpenerDiffOpen, useOpenerOpen } from '@/queries/project';

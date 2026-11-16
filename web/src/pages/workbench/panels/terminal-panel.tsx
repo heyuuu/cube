@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 import { ChevronDown, ChevronUp, Columns2, Plus, Settings2, TerminalSquare, X } from 'lucide-react';
 import { Fragment, useRef, useState } from 'react';
 
@@ -10,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
 import { PanelSplitter } from '@/pages/workbench/splitter';
 
 import { TerminalSession } from './terminal-session';

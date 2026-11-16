@@ -1,10 +1,10 @@
 // 轻量自绘弹窗壳（最小 overlay + 卡片 + Escape/点遮罩关闭）：ConfirmDialog、
 // worktree 写侧弹窗、workspace 声明弹窗共用的骨架。刻意不引入 shadcn ui/dialog——
 // 现有场景都是一张卡片的简单表单/确认，引入门户组件收益不成比例。
+
+import { cn } from 'cn';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-
-import { cn } from '@/lib/utils';
 
 export function DialogShell({
   title,

@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 
@@ -5,7 +6,6 @@ import { DialogShell } from '@/components/dialog-shell';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import { refShortName, selectCurrent, writePathParam } from '@/pages/workbench/params';
 import {
   useBranchAdd,

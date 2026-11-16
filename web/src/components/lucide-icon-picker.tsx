@@ -1,11 +1,12 @@
 // lucide 图标选择器：当前值预览 + 搜索过滤 + 网格点选（icon 编辑表单用，见 IconField）。
 // icons 映射键是 PascalCase，存储值是 kebab-case，此处预计算双名做过滤与高亮。
+
+import { cn } from 'cn';
 import { icons } from 'lucide-react';
 import { createElement, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 
 function pascalToKebab(name: string): string {
   return name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();

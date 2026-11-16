@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 // settings 页「Forge」分区：git 托管平台实例（host 级）配置的增删改与拖拽排序（提案 1040）。
 // 数据源 /api/forge/list（settings.json forges 节），保存即生效。
 // 交互模板沿用扫描规则分区：Sheet 抽屉编辑、删除前确认、grip 拖拽排序（顺序即展示序，1042 forge 页沿用）。
@@ -13,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { renderIcon } from '@/lib/icon';
-import { cn } from '@/lib/utils';
 import { useForgeDelete, useForges, useForgeSave, useForgeSaveAll } from '@/queries/forge';
 import type { Forge, ForgeItem } from '@/api/client';
 import type { IconDecl } from '@/lib/icon';

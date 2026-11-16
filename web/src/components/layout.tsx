@@ -1,9 +1,9 @@
+import { cn } from 'cn';
 import { BookOpen, Box, Cloud, FolderKanban, Moon, PanelsTopLeft, Settings, Sun } from 'lucide-react';
 import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 
 import { toggleTheme, useTheme } from '@/hooks/use-theme';
-import { cn } from '@/lib/utils';
 
 import { HintTip } from './ui/tooltip';
 

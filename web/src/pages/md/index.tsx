@@ -1,10 +1,10 @@
+import { cn } from 'cn';
 import { ArrowLeft, ChevronDown, ChevronRight, Ellipsis, FileText, Folder } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import { ErrorBanner } from '@/components/error-banner';
-// front-matter 渲染管线与工作台内容面板预览共用（components/markdown-render）
 import { MarkdownView, mdThemeCls, mdThemes } from '@/components/markdown-render';
 import { OpenWithGroup } from '@/components/open-with-menu';
 import { TreeToolbar } from '@/components/tree-toolbar';
@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useLocalPref } from '@/hooks/use-local-pref';
 import { buildFileTree, flattenFileTree } from '@/lib/tree';
-import { cn } from '@/lib/utils';
 import { useMdContent, useMdList } from '@/queries/md';
 import { useOpenerList } from '@/queries/opener';
 import { useOpenerOpen } from '@/queries/project';

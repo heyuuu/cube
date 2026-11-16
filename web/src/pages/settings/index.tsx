@@ -1,7 +1,7 @@
+import { cn } from 'cn';
 import { useSearchParams } from 'react-router';
 
 import { PageHeader } from '@/components/page-header';
-import { cn } from '@/lib/utils';
 
 import { CloneSection } from './clone-section';
 import { ConfigSection } from './config-section';

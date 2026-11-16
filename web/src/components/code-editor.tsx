@@ -1,12 +1,12 @@
 import { Compartment, EditorState } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
+import { cn } from 'cn';
 import { basicSetup } from 'codemirror';
 import { useEffect, useRef } from 'react';
 
 import { useTheme } from '@/hooks/use-theme';
 import { languageForFile } from '@/lib/cm-lang';
-import { cn } from '@/lib/utils';
 
 // CodeMirror6 只读/可编辑统一封装（提案 1012）。
 // 受控形态：value 变化重建文档；onChange 仅在可编辑时回调。

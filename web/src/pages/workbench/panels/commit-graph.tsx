@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 // git 树面板·commit 图（提案 1011）：前端本地 active-lanes 布局 + SVG 拓扑 + 无限滚动；
 // dirty 工作副本以虚拟节点挂在各自 HEAD 上方，clean 的以徽标装饰 HEAD 行。
 import { Plus } from 'lucide-react';
@@ -8,21 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useLocalPref } from '@/hooks/use-local-pref';
-import { cn } from '@/lib/utils';
 import { useWorkbenchCommits, useWorkbenchWorktrees } from '@/queries/workbench';
 import type { CommitEntry, WorktreeStatus } from '@/queries/workbench';
 
 import { computeGraph, simplifyLite } from '../graph-layout';
+import { refShortName } from '../params';
+import { formatCommitTime, REF_BADGE_STYLE } from './commit-bits';
+import { SelectableRow } from './git-tree-bits';
 import type { GraphWire, LaneInfo } from '../graph-layout';
+import type { WorkbenchParams } from '../params';
 
 // 虚拟节点：dirty worktree 的「未提交状态」合成提交（父 = 该副本 HEAD，无 msg，时间 = 当前）；
 // 选中即浏览该工作副本现场（worktree 源）
 type WorktreeNode = CommitEntry & { worktree: WorktreeStatus };
 type RowCommit = (CommitEntry | WorktreeNode) & LaneInfo;
-import { refShortName } from '../params';
-import { formatCommitTime, REF_BADGE_STYLE } from './commit-bits';
-import { SelectableRow } from './git-tree-bits';
-import type { WorkbenchParams } from '../params';
 
 // commit 图展示模式持久化（与 wsExpanded 同款模式）：
 // full = 全量提交；lite = 轻量拓扑（只留 ref/merge/分叉点，见 simplifyLite）

@@ -4,11 +4,12 @@
 // SortHead：可点击表头，state='asc'|'desc'|null 三态图标，点击触发 onCycle（循环语义归调用方）。
 // CycleSortHead：SortHead 的循环语义封装——mode 命中 asc/desc 值时点亮对应图标，
 // 点击按「无 → first 方向 → 反向 → 无」循环并把下一个排序值回传 onSet（null = 回默认）。
+
+import { cn } from 'cn';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { TableHead } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 
 export function FilterRow({
   label,

@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 // settings 页 Forge 分区「账号」子表：forge account（纯 API 凭证）的增删改与拖拽排序（提案 1041/1044）。
 // token 只以掩码形态展示与回传（提交掩码值 = 未修改，沿用旧值）；generic forge 无 API 不可挂账号。
 // 拖动 ⠿ 排序，顺序即 forge 页账号摘要条的展示序。
@@ -11,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 import {
   useForgeAccountDelete,
   useForgeAccounts,

@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 import { Check, ChevronDown } from 'lucide-react';
 
 import {
@@ -8,7 +9,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
 import { useProjectList } from '@/queries/project';
 
 // 工作台顶栏项目切换（提案 1023）：复用 projects 列表数据源，下拉直达其他项目的工作台，

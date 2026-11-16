@@ -1,9 +1,9 @@
+import { cn } from 'cn';
 import Markdown from 'react-markdown';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 
 import { parseFrontmatter } from '@/lib/frontmatter';
-import { cn } from '@/lib/utils';
 import type { FrontMatterEntry } from '@/lib/frontmatter';
 
 // markdown 渲染公共件：md 独立页（/md，带主题）与工作台内容面板预览共用同一管线

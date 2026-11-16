@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 import { ChevronDown, ChevronRight, Crosshair, FileText, Folder } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
@@ -5,7 +6,6 @@ import { TreeToolbar } from '@/components/tree-toolbar';
 import { Button } from '@/components/ui/button';
 import { relativeFilePath } from '@/lib/path';
 import { buildFileTree, computeDirStatuses, flattenFileTree } from '@/lib/tree';
-import { cn } from '@/lib/utils';
 import { useWorkbenchTree } from '@/queries/workbench';
 import type { FileTreeNode } from '@/lib/tree';
 

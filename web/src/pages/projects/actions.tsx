@@ -1,4 +1,6 @@
 // Projects 页共用部件：行内打开动作 + tag 徽标。表格行、树项目行、详情抽屉三处使用。
+
+import { cn } from 'cn';
 import { Ellipsis, Folder, GitBranch, Layers } from 'lucide-react';
 
 import { CopyPathItem, OpenWithGroup } from '@/components/open-with-menu';
@@ -17,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { renderIcon } from '@/lib/icon';
-import { cn } from '@/lib/utils';
 import { useIntentDefaultOpener } from '@/queries/opener';
 import { useProjectOpen } from '@/queries/project';
 import type { Opener, Project } from '@/api/client';

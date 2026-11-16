@@ -1,10 +1,10 @@
-// git 树面板的通用小件：面板小节容器 + 可选中行（工作副本区 / 分支行 / commit 行共用）。
+import { cn } from 'cn';
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router';
+// git 树面板的通用小件：面板小节容器 + 可选中行（工作副本区 / 分支行 / commit 行共用）。
 import type { MouseEvent } from 'react';
 
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
 import { sameSource, selectCurrent, selectDiffSide } from '../params';
 import { formatCommitTime } from './commit-bits';

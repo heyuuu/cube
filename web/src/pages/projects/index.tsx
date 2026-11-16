@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 import { ArrowDownWideNarrow, ChevronRight, GitBranch, Layers, RefreshCw, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -21,7 +22,6 @@ import { renderIcon } from '@/lib/icon';
 import { guessHome, prettyPath } from '@/lib/path';
 import { formatDateTime, prettyTime } from '@/lib/time';
 import { buildProjectTree, collectExpandablePaths, flattenTree } from '@/lib/tree';
-import { cn } from '@/lib/utils';
 import { useForges } from '@/queries/forge';
 import { useOpenerList } from '@/queries/opener';
 import { useProjectList, useProjectOpen } from '@/queries/project';

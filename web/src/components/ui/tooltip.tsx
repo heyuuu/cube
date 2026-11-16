@@ -1,7 +1,6 @@
 import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip';
+import { cn } from 'cn';
 import type { ReactElement } from 'react';
-
-import { cn } from '@/lib/utils';
 
 // 轻量 tooltip：全局图标栏等处给纯图标控件补 hover 标签（Base UI 版，非 Radix）
 export function HintTip({

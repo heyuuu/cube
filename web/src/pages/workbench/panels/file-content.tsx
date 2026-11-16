@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { cn } from 'cn';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
@@ -18,7 +19,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { splitInlineDiff } from '@/lib/inline-diff';
-import { cn } from '@/lib/utils';
 import { saveWorkbenchFile } from '@/queries/workbench';
 import type { components } from '@/api/schema';
 import type { MdThemeId } from '@/components/markdown-render';

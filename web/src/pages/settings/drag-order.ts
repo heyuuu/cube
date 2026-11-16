@@ -1,8 +1,7 @@
+import { cn } from 'cn';
 // settings 分区共用的表格拖拽排序 hook（Grip 手柄发起、乐观顺序、失效回落）。
 // 交互模板源自 Opener 分区（提案 1025 定型），扫描规则 / clone 规则分区复用。
 import { useState } from 'react';
-
-import { cn } from '@/lib/utils';
 
 // 冻结列样式：首列贴左、操作贴右，实心 bg 遮住下层滑过的单元格，
 // 分隔线用 inset 阴影而非 border（border-collapse 下 border 不随 sticky 单元格移动）；

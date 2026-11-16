@@ -1,10 +1,10 @@
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
+import { cn } from 'cn';
 import { Minus, RotateCw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from './use-terminal-prefs';
 
