@@ -122,9 +122,9 @@ gen *args:
     just devtool generate {{args}}
     just fmt
 
-# 打新标签
-tag:
-    just devtool tag
+# 打新标签（--minor 递增次版本号，默认递增 patch）
+tag *args:
+    just devtool tag {{args}}
 
 # 取当前最大提案 ID（新建提案前必跑：新 ID = 最大 + 1，不得猜测取号，见 docs/README.md 的「ID 分配规则」）
 last-proposal:
