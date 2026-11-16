@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import type { LucideIcon } from 'lucide-react';
 
-import { HintTip } from '@/components/ui/tooltip';
+import { HintTip } from '@/components/hint-tip';
 import { toggleTheme, useTheme } from '@/hooks/use-theme';
 
 export interface NavItem {
