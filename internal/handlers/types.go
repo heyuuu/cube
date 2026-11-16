@@ -3,7 +3,12 @@ package handlers
 // WithBody POST body 入参的通用包装：huma 约定请求体字段须挂在名为 Body 的
 // 子结构上，handler 签名统一用 WithBody[T]（T 为内联 body struct 或 DTO 单项），
 // 不再逐端点声明具名 Input 类型。
-type WithBody[T any] struct {
+//
+// 必须是类型别名而非定义类型：别名实例化后反射名是匿名 struct，huma 会改用
+// operationId 派生 schema 名（如 RecordRequest）；定义类型的反射名含类型参数
+// 原文，会原样进入 $ref 的 JSON Pointer——doc 注释里带 "/" 时 pointer 语义
+// 被破坏，openapi-typescript 解析失败（gen:api 断）。
+type WithBody[T any] = struct {
 	Body T
 }
 

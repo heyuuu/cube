@@ -489,7 +489,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 用指定 opener 打开已收录项目（记 usage；目标目录选择为 1030/1032 预留） */
+    /** 用指定 opener 打开已收录项目 */
     post: operations['project.open'];
     delete?: never;
     options?: never;
@@ -1067,17 +1067,21 @@ export interface components {
       token: string;
       username: string;
     };
-    AccountFetchInputBody: {
+    AccountFetchRequest: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/AccountFetchInputBody.json
+       * @example https://example.com/schemas/AccountFetchRequest.json
        */
       readonly $schema?: string;
       /** @description 跳过缓存强制重拉 */
       force?: boolean;
       forgeHost: string;
       username: string;
+    };
+    AccountFetchResult: {
+      /** Format: int64 */
+      count: number;
     };
     AccountItem: {
       /**
@@ -1093,11 +1097,11 @@ export interface components {
       /** @description 平台用户名（唯一键之一） */
       username: string;
     };
-    AccountSaveAllInputBody: {
+    AccountSaveAllRequest: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/AccountSaveAllInputBody.json
+       * @example https://example.com/schemas/AccountSaveAllRequest.json
        */
       readonly $schema?: string;
       /** @description 按目标顺序排列的全部 account */
@@ -1152,11 +1156,11 @@ export interface components {
       /** @description uri 前缀，须以 / 开头或为空，如 /heyuuu */
       repoPrefix?: string;
     };
-    CloneRuleSaveAllInputBody: {
+    CloneRuleSaveAllRequest: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/CloneRuleSaveAllInputBody.json
+       * @example https://example.com/schemas/CloneRuleSaveAllRequest.json
        */
       readonly $schema?: string;
       /** @description 按目标顺序排列的全部 clone 规则 */
@@ -1211,9 +1215,34 @@ export interface components {
       kind: string;
       text: string;
     };
+    DiffOpenRequest: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/DiffOpenRequest.json
+       */
+      readonly $schema?: string;
+      /** @description 左侧路径（文件或目录）绝对路径 */
+      left: string;
+      /** @description opener 名称 */
+      opener: string;
+      /** @description 右侧路径（文件或目录）绝对路径 */
+      right: string;
+    };
     DiffTreesResult: {
       list: components['schemas']['DiffEntry'][] | null;
       mode: string;
+    };
+    EnvelopeAccountFetchResult: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/EnvelopeAccountFetchResult.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['AccountFetchResult'];
+      message: string;
+      ok: boolean;
     };
     EnvelopeCommitDetail: {
       /**
@@ -1402,19 +1431,6 @@ export interface components {
       message: string;
       ok: boolean;
     };
-    'EnvelopeMapStringInterface {}': {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/EnvelopeMapStringInterface {}.json
-       */
-      readonly $schema?: string;
-      data: {
-        [key: string]: unknown;
-      };
-      message: string;
-      ok: boolean;
-    };
     EnvelopeMdContentResult: {
       /**
        * Format: uri
@@ -1434,6 +1450,17 @@ export interface components {
        */
       readonly $schema?: string;
       data: components['schemas']['MdListResult'];
+      message: string;
+      ok: boolean;
+    };
+    EnvelopeOpResult: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/EnvelopeOpResult.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['OpResult'];
       message: string;
       ok: boolean;
     };
@@ -1459,6 +1486,17 @@ export interface components {
       message: string;
       ok: boolean;
     };
+    EnvelopeProjectWorkspaceState: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/EnvelopeProjectWorkspaceState.json
+       */
+      readonly $schema?: string;
+      data: components['schemas']['ProjectWorkspaceState'];
+      message: string;
+      ok: boolean;
+    };
     EnvelopeRefs: {
       /**
        * Format: uri
@@ -1470,25 +1508,25 @@ export interface components {
       message: string;
       ok: boolean;
     };
-    EnvelopeStatusResponse: {
+    EnvelopeSystemStatusOutput: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/EnvelopeStatusResponse.json
+       * @example https://example.com/schemas/EnvelopeSystemStatusOutput.json
        */
       readonly $schema?: string;
-      data: components['schemas']['StatusResponse'];
+      data: components['schemas']['SystemStatusOutput'];
       message: string;
       ok: boolean;
     };
-    EnvelopeTplSourceListResult: {
+    EnvelopeTemplateSourceListResult: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/EnvelopeTplSourceListResult.json
+       * @example https://example.com/schemas/EnvelopeTemplateSourceListResult.json
        */
       readonly $schema?: string;
-      data: components['schemas']['TplSourceListResult'];
+      data: components['schemas']['TemplateSourceListResult'];
       message: string;
       ok: boolean;
     };
@@ -1500,17 +1538,6 @@ export interface components {
        */
       readonly $schema?: string;
       data: components['schemas']['TreeListResult'];
-      message: string;
-      ok: boolean;
-    };
-    EnvelopeWorkspaceStateResult: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/EnvelopeWorkspaceStateResult.json
-       */
-      readonly $schema?: string;
-      data: components['schemas']['WorkspaceStateResult'];
       message: string;
       ok: boolean;
     };
@@ -1583,6 +1610,16 @@ export interface components {
        */
       type: string;
     };
+    ExtractRequest: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/ExtractRequest.json
+       */
+      readonly $schema?: string;
+      /** @description 图标来源：本地路径（.app 目录或图片文件）或 http(s) URL（如 https://gitee.com/favicon.ico） */
+      source: string;
+    };
     FileDiffResult: {
       binary: boolean;
       hunks: components['schemas']['Hunk'][] | null;
@@ -1625,16 +1662,6 @@ export interface components {
       /** @description API 方言：github / gitea / gitee / generic */
       kind: string;
     };
-    ForgeSaveAllInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ForgeSaveAllInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 按目标顺序排列的全部 forge */
-      items: components['schemas']['ForgeItem'][] | null;
-    };
     Hunk: {
       lines: components['schemas']['DiffLine'][] | null;
       /** Format: int64 */
@@ -1650,16 +1677,6 @@ export interface components {
       type: string;
       value: string;
     };
-    IconExtractInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/IconExtractInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 图标来源：本地路径（.app 目录或图片文件）或 http(s) URL（如 https://gitee.com/favicon.ico） */
-      source: string;
-    };
     IconExtractResult: {
       /** @description 64px PNG 的 base64 字符串 */
       value: string;
@@ -1668,21 +1685,21 @@ export interface components {
       defaultBranch: string;
       root: string;
     };
-    IntentDefaultDeleteInputBody: {
+    IntentDefaultDeleteRequest: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/IntentDefaultDeleteInputBody.json
+       * @example https://example.com/schemas/IntentDefaultDeleteRequest.json
        */
       readonly $schema?: string;
       /** @description 打开意图 */
       intent: string;
     };
-    IntentDefaultSaveInputBody: {
+    IntentDefaultSaveRequest: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/IntentDefaultSaveInputBody.json
+       * @example https://example.com/schemas/IntentDefaultSaveRequest.json
        */
       readonly $schema?: string;
       /** @description 打开意图（如 dir / file / diff-file / git） */
@@ -1728,6 +1745,35 @@ export interface components {
       dir: boolean;
       files: string[] | null;
     };
+    OpResult: {
+      ok: boolean;
+    };
+    OpenRequest: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/OpenRequest.json
+       */
+      readonly $schema?: string;
+      /** @description opener 名称 */
+      opener: string;
+      /** @description 文件或目录绝对路径 */
+      path: string;
+    };
+    OpenRequest1: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/OpenRequest1.json
+       */
+      readonly $schema?: string;
+      /** @description 目标目录绝对路径（worktree；缺省打开项目根） */
+      dir?: string;
+      /** @description opener 名称 */
+      opener: string;
+      /** @description 项目绝对路径 */
+      path: string;
+    };
     OpenerDTO: {
       actions: {
         [key: string]: string;
@@ -1736,20 +1782,6 @@ export interface components {
       name: string;
       summary: string;
       title: string;
-    };
-    OpenerDiffOpenInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/OpenerDiffOpenInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 左侧路径（文件或目录）绝对路径 */
-      left: string;
-      /** @description opener 名称 */
-      opener: string;
-      /** @description 右侧路径（文件或目录）绝对路径 */
-      right: string;
     };
     OpenerIntentDTO: {
       defaultOpener?: string;
@@ -1773,28 +1805,6 @@ export interface components {
       name: string;
       /** @description 展示文案（如「打开所在目录」），缺省由 name 生成 */
       title?: string;
-    };
-    OpenerOpenInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/OpenerOpenInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description opener 名称 */
-      opener: string;
-      /** @description 文件或目录绝对路径 */
-      path: string;
-    };
-    OpenerSaveAllInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/OpenerSaveAllInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 按目标顺序排列的全部 opener */
-      items: components['schemas']['OpenerItem'][] | null;
     };
     Overview: {
       accounts: components['schemas']['AcctMeta'][] | null;
@@ -1821,20 +1831,6 @@ export interface components {
       /** Format: date-time */
       snapshotUpdatedAt: string;
     };
-    ProjectOpenInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ProjectOpenInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 目标目录绝对路径（worktree；缺省打开项目根） */
-      dir?: string;
-      /** @description opener 名称 */
-      opener: string;
-      /** @description 项目绝对路径 */
-      path: string;
-    };
     ProjectSnapshotDTO: {
       /** Format: int64 */
       ahead: number;
@@ -1849,6 +1845,25 @@ export interface components {
       repoUrl: string;
       workspaces: components['schemas']['WorkspaceMemberDTO'][] | null;
       worktrees: components['schemas']['WorktreeDTO'][] | null;
+    };
+    ProjectWorkspaceState: {
+      declared: boolean;
+      effective: components['schemas']['WorkspaceMemberDTO'][] | null;
+      rules: components['schemas']['WorkspaceRuleDTO'][] | null;
+    };
+    RecordRequest: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/RecordRequest.json
+       */
+      readonly $schema?: string;
+      /** @description 实际打开的目标目录绝对路径，缺省记项目根 */
+      dir?: string;
+      /** @description opener 名（web 直开的 url 型动作补记时传） */
+      opener?: string;
+      /** @description 项目/目录绝对路径（归并键） */
+      project?: string;
     };
     Refs: {
       head: string;
@@ -1880,6 +1895,26 @@ export interface components {
       repo: components['schemas']['RemoteRepo'];
       status: string;
     };
+    SaveAllRequest: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/SaveAllRequest.json
+       */
+      readonly $schema?: string;
+      /** @description 按目标顺序排列的全部 forge */
+      items: components['schemas']['ForgeItem'][] | null;
+    };
+    SaveAllRequest1: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/SaveAllRequest1.json
+       */
+      readonly $schema?: string;
+      /** @description 按目标顺序排列的全部 opener */
+      items: components['schemas']['OpenerItem'][] | null;
+    };
     ScanRule: {
       group: string;
       icon?: components['schemas']['Icon'];
@@ -1909,11 +1944,11 @@ export interface components {
       /** @description 命中该规则的项目统一追加的标签（如 个人/公司/开源，可选） */
       tags?: string[] | null;
     };
-    ScanRuleSaveAllInputBody: {
+    ScanRuleSaveAllRequest: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ScanRuleSaveAllInputBody.json
+       * @example https://example.com/schemas/ScanRuleSaveAllRequest.json
        */
       readonly $schema?: string;
       /** @description 按目标顺序排列的全部扫描规则 */
@@ -1924,10 +1959,24 @@ export interface components {
       /** Format: int64 */
       port: number;
     };
-    StatusResponse: {
+    SourceSaveAllRequest: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/SourceSaveAllRequest.json
+       */
+      readonly $schema?: string;
+      /** @description 按目标顺序排列的全部模板源 */
+      items: components['schemas']['TplSourceItem'][] | null;
+    };
+    SystemStatusOutput: {
       app: string;
       instance: string;
       version: string;
+    };
+    TemplateSourceListResult: {
+      defaultSource: string;
+      list: components['schemas']['TplSource'][] | null;
     };
     TplSource: {
       name: string;
@@ -1945,36 +1994,8 @@ export interface components {
       /** @description git 仓库地址（git@host:path / https://host/path / 本地绝对路径） */
       repoUrl: string;
     };
-    TplSourceListResult: {
-      defaultSource: string;
-      list: components['schemas']['TplSource'][] | null;
-    };
-    TplSourceSaveAllInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/TplSourceSaveAllInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 按目标顺序排列的全部模板源 */
-      items: components['schemas']['TplSourceItem'][] | null;
-    };
     TreeListResult: {
       list: string[] | null;
-    };
-    UsageRecordInputBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/UsageRecordInputBody.json
-       */
-      readonly $schema?: string;
-      /** @description 实际打开的目标目录绝对路径，缺省记项目根 */
-      dir?: string;
-      /** @description opener 名（web 直开的 url 型动作补记时传） */
-      opener?: string;
-      /** @description 项目/目录绝对路径（归并键） */
-      project?: string;
     };
     Workspace: {
       name: string;
@@ -1998,22 +2019,17 @@ export interface components {
       name: string;
       path: string;
     };
-    WorkspaceSaveInputBody: {
+    WorkspaceSaveRequest: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/WorkspaceSaveInputBody.json
+       * @example https://example.com/schemas/WorkspaceSaveRequest.json
        */
       readonly $schema?: string;
       /** @description 项目绝对路径 */
       path: string;
       /** @description 规则清单（name 可选 + path：相对路径/glob/<npm>/<pnpm>） */
       workspaces: components['schemas']['WorkspaceRuleDTO'][] | null;
-    };
-    WorkspaceStateResult: {
-      declared: boolean;
-      effective: components['schemas']['WorkspaceMemberDTO'][] | null;
-      rules: components['schemas']['WorkspaceRuleDTO'][] | null;
     };
     WorktreeAddRequest: {
       /**
@@ -2148,7 +2164,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2171,7 +2187,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AccountFetchInputBody'];
+        'application/json': components['schemas']['AccountFetchRequest'];
       };
     };
     responses: {
@@ -2181,7 +2197,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeAccountFetchResult'];
         };
       };
       /** @description Error */
@@ -2243,7 +2259,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2266,7 +2282,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AccountSaveAllInputBody'];
+        'application/json': components['schemas']['AccountSaveAllRequest'];
       };
     };
     responses: {
@@ -2276,7 +2292,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2309,7 +2325,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2400,7 +2416,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2423,7 +2439,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ForgeSaveAllInputBody'];
+        'application/json': components['schemas']['SaveAllRequest'];
       };
     };
     responses: {
@@ -2433,7 +2449,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2456,7 +2472,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['IconExtractInputBody'];
+        'application/json': components['schemas']['ExtractRequest'];
       };
     };
     responses: {
@@ -2561,7 +2577,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2584,7 +2600,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['OpenerDiffOpenInputBody'];
+        'application/json': components['schemas']['DiffOpenRequest'];
       };
     };
     responses: {
@@ -2594,7 +2610,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2617,7 +2633,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['IntentDefaultDeleteInputBody'];
+        'application/json': components['schemas']['IntentDefaultDeleteRequest'];
       };
     };
     responses: {
@@ -2627,7 +2643,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2650,7 +2666,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['IntentDefaultSaveInputBody'];
+        'application/json': components['schemas']['IntentDefaultSaveRequest'];
       };
     };
     responses: {
@@ -2660,7 +2676,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2741,7 +2757,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['OpenerOpenInputBody'];
+        'application/json': components['schemas']['OpenRequest'];
       };
     };
     responses: {
@@ -2751,7 +2767,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2784,7 +2800,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2807,7 +2823,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['OpenerSaveAllInputBody'];
+        'application/json': components['schemas']['SaveAllRequest1'];
       };
     };
     responses: {
@@ -2817,7 +2833,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2850,7 +2866,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2883,7 +2899,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2906,7 +2922,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CloneRuleSaveAllInputBody'];
+        'application/json': components['schemas']['CloneRuleSaveAllRequest'];
       };
     };
     responses: {
@@ -2916,7 +2932,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -2997,7 +3013,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ProjectOpenInputBody'];
+        'application/json': components['schemas']['OpenRequest1'];
       };
     };
     responses: {
@@ -3007,7 +3023,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3040,7 +3056,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3073,7 +3089,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3096,7 +3112,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ScanRuleSaveAllInputBody'];
+        'application/json': components['schemas']['ScanRuleSaveAllRequest'];
       };
     };
     responses: {
@@ -3106,7 +3122,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3166,7 +3182,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeWorkspaceStateResult'];
+          'application/json': components['schemas']['EnvelopeProjectWorkspaceState'];
         };
       };
       /** @description Error */
@@ -3199,7 +3215,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3222,7 +3238,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['WorkspaceSaveInputBody'];
+        'application/json': components['schemas']['WorkspaceSaveRequest'];
       };
     };
     responses: {
@@ -3232,7 +3248,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3261,7 +3277,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeStatusResponse'];
+          'application/json': components['schemas']['EnvelopeSystemStatusOutput'];
         };
       };
       /** @description Error */
@@ -3294,7 +3310,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3323,7 +3339,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeTplSourceListResult'];
+          'application/json': components['schemas']['EnvelopeTemplateSourceListResult'];
         };
       };
       /** @description Error */
@@ -3356,7 +3372,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3379,7 +3395,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['TplSourceSaveAllInputBody'];
+        'application/json': components['schemas']['SourceSaveAllRequest'];
       };
     };
     responses: {
@@ -3389,7 +3405,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3444,7 +3460,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['UsageRecordInputBody'];
+        'application/json': components['schemas']['RecordRequest'];
       };
     };
     responses: {
@@ -3454,7 +3470,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3487,7 +3503,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3520,7 +3536,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -3977,7 +3993,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
@@ -4043,7 +4059,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['EnvelopeMapStringInterface {}'];
+          'application/json': components['schemas']['EnvelopeOpResult'];
         };
       };
       /** @description Error */
