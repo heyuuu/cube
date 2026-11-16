@@ -65,7 +65,7 @@ func (h *OpenerHandler) Register(r *api.Routes) {
 	r.Post("/api/opener/intent-default/delete", "清除某 intent 的默认 opener", api.JSONHandler(h.intentDefaultDelete))
 }
 
-func (h *OpenerHandler) openerList(_ struct{}) (ListResult[*OpenerDTO], error) {
+func (h *OpenerHandler) openerList(_ struct{}) (*ListResult[*OpenerDTO], error) {
 	openers := h.service.AllOpeners()
 	list := xslices.Map(openers, toOpenerDTO)
 	return listResult(list), nil
@@ -78,7 +78,7 @@ type OpenerIntentDTO struct {
 	Openers       []string `json:"openers"` // 候选清单（缺省 = 声明了对应 role 的全部 opener，读侧合成）
 }
 
-func (h *OpenerHandler) openerIntents(_ struct{}) (ListResult[*OpenerIntentDTO], error) {
+func (h *OpenerHandler) openerIntents(_ struct{}) (*ListResult[*OpenerIntentDTO], error) {
 	list := xslices.Map(h.service.Intents(), func(i opener.IntentInfo) *OpenerIntentDTO {
 		return &OpenerIntentDTO{
 			Intent:        string(i.Intent),
@@ -90,16 +90,12 @@ func (h *OpenerHandler) openerIntents(_ struct{}) (ListResult[*OpenerIntentDTO],
 }
 
 // OpenerOpenInput open 接口入参。huma 约定：请求体字段须挂在名为 Body 的子结构上。
-type OpenerOpenInput struct {
-	Body struct {
-		Path   string `json:"path" doc:"文件或目录绝对路径"`
-		Opener string `json:"opener" doc:"opener 名称"`
-	}
-}
-
 // openerOpen 用指定 opener 打开任意文件/目录（项目打开走 project/open，那里记 usage；此处不产生使用信号）。
 // role 按路径实际类型校验：目录须 open-dir、文件须 open-file。
-func (h *OpenerHandler) openerOpen(input OpenerOpenInput) (map[string]any, error) {
+func (h *OpenerHandler) openerOpen(input WithBody[struct {
+	Path   string `json:"path" doc:"文件或目录绝对路径"`
+	Opener string `json:"opener" doc:"opener 名称"`
+}]) (*OpResult, error) {
 	if !filepath.IsAbs(input.Body.Path) {
 		return nil, errors.New("path 必须是绝对路径: " + input.Body.Path)
 	}
@@ -121,21 +117,16 @@ func (h *OpenerHandler) openerOpen(input OpenerOpenInput) (map[string]any, error
 	if err := h.service.Open(*o, role, input.Body.Path); err != nil {
 		return nil, fmt.Errorf("打开失败: %w", err)
 	}
-	return map[string]any{"ok": true}, nil
-}
-
-// OpenerDiffOpenInput diff-open 接口入参。
-type OpenerDiffOpenInput struct {
-	Body struct {
-		Left   string `json:"left" doc:"左侧路径（文件或目录）绝对路径"`
-		Right  string `json:"right" doc:"右侧路径（文件或目录）绝对路径"`
-		Opener string `json:"opener" doc:"opener 名称"`
-	}
+	return opSuccess, nil
 }
 
 // openerDiffOpen 用指定 opener 对比两个路径。role 按两侧实际类型推导且须同类
 // （两侧都是目录 → diff-dir，都是文件 → diff-file，混合报错）。
-func (h *OpenerHandler) openerDiffOpen(input OpenerDiffOpenInput) (map[string]any, error) {
+func (h *OpenerHandler) openerDiffOpen(input WithBody[struct {
+	Left   string `json:"left" doc:"左侧路径（文件或目录）绝对路径"`
+	Right  string `json:"right" doc:"右侧路径（文件或目录）绝对路径"`
+	Opener string `json:"opener" doc:"opener 名称"`
+}]) (*OpResult, error) {
 	left, right := input.Body.Left, input.Body.Right
 	for _, p := range []string{left, right} {
 		if !filepath.IsAbs(p) {
@@ -165,7 +156,7 @@ func (h *OpenerHandler) openerDiffOpen(input OpenerDiffOpenInput) (map[string]an
 	if err := h.service.Open(*o, role, left, right); err != nil {
 		return nil, fmt.Errorf("打开失败: %w", err)
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 func isDirPath(p string) (bool, error) {
@@ -193,53 +184,37 @@ func (it OpenerItem) toSpec() opener.Opener {
 }
 
 // OpenerSaveInput save 接口入参。
-type OpenerSaveInput struct {
-	Body OpenerItem
-}
-
-func (h *OpenerHandler) openerSave(input OpenerSaveInput) (map[string]any, error) {
+func (h *OpenerHandler) openerSave(input WithBody[OpenerItem]) (*OpResult, error) {
 	// 校验在 Service 写侧（领域构造函数），坏数据返回中文错误、不落文件
 	if err := h.service.SaveOpener(input.Body.toSpec()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // OpenerDeleteInput delete 接口入参（完整单项，唯一键由 domain 计算）。
-type OpenerDeleteInput struct {
-	Body OpenerItem
-}
-
-func (h *OpenerHandler) openerDelete(input OpenerDeleteInput) (map[string]any, error) {
+func (h *OpenerHandler) openerDelete(input WithBody[OpenerItem]) (*OpResult, error) {
 	if err := h.service.DeleteOpener(input.Body.toSpec()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // OpenerSaveAllInput save-all 接口入参（提交清单即落盘结果，含顺序）。
-type OpenerSaveAllInput struct {
-	Body struct {
-		Items []OpenerItem `json:"items" doc:"按目标顺序排列的全部 opener"`
-	}
-}
-
-func (h *OpenerHandler) openerSaveAll(input OpenerSaveAllInput) (map[string]any, error) {
+func (h *OpenerHandler) openerSaveAll(input WithBody[struct {
+	Items []OpenerItem `json:"items" doc:"按目标顺序排列的全部 opener"`
+}]) (*OpResult, error) {
 	if err := h.service.SaveAllOpeners(xslices.Map(input.Body.Items, OpenerItem.toSpec)); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // IntentDefaultSaveInput intent-default/save 接口入参。
-type IntentDefaultSaveInput struct {
-	Body struct {
-		Intent string `json:"intent" doc:"打开意图（如 dir / file / diff-file / git）"`
-		Opener string `json:"opener" doc:"opener 名称（须声明该 intent 对应的 role）"`
-	}
-}
-
-func (h *OpenerHandler) intentDefaultSave(input IntentDefaultSaveInput) (map[string]any, error) {
+func (h *OpenerHandler) intentDefaultSave(input WithBody[struct {
+	Intent string `json:"intent" doc:"打开意图（如 dir / file / diff-file / git）"`
+	Opener string `json:"opener" doc:"opener 名称（须声明该 intent 对应的 role）"`
+}]) (*OpResult, error) {
 	intent, err := opener.ParseIntent(input.Body.Intent)
 	if err != nil {
 		return nil, err
@@ -247,17 +222,13 @@ func (h *OpenerHandler) intentDefaultSave(input IntentDefaultSaveInput) (map[str
 	if err := h.service.SaveIntentDefault(intent, input.Body.Opener); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // IntentDefaultDeleteInput intent-default/delete 接口入参。
-type IntentDefaultDeleteInput struct {
-	Body struct {
-		Intent string `json:"intent" doc:"打开意图"`
-	}
-}
-
-func (h *OpenerHandler) intentDefaultDelete(input IntentDefaultDeleteInput) (map[string]any, error) {
+func (h *OpenerHandler) intentDefaultDelete(input WithBody[struct {
+	Intent string `json:"intent" doc:"打开意图"`
+}]) (*OpResult, error) {
 	intent, err := opener.ParseIntent(input.Body.Intent)
 	if err != nil {
 		return nil, err
@@ -265,5 +236,5 @@ func (h *OpenerHandler) intentDefaultDelete(input IntentDefaultDeleteInput) (map
 	if err := h.service.DeleteIntentDefault(intent); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }

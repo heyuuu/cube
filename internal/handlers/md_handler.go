@@ -46,30 +46,30 @@ func (h *MdHandler) Register(r *api.Routes) {
 
 func (h *MdHandler) mdContent(input struct {
 	Path string `query:"path" required:"true"`
-}) (MdContentResult, error) {
+}) (*MdContentResult, error) {
 	if !filepath.IsAbs(input.Path) {
-		return MdContentResult{}, errors.New("path 必须是绝对路径: " + input.Path)
+		return nil, errors.New("path 必须是绝对路径: " + input.Path)
 	}
 	data, err := os.ReadFile(input.Path)
 	if err != nil {
-		return MdContentResult{}, fmt.Errorf("读取文件失败: %w", err)
+		return nil, fmt.Errorf("读取文件失败: %w", err)
 	}
-	return MdContentResult{Content: string(data)}, nil
+	return &MdContentResult{Content: string(data)}, nil
 }
 
 func (h *MdHandler) mdList(input struct {
 	Path string `query:"path" required:"true"`
-}) (MdListResult, error) {
+}) (*MdListResult, error) {
 	if !filepath.IsAbs(input.Path) {
-		return MdListResult{}, errors.New("path 必须是绝对路径: " + input.Path)
+		return nil, errors.New("path 必须是绝对路径: " + input.Path)
 	}
 	info, err := os.Stat(input.Path)
 	if err != nil {
-		return MdListResult{}, fmt.Errorf("读取路径失败: %w", err)
+		return nil, fmt.Errorf("读取路径失败: %w", err)
 	}
 	if !info.IsDir() {
 		// 单文件模式：Files 仅自身，前端据此走无侧栏形态
-		return MdListResult{Dir: false, Files: []string{input.Path}}, nil
+		return &MdListResult{Dir: false, Files: []string{input.Path}}, nil
 	}
 	// 优先走 git 忽略链（先过滤 .gitignore 再列举，不进 node_modules 等大目录）；
 	// 仓库外 / git 执行失败降级普通遍历
@@ -80,7 +80,7 @@ func (h *MdHandler) mdList(input struct {
 	if files == nil {
 		files = walkAllFiles(input.Path)
 	}
-	return MdListResult{Dir: true, Files: files}, nil
+	return &MdListResult{Dir: true, Files: files}, nil
 }
 
 // walkAllFiles 递归收集 root 下全部文件（不限扩展名），WalkDir 天然字典序。

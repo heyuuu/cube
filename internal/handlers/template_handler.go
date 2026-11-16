@@ -32,8 +32,8 @@ type TplSourceListResult struct {
 	DefaultSource string               `json:"defaultSource"`
 }
 
-func (h *TemplateHandler) sourceList(_ struct{}) (TplSourceListResult, error) {
-	return TplSourceListResult{
+func (h *TemplateHandler) sourceList(_ struct{}) (*TplSourceListResult, error) {
+	return &TplSourceListResult{
 		List:          h.templateService.TplSources(),
 		DefaultSource: template.DefaultSourceName,
 	}, nil
@@ -50,39 +50,27 @@ func (it TplSourceItem) toTplSource() template.TplSource {
 }
 
 // TplSourceSaveInput template/source/save 接口入参（name 是唯一键）。
-type TplSourceSaveInput struct {
-	Body TplSourceItem
-}
-
-func (h *TemplateHandler) sourceSave(input TplSourceSaveInput) (map[string]any, error) {
+func (h *TemplateHandler) sourceSave(input WithBody[TplSourceItem]) (*OpResult, error) {
 	if err := h.templateService.SaveTplSource(input.Body.toTplSource()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // TplSourceDeleteInput template/source/delete 接口入参（完整单项，唯一键由 domain 计算）。
-type TplSourceDeleteInput struct {
-	Body TplSourceItem
-}
-
-func (h *TemplateHandler) sourceDelete(input TplSourceDeleteInput) (map[string]any, error) {
+func (h *TemplateHandler) sourceDelete(input WithBody[TplSourceItem]) (*OpResult, error) {
 	if err := h.templateService.DeleteTplSource(input.Body.toTplSource()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // TplSourceSaveAllInput template/source/save-all 接口入参（提交清单即落盘结果，含顺序）。
-type TplSourceSaveAllInput struct {
-	Body struct {
-		Items []TplSourceItem `json:"items" doc:"按目标顺序排列的全部模板源"`
-	}
-}
-
-func (h *TemplateHandler) sourceSaveAll(input TplSourceSaveAllInput) (map[string]any, error) {
+func (h *TemplateHandler) sourceSaveAll(input WithBody[struct {
+	Items []TplSourceItem `json:"items" doc:"按目标顺序排列的全部模板源"`
+}]) (*OpResult, error) {
 	if err := h.templateService.SaveAllTplSources(xslices.Map(input.Body.Items, TplSourceItem.toTplSource)); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }

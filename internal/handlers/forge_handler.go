@@ -37,7 +37,7 @@ func (h *ForgeHandler) Register(r *api.Routes) {
 	r.Get("/api/forge/overview", "forge 页聚合：全部 account 对账行 + 拉取元信息（只读缓存不外呼）", api.JSONHandler(h.forgeOverview))
 }
 
-func (h *ForgeHandler) forgeList(_ struct{}) (ListResult[forge.Forge], error) {
+func (h *ForgeHandler) forgeList(_ struct{}) (*ListResult[forge.Forge], error) {
 	return listResult(h.forgeService.Forges()), nil
 }
 
@@ -53,46 +53,34 @@ func (it ForgeItem) toForge() forge.Forge {
 }
 
 // ForgeSaveInput forge/save 接口入参。
-type ForgeSaveInput struct {
-	Body ForgeItem
-}
-
-func (h *ForgeHandler) forgeSave(input ForgeSaveInput) (map[string]any, error) {
+func (h *ForgeHandler) forgeSave(input WithBody[ForgeItem]) (*OpResult, error) {
 	if err := h.forgeService.SaveForge(input.Body.toForge()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // ForgeDeleteInput forge/delete 接口入参（完整单项，唯一键由 domain 计算）。
-type ForgeDeleteInput struct {
-	Body ForgeItem
-}
-
-func (h *ForgeHandler) forgeDelete(input ForgeDeleteInput) (map[string]any, error) {
+func (h *ForgeHandler) forgeDelete(input WithBody[ForgeItem]) (*OpResult, error) {
 	if err := h.forgeService.DeleteForge(input.Body.toForge()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
-// ForgeSaveAllInput forge/save-all 接口入参（提交清单即落盘结果，含顺序）。
-type ForgeSaveAllInput struct {
-	Body struct {
-		Items []ForgeItem `json:"items" doc:"按目标顺序排列的全部 forge"`
-	}
-}
-
-func (h *ForgeHandler) forgeSaveAll(input ForgeSaveAllInput) (map[string]any, error) {
+// forge/save-all 接口入参（提交清单即落盘结果，含顺序）。
+func (h *ForgeHandler) forgeSaveAll(input WithBody[struct {
+	Items []ForgeItem `json:"items" doc:"按目标顺序排列的全部 forge"`
+}]) (*OpResult, error) {
 	if err := h.forgeService.SaveAllForges(xslices.Map(input.Body.Items, ForgeItem.toForge)); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // --- account（token 只以打码形态出 API；save 提交掩码值 = 未修改） ---
 
-func (h *ForgeHandler) accountList(_ struct{}) (ListResult[forge.Account], error) {
+func (h *ForgeHandler) accountList(_ struct{}) (*ListResult[forge.Account], error) {
 	accounts := h.forgeService.Accounts()
 	for i := range accounts {
 		if accounts[i].Token != "" {
@@ -114,59 +102,46 @@ func (it AccountItem) toAccount() forge.Account {
 }
 
 // AccountSaveInput account/save 接口入参。
-type AccountSaveInput struct {
-	Body AccountItem
-}
-
-func (h *ForgeHandler) accountSave(input AccountSaveInput) (map[string]any, error) {
+func (h *ForgeHandler) accountSave(input WithBody[AccountItem]) (*OpResult, error) {
 	if err := h.forgeService.SaveAccount(input.Body.toAccount()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // AccountDeleteInput account/delete 接口入参（完整单项，唯一键由 domain 计算）。
-type AccountDeleteInput struct {
-	Body AccountItem
-}
-
-func (h *ForgeHandler) accountDelete(input AccountDeleteInput) (map[string]any, error) {
+func (h *ForgeHandler) accountDelete(input WithBody[AccountItem]) (*OpResult, error) {
 	if err := h.forgeService.DeleteAccount(input.Body.toAccount()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
-// AccountFetchInput account/fetch 接口入参（出站 API 调用，同步执行）。
-type AccountFetchInput struct {
-	Body struct {
-		ForgeHost string `json:"forgeHost"`
-		Username  string `json:"username"`
-		Force     bool   `json:"force,omitempty" doc:"跳过缓存强制重拉"`
-	}
+type accountFetchResult struct {
+	Count int `json:"count"`
 }
 
-func (h *ForgeHandler) accountFetch(input AccountFetchInput) (map[string]any, error) {
+func (h *ForgeHandler) accountFetch(input WithBody[struct {
+	ForgeHost string `json:"forgeHost"`
+	Username  string `json:"username"`
+	Force     bool   `json:"force,omitempty" doc:"跳过缓存强制重拉"`
+}]) (*accountFetchResult, error) {
 	b := input.Body
 	repos, err := h.forgeService.FetchAccount(b.ForgeHost, b.Username, b.Force)
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true, "count": len(repos)}, nil
+	return &accountFetchResult{Count: len(repos)}, nil
 }
 
-// AccountSaveAllInput account/save-all 接口入参（提交清单即落盘结果，含顺序；token 可为 list 回显的掩码值）。
-type AccountSaveAllInput struct {
-	Body struct {
-		Items []AccountItem `json:"items" doc:"按目标顺序排列的全部 account"`
-	}
-}
-
-func (h *ForgeHandler) accountSaveAll(input AccountSaveAllInput) (map[string]any, error) {
+// account/save-all 接口入参（提交清单即落盘结果，含顺序；token 可为 list 回显的掩码值）。
+func (h *ForgeHandler) accountSaveAll(input WithBody[struct {
+	Items []AccountItem `json:"items" doc:"按目标顺序排列的全部 account"`
+}]) (*OpResult, error) {
 	if err := h.forgeService.SaveAllAccounts(xslices.Map(input.Body.Items, AccountItem.toAccount)); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // forgeOverview forge 页聚合数据源（只读拉取缓存与本地快照，不触发外呼）。

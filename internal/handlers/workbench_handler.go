@@ -72,10 +72,15 @@ func (h *WorkbenchHandler) refs(input struct {
 	return h.workbenchService.Refs(input.Path)
 }
 
+// todo 此处 Output 应该改为 *ListResult[workbench.RemoteEntry], 但是需要前端兼容所以暂缓
 func (h *WorkbenchHandler) remotes(input struct {
 	Path string `query:"path" required:"true"`
-}) ([]workbench.RemoteEntry, error) {
-	return h.workbenchService.Remotes(input.Path)
+}) (*[]workbench.RemoteEntry, error) {
+	list, err := h.workbenchService.Remotes(input.Path)
+	if err != nil {
+		return nil, err
+	}
+	return &list, nil
 }
 
 func (h *WorkbenchHandler) commits(input struct {
@@ -97,10 +102,15 @@ func (h *WorkbenchHandler) commitInfo(input struct {
 	return h.workbenchService.CommitInfo(input.Path, src)
 }
 
+// todo 此处 Output 应该改为 *ListResult[workbench.WorktreeStatus], 但是需要前端兼容所以暂缓
 func (h *WorkbenchHandler) worktrees(input struct {
 	Path string `query:"path" required:"true"`
-}) ([]workbench.WorktreeStatus, error) {
-	return h.workbenchService.WorktreeStatuses(input.Path)
+}) (*[]workbench.WorktreeStatus, error) {
+	list, err := h.workbenchService.WorktreeStatuses(input.Path)
+	if err != nil {
+		return nil, err
+	}
+	return &list, nil
 }
 
 // 注意：huma 不展开嵌入 struct 的 query tag，参数一律平铺声明。
@@ -130,14 +140,12 @@ func (h *WorkbenchHandler) file(input struct {
 
 // saveFile 参数全部平铺在 body（POST 动作惯例，同 opener/open）；保存语义已在
 // 路径名 file/save 上体现，不用 method 区分读写。
-func (h *WorkbenchHandler) saveFile(input struct {
-	Body struct {
-		Path    string `json:"path"`
-		Source  string `json:"source"`
-		File    string `json:"file"`
-		Content string `json:"content"`
-	}
-}) (*workbench.FileResult, error) {
+func (h *WorkbenchHandler) saveFile(input WithBody[struct {
+	Path    string `json:"path"`
+	Source  string `json:"source"`
+	File    string `json:"file"`
+	Content string `json:"content"`
+}]) (*workbench.FileResult, error) {
 	src, err := workbench.ParseTreeSource(input.Body.Source)
 	if err != nil {
 		return nil, err
@@ -185,14 +193,12 @@ func (h *WorkbenchHandler) fileDiff(input struct {
 
 // worktreeAdd 参数平铺在 body（POST 动作惯例）。branch 支持规范全名或短名；
 // targetPath 为空时服务端按 <repoName>.worktrees/<分支名>/ 预填。
-func (h *WorkbenchHandler) worktreeAdd(input struct {
-	Body struct {
-		Path       string `json:"path"`
-		Branch     string `json:"branch,omitempty"`     // 留空 = detached
-		Commitish  string `json:"commitish,omitempty"`  // 基点（commit/分支/tag），留空 = HEAD
-		TargetPath string `json:"targetPath,omitempty"` // 目标目录，留空 = 服务端预填
-	}
-}) (*workbench.WorktreeCreated, error) {
+func (h *WorkbenchHandler) worktreeAdd(input WithBody[struct {
+	Path       string `json:"path"`
+	Branch     string `json:"branch,omitempty"`     // 留空 = detached
+	Commitish  string `json:"commitish,omitempty"`  // 基点（commit/分支/tag），留空 = HEAD
+	TargetPath string `json:"targetPath,omitempty"` // 目标目录，留空 = 服务端预填
+}]) (*workbench.WorktreeCreated, error) {
 	return h.workbenchService.WorktreeAdd(input.Body.Path, input.Body.Branch, input.Body.Commitish, input.Body.TargetPath)
 }
 
@@ -203,13 +209,11 @@ type worktreeRemoveResult struct {
 	Reasons []string `json:"reasons"`
 }
 
-func (h *WorkbenchHandler) worktreeRemove(input struct {
-	Body struct {
-		Path       string `json:"path"`
-		TargetPath string `json:"targetPath"`
-		Force      bool   `json:"force,omitempty"`
-	}
-}) (*worktreeRemoveResult, error) {
+func (h *WorkbenchHandler) worktreeRemove(input WithBody[struct {
+	Path       string `json:"path"`
+	TargetPath string `json:"targetPath"`
+	Force      bool   `json:"force,omitempty"`
+}]) (*worktreeRemoveResult, error) {
 	err := h.workbenchService.WorktreeRemove(input.Body.Path, input.Body.TargetPath, input.Body.Force)
 	var denied *workbench.WorktreeRemoveDenied
 	if errors.As(err, &denied) {
@@ -222,55 +226,47 @@ func (h *WorkbenchHandler) worktreeRemove(input struct {
 }
 
 // worktreeReset 把 path 所在副本重置到 target（分支名/commit/tag）；hard = --hard。
-func (h *WorkbenchHandler) worktreeReset(input struct {
-	Body struct {
-		Path   string `json:"path"`
-		Target string `json:"target"`
-		Hard   bool   `json:"hard,omitempty"`
-	}
-}) (map[string]any, error) {
+func (h *WorkbenchHandler) worktreeReset(input WithBody[struct {
+	Path   string `json:"path"`
+	Target string `json:"target"`
+	Hard   bool   `json:"hard,omitempty"`
+}]) (*OpResult, error) {
 	if err := h.workbenchService.WorktreeReset(input.Body.Path, input.Body.Target, input.Body.Hard); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // worktreePrune 清理已失效的 worktree 管理记录（幂等无损，无需确认）。
-func (h *WorkbenchHandler) worktreePrune(input struct {
-	Body struct {
-		Path string `json:"path"`
-	}
-}) (map[string]any, error) {
+func (h *WorkbenchHandler) worktreePrune(input WithBody[struct {
+	Path string `json:"path"`
+}]) (*OpResult, error) {
 	if err := h.workbenchService.WorktreePrune(input.Body.Path); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
-func (h *WorkbenchHandler) branchAdd(input struct {
-	Body struct {
-		Path      string `json:"path"`
-		Branch    string `json:"branch"`
-		Commitish string `json:"commitish,omitempty"` // 基点（commit/分支/tag），留空 = HEAD
-	}
-}) (map[string]any, error) {
+func (h *WorkbenchHandler) branchAdd(input WithBody[struct {
+	Path      string `json:"path"`
+	Branch    string `json:"branch"`
+	Commitish string `json:"commitish,omitempty"` // 基点（commit/分支/tag），留空 = HEAD
+}]) (*OpResult, error) {
 	if err := h.workbenchService.BranchAdd(input.Body.Path, input.Body.Branch, input.Body.Commitish); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
-func (h *WorkbenchHandler) branchDelete(input struct {
-	Body struct {
-		Path   string `json:"path"`
-		Branch string `json:"branch"`
-		Force  bool   `json:"force,omitempty"`
-	}
-}) (map[string]any, error) {
+func (h *WorkbenchHandler) branchDelete(input WithBody[struct {
+	Path   string `json:"path"`
+	Branch string `json:"branch"`
+	Force  bool   `json:"force,omitempty"`
+}]) (*OpResult, error) {
 	if err := h.workbenchService.BranchDelete(input.Body.Path, input.Body.Branch, input.Body.Force); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // FileRawInput file/raw 接口入参。

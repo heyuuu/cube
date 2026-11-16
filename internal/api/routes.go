@@ -137,7 +137,7 @@ type Envelope[T any] struct {
 
 // JSONHandler 包装 handler 并包 JSONOutput envelope——标准 JSON 端点的默认形态：
 // r.Get("/api/foo/list", "查询列表", api.JSONHandler(h.list))
-func JSONHandler[I, O any](h func(I) (O, error)) TypedHandler[I, JSONOutput[O]] {
+func JSONHandler[I, O any](h func(I) (*O, error)) TypedHandler[I, JSONOutput[O]] {
 	return func(_ context.Context, input *I) (*JSONOutput[O], error) {
 		data, err := h(*input)
 
@@ -149,7 +149,7 @@ func JSONHandler[I, O any](h func(I) (O, error)) TypedHandler[I, JSONOutput[O]] 
 		} else {
 			output.Body.Ok = true
 			output.Body.Message = ""
-			output.Body.Data = &data
+			output.Body.Data = data
 		}
 		return &output, nil
 	}

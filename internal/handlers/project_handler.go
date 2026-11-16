@@ -125,7 +125,7 @@ func (h *ProjectHandler) Register(r *api.Routes) {
 	r.Post("/api/project/clone-rule/save-all", "整节覆盖 clone 规则（提交即落盘，含顺序）", api.JSONHandler(h.cloneRuleSaveAll))
 }
 
-func (h *ProjectHandler) projectList(_ struct{}) (ProjectListResult, error) {
+func (h *ProjectHandler) projectList(_ struct{}) (*ProjectListResult, error) {
 	// 返回原始扫描序 + lastUsedAt；排序是视图偏好，由前端做（alfred 出口自带 sortByRecentUsage 置顶）
 	projects := h.projectService.Projects()
 	latest := h.usageService.LatestByProject()
@@ -137,7 +137,7 @@ func (h *ProjectHandler) projectList(_ struct{}) (ProjectListResult, error) {
 		}
 		return dto
 	})
-	return ProjectListResult{
+	return &ProjectListResult{
 		List:              list,
 		ScanUpdatedAt:     h.projectService.ScanUpdatedAt(),
 		SnapshotUpdatedAt: h.projectService.SnapshotUpdatedAt(),
@@ -147,17 +147,13 @@ func (h *ProjectHandler) projectList(_ struct{}) (ProjectListResult, error) {
 // ProjectOpenInput open 接口入参。huma 约定：请求体字段须挂在名为 Body 的子结构上。
 // path 是项目绝对路径（项目唯一标识口径）；dir 可选，为目标目录（worktree，1032），
 // 缺省/等于项目根 = 打开根目录。
-type ProjectOpenInput struct {
-	Body struct {
-		Path   string `json:"path" doc:"项目绝对路径"`
-		Dir    string `json:"dir,omitempty" doc:"目标目录绝对路径（worktree；缺省打开项目根）"`
-		Opener string `json:"opener" doc:"opener 名称"`
-	}
-}
-
 // projectOpen 用指定 opener 打开已收录项目的指定目标目录，成功后记 usage（best-effort：失败不影响打开结果）。
 // 区别于 opener/open（打开任意路径，不产生使用信号）。
-func (h *ProjectHandler) projectOpen(input ProjectOpenInput) (map[string]any, error) {
+func (h *ProjectHandler) projectOpen(input WithBody[struct {
+	Path   string `json:"path" doc:"项目绝对路径"`
+	Dir    string `json:"dir,omitempty" doc:"目标目录绝对路径（worktree；缺省打开项目根）"`
+	Opener string `json:"opener" doc:"opener 名称"`
+}]) (*OpResult, error) {
 	proj := h.projectService.FindByPath(input.Body.Path)
 	if proj == nil {
 		return nil, errors.New("未找到指定项目: " + input.Body.Path)
@@ -189,7 +185,7 @@ func (h *ProjectHandler) projectOpen(input ProjectOpenInput) (map[string]any, er
 	if err := h.usageService.RecordOpen(proj.Path(), o.Name, target); err != nil {
 		slog.Warn("记录 usage 失败", "err", err)
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 func (h *ProjectHandler) toProjectDTO(entity *project.Project) *ProjectDTO {
@@ -207,12 +203,12 @@ func (h *ProjectHandler) toProjectDTO(entity *project.Project) *ProjectDTO {
 	}
 }
 
-func (h *ProjectHandler) scanRules(_ struct{}) (ListResult[project.ScanRule], error) {
+func (h *ProjectHandler) scanRules(_ struct{}) (*ListResult[project.ScanRule], error) {
 	rules := h.projectService.ScanRules()
 	return listResult(rules), nil
 }
 
-func (h *ProjectHandler) cloneRules(_ struct{}) (ListResult[project.CloneRule], error) {
+func (h *ProjectHandler) cloneRules(_ struct{}) (*ListResult[project.CloneRule], error) {
 	rules := h.projectService.CloneRules()
 	return listResult(rules), nil
 }
@@ -233,41 +229,29 @@ func (it ScanRuleItem) toScanRule() project.ScanRule {
 }
 
 // ScanRuleSaveInput scan-rule/save 接口入参。
-type ScanRuleSaveInput struct {
-	Body ScanRuleItem
-}
-
-func (h *ProjectHandler) scanRuleSave(input ScanRuleSaveInput) (map[string]any, error) {
+func (h *ProjectHandler) scanRuleSave(input WithBody[ScanRuleItem]) (*OpResult, error) {
 	if err := h.projectService.SaveScanRule(input.Body.toScanRule()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // ScanRuleDeleteInput scan-rule/delete 接口入参（完整单项，唯一键由 domain 计算）。
-type ScanRuleDeleteInput struct {
-	Body ScanRuleItem
-}
-
-func (h *ProjectHandler) scanRuleDelete(input ScanRuleDeleteInput) (map[string]any, error) {
+func (h *ProjectHandler) scanRuleDelete(input WithBody[ScanRuleItem]) (*OpResult, error) {
 	if err := h.projectService.DeleteScanRule(input.Body.toScanRule()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // ScanRuleSaveAllInput scan-rule/save-all 接口入参（提交清单即落盘结果，含顺序）。
-type ScanRuleSaveAllInput struct {
-	Body struct {
-		Items []ScanRuleItem `json:"items" doc:"按目标顺序排列的全部扫描规则"`
-	}
-}
-
-func (h *ProjectHandler) scanRuleSaveAll(input ScanRuleSaveAllInput) (map[string]any, error) {
+func (h *ProjectHandler) scanRuleSaveAll(input WithBody[struct {
+	Items []ScanRuleItem `json:"items" doc:"按目标顺序排列的全部扫描规则"`
+}]) (*OpResult, error) {
 	if err := h.projectService.SaveAllScanRules(xslices.Map(input.Body.Items, ScanRuleItem.toScanRule)); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // CloneRuleItem clone 规则单项（save / delete / save-all 共用，host+prefix 是唯一键）。
@@ -282,41 +266,29 @@ func (it CloneRuleItem) toCloneRule() project.CloneRule {
 }
 
 // CloneRuleSaveInput clone-rule/save 接口入参。
-type CloneRuleSaveInput struct {
-	Body CloneRuleItem
-}
-
-func (h *ProjectHandler) cloneRuleSave(input CloneRuleSaveInput) (map[string]any, error) {
+func (h *ProjectHandler) cloneRuleSave(input WithBody[CloneRuleItem]) (*OpResult, error) {
 	if err := h.projectService.SaveCloneRule(input.Body.toCloneRule()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // CloneRuleDeleteInput clone-rule/delete 接口入参（完整单项，唯一键由 domain 计算）。
-type CloneRuleDeleteInput struct {
-	Body CloneRuleItem
-}
-
-func (h *ProjectHandler) cloneRuleDelete(input CloneRuleDeleteInput) (map[string]any, error) {
+func (h *ProjectHandler) cloneRuleDelete(input WithBody[CloneRuleItem]) (*OpResult, error) {
 	if err := h.projectService.DeleteCloneRule(input.Body.toCloneRule()); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // CloneRuleSaveAllInput clone-rule/save-all 接口入参（提交清单即落盘结果，含顺序）。
-type CloneRuleSaveAllInput struct {
-	Body struct {
-		Items []CloneRuleItem `json:"items" doc:"按目标顺序排列的全部 clone 规则"`
-	}
-}
-
-func (h *ProjectHandler) cloneRuleSaveAll(input CloneRuleSaveAllInput) (map[string]any, error) {
+func (h *ProjectHandler) cloneRuleSaveAll(input WithBody[struct {
+	Items []CloneRuleItem `json:"items" doc:"按目标顺序排列的全部 clone 规则"`
+}]) (*OpResult, error) {
 	if err := h.projectService.SaveAllCloneRules(xslices.Map(input.Body.Items, CloneRuleItem.toCloneRule)); err != nil {
 		return nil, err
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // --- workspace 声明（1030）---
@@ -350,10 +322,10 @@ type WorkspaceStateResult struct {
 
 func (h *ProjectHandler) workspaceGet(input struct {
 	Path string `query:"path" required:"true"`
-}) (WorkspaceStateResult, error) {
+}) (*WorkspaceStateResult, error) {
 	proj := h.projectService.FindByPath(input.Path)
 	if proj == nil {
-		return WorkspaceStateResult{}, errors.New("未找到指定项目: " + input.Path)
+		return nil, errors.New("未找到指定项目: " + input.Path)
 	}
 	root := proj.Path()
 	result := WorkspaceStateResult{Effective: []WorkspaceMemberDTO{}, Rules: []WorkspaceRuleDTO{}}
@@ -365,21 +337,15 @@ func (h *ProjectHandler) workspaceGet(input struct {
 	result.Rules = xslices.Map(cubefile.LoadWorkspaceRules(root), func(r cubefile.WorkspaceRule) WorkspaceRuleDTO {
 		return WorkspaceRuleDTO(r)
 	})
-	return result, nil
-}
-
-// WorkspaceSaveInput workspace/save 接口入参。workspaces 为规则清单整节覆盖
-// （空清单 = 显式「无 workspace」；恢复默认规则走 workspace/reset）。
-type WorkspaceSaveInput struct {
-	Body struct {
-		Path       string             `json:"path" doc:"项目绝对路径"`
-		Workspaces []WorkspaceRuleDTO `json:"workspaces" doc:"规则清单（name 可选 + path：相对路径/glob/<npm>/<pnpm>）"`
-	}
+	return &result, nil
 }
 
 // workspaceSave 写侧结构校验严格（坏条目整体拒绝，静默跳过是采集侧的降级语义），
 // 成功后定向重采集让打开目标即刻反映。
-func (h *ProjectHandler) workspaceSave(input WorkspaceSaveInput) (map[string]any, error) {
+func (h *ProjectHandler) workspaceSave(input WithBody[struct {
+	Path       string             `json:"path" doc:"项目绝对路径"`
+	Workspaces []WorkspaceRuleDTO `json:"workspaces" doc:"规则清单（name 可选 + path：相对路径/glob/<npm>/<pnpm>）"`
+}]) (*OpResult, error) {
 	proj := h.projectService.FindByPath(input.Body.Path)
 	if proj == nil {
 		return nil, errors.New("未找到指定项目: " + input.Body.Path)
@@ -394,15 +360,13 @@ func (h *ProjectHandler) workspaceSave(input WorkspaceSaveInput) (map[string]any
 	if _, err := h.projectService.RefreshSnapshot(root); err != nil {
 		slog.Warn("workspace 保存后刷新快照失败（等下次采集自愈）", "err", err)
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }
 
 // workspaceReset 删除 workspaces 节恢复默认规则（<npm>+<pnpm>），成功后定向重采集。
-func (h *ProjectHandler) workspaceReset(input struct {
-	Body struct {
-		Path string `json:"path" doc:"项目绝对路径"`
-	}
-}) (map[string]any, error) {
+func (h *ProjectHandler) workspaceReset(input WithBody[struct {
+	Path string `json:"path" doc:"项目绝对路径"`
+}]) (*OpResult, error) {
 	proj := h.projectService.FindByPath(input.Body.Path)
 	if proj == nil {
 		return nil, errors.New("未找到指定项目: " + input.Body.Path)
@@ -414,5 +378,5 @@ func (h *ProjectHandler) workspaceReset(input struct {
 	if _, err := h.projectService.RefreshSnapshot(root); err != nil {
 		slog.Warn("workspace 重置后刷新快照失败（等下次采集自愈）", "err", err)
 	}
-	return map[string]any{"ok": true}, nil
+	return opSuccess, nil
 }

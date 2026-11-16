@@ -51,8 +51,8 @@ type SystemStatusOutput struct {
 	Instance string `json:"instance"` // 进程启动时随机生成的实例标识，重启后变化
 }
 
-func (h *SystemHandler) status(_ struct{}) (SystemStatusOutput, error) {
-	return SystemStatusOutput{
+func (h *SystemHandler) status(_ struct{}) (*SystemStatusOutput, error) {
+	return &SystemStatusOutput{
 		App:      version.AppName,
 		Version:  version.Version(),
 		Instance: h.instance,
@@ -63,19 +63,15 @@ func (h *SystemHandler) status(_ struct{}) (SystemStatusOutput, error) {
  * POST /api/system/shutdown
  */
 
-type systemShutdownInput struct {
-	Body struct {
-		Token string `json:"token" required:"true"`
-	}
-}
-
 // shutdown 校验 token 后给本进程发 SIGTERM 触发 graceful shutdown。
 // 信号由 Start 的 signal.Notify 接收，走与用户 Ctrl+C 完全相同的关闭路径。
 // 鉴权失败以 envelope ok:false 表达（JSONHandler 惯例），调用方解析 envelope 判定。
-func (h *SystemHandler) shutdown(input systemShutdownInput) (string, error) {
+func (h *SystemHandler) shutdown(input WithBody[struct {
+	Token string `json:"token" required:"true"`
+}]) (*string, error) {
 	if err := api.VerifyToken(input.Body.Token, h.instance, time.Now()); err != nil {
 		slog.Warn("shutdown 鉴权失败", "err", err)
-		return "", fmt.Errorf("鉴权失败: %w", err)
+		return nil, fmt.Errorf("鉴权失败: %w", err)
 	}
 
 	// 异步发信号不阻塞 handler 返回；goroutine 可能先于响应写出触发 SIGTERM，
@@ -84,5 +80,5 @@ func (h *SystemHandler) shutdown(input systemShutdownInput) (string, error) {
 		_ = syscall.Kill(os.Getpid(), syscall.SIGTERM)
 	}()
 
-	return "shutting down", nil
+	return new("shutting down"), nil
 }

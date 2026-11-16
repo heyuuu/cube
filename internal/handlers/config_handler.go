@@ -20,6 +20,6 @@ func (h *ConfigHandler) Register(r *api.Routes) {
 	r.Get("/api/config", "获取配置信息", api.JSONHandler(h.getConfig))
 }
 
-func (h *ConfigHandler) getConfig(_ struct{}) (config.Config, error) {
-	return *h.cfg, nil
+func (h *ConfigHandler) getConfig(_ struct{}) (*config.Config, error) {
+	return h.cfg, nil
 }
