@@ -30,7 +30,7 @@ export function toggleTheme() {
 }
 
 // 全局唯一订阅：任何组件 useTheme 后都能拿到当前主题并随切换重渲染；
-// 快捷键也在此挂载，保证 /workbench、/md 等不走 Layout 的路由同样生效
+// 快捷键也在此挂载，保证不走 Layout 的路由同样生效
 export function useTheme(): Theme {
   const [theme, setTheme] = useState<Theme>(() =>
     document.documentElement.classList.contains('dark') ? 'dark' : 'light',
