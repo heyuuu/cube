@@ -1,19 +1,21 @@
 import { cn } from 'cn';
-import { BookOpen, Box, Cloud, FolderKanban, Moon, PanelsTopLeft, Settings, Sun } from 'lucide-react';
+import { BookOpen, Box, Moon, Settings, Sun } from 'lucide-react';
 import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
+import type { LucideIcon } from 'lucide-react';
 
 import { HintTip } from '@/components/ui/tooltip';
 import { toggleTheme, useTheme } from '@/hooks/use-theme';
 
+export interface NavItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+}
+
 // 全局图标栏（提案 1023）：所有业务页面（含工作台）共用的 48px 细栏杆，
 // 保证从任何页面一键回 Projects。图标靠 HintTip 出 hover 标签。
 // 铺满型页面（工作台多面板）不吃 max-w 收敛——由 fullBleedPrefixes 按路由前缀区分。
-const navItems = [
-  { to: '/projects', label: 'Projects', icon: FolderKanban },
-  { to: '/forges', label: 'Forges', icon: Cloud },
-  { to: '/workbench', label: '工作台', icon: PanelsTopLeft },
-];
 const fullBleedPrefixes = ['/workbench'];
 
 const railItemClass = ({ isActive }: { isActive: boolean }) =>
@@ -27,7 +29,7 @@ function openSettings() {
   window.open('/settings', '_blank');
 }
 
-export function Layout() {
+export function Layout({ navItems }: { navItems: NavItem[] }) {
   const theme = useTheme();
   const { pathname } = useLocation();
   const fullBleed = fullBleedPrefixes.some((p) => pathname.startsWith(p));
@@ -54,8 +56,8 @@ export function Layout() {
         </HintTip>
         <nav className="mt-2 flex flex-col gap-1 px-1.5">
           {navItems.map((item) => (
-            <HintTip key={item.to} label={item.label}>
-              <NavLink to={item.to} className={railItemClass} aria-label={item.label}>
+            <HintTip key={item.url} label={item.title}>
+              <NavLink to={item.url} className={railItemClass} aria-label={item.title}>
                 <item.icon className="size-4" />
               </NavLink>
             </HintTip>
