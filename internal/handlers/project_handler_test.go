@@ -313,7 +313,7 @@ func TestWorkspaceGetSave(t *testing.T) {
 	}
 
 	// v2 解码字段名大小写敏感，这里直接用真实 DTO（匿名结构无 tag 时 Name 匹配不上 "name"）
-	var state WorkspaceStateResult
+	var state ProjectWorkspaceState
 	decodeData(t, getJSON(t, env.url("/api/project/workspace/get?path="+url.QueryEscape(repo))), &state)
 	if state.Declared {
 		t.Fatal("未写 cube.json 时 declared 应为 false")

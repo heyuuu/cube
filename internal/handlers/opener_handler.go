@@ -26,22 +26,22 @@ func NewOpenerHandler(openerService *opener.Service) *OpenerHandler {
 
 // Register 注册 opener 域端点（实现 api.Registerer）。
 func (h *OpenerHandler) Register(r *api.Routes) {
-	r.Get("/api/opener/list", "获取 opener 列表", api.JSONHandler(h.openerList))
-	r.Get("/api/opener/intents", "获取打开意图清单（intent → 默认 opener + 候选）", api.JSONHandler(h.openerIntents))
-	r.Post("/api/opener/open", "用指定 opener 打开任意文件或目录", api.JSONHandler(h.openerOpen))
-	r.Post("/api/opener/diff-open", "用指定 opener 对比两个路径（diff-dir/diff-file）", api.JSONHandler(h.openerDiffOpen))
-	r.Post("/api/opener/save", "新增或更新 opener（按 name 替换）", api.JSONHandler(h.openerSave))
-	r.Post("/api/opener/delete", "删除 opener（提交完整单项，按 name 定位）", api.JSONHandler(h.openerDelete))
-	r.Post("/api/opener/save-all", "整节覆盖 opener（提交即落盘，含顺序）", api.JSONHandler(h.openerSaveAll))
-	r.Post("/api/opener/intent-default/save", "设置某 intent 的默认 opener", api.JSONHandler(h.openerIntentDefaultSave))
-	r.Post("/api/opener/intent-default/delete", "清除某 intent 的默认 opener", api.JSONHandler(h.openerIntentDefaultDelete))
+	r.Get("/api/opener/list", "获取 opener 列表", api.JSONHandler(h.list))
+	r.Get("/api/opener/intents", "获取打开意图清单（intent → 默认 opener + 候选）", api.JSONHandler(h.intents))
+	r.Post("/api/opener/open", "用指定 opener 打开任意文件或目录", api.JSONHandler(h.openPath))
+	r.Post("/api/opener/diff-open", "用指定 opener 对比两个路径（diff-dir/diff-file）", api.JSONHandler(h.openDiff))
+	r.Post("/api/opener/save", "新增或更新 opener（按 name 替换）", api.JSONHandler(h.save))
+	r.Post("/api/opener/delete", "删除 opener（提交完整单项，按 name 定位）", api.JSONHandler(h.delete))
+	r.Post("/api/opener/save-all", "整节覆盖 opener（提交即落盘，含顺序）", api.JSONHandler(h.saveAll))
+	r.Post("/api/opener/intent-default/save", "设置某 intent 的默认 opener", api.JSONHandler(h.intentDefaultSave))
+	r.Post("/api/opener/intent-default/delete", "清除某 intent 的默认 opener", api.JSONHandler(h.intentDefaultDelete))
 }
 
 /**
  * GET /api/opener/list
  */
 
-func (h *OpenerHandler) openerList(_ struct{}) (*ListResult[OpenerDTO], error) {
+func (h *OpenerHandler) list(_ struct{}) (*ListResult[OpenerDTO], error) {
 	openers := h.openerService.AllOpeners()
 	list := xslices.Map(openers, toOpenerDTO)
 	return listResult(list), nil
@@ -51,7 +51,7 @@ func (h *OpenerHandler) openerList(_ struct{}) (*ListResult[OpenerDTO], error) {
  * GET /api/opener/intents
  */
 
-func (h *OpenerHandler) openerIntents(_ struct{}) (*ListResult[OpenerIntentDTO], error) {
+func (h *OpenerHandler) intents(_ struct{}) (*ListResult[OpenerIntentDTO], error) {
 	intentInfos := h.openerService.Intents()
 	list := xslices.Map(intentInfos, toOpenerIntentDTO)
 	return listResult(list), nil
@@ -61,9 +61,9 @@ func (h *OpenerHandler) openerIntents(_ struct{}) (*ListResult[OpenerIntentDTO],
  * POST /api/opener/open
  */
 
-// openerOpen 用指定 opener 打开任意文件/目录（项目打开走 project/open，那里记 usage；此处不产生使用信号）。
+// openPath 用指定 opener 打开任意文件/目录（项目打开走 project/open，那里记 usage；此处不产生使用信号）。
 // role 按路径实际类型校验：目录须 open-dir、文件须 open-file。
-func (h *OpenerHandler) openerOpen(input WithBody[struct {
+func (h *OpenerHandler) openPath(input WithBody[struct {
 	Path   string `json:"path" doc:"文件或目录绝对路径"`
 	Opener string `json:"opener" doc:"opener 名称"`
 }]) (*OpResult, error) {
@@ -97,9 +97,9 @@ func (h *OpenerHandler) openerOpen(input WithBody[struct {
  * POST /api/opener/diff-open
  */
 
-// openerDiffOpen 用指定 opener 对比两个路径。role 按两侧实际类型推导且须同类
+// openDiff 用指定 opener 对比两个路径。role 按两侧实际类型推导且须同类
 // （两侧都是目录 → diff-dir，都是文件 → diff-file，混合报错）。
-func (h *OpenerHandler) openerDiffOpen(input WithBody[struct {
+func (h *OpenerHandler) openDiff(input WithBody[struct {
 	Left   string `json:"left" doc:"左侧路径（文件或目录）绝对路径"`
 	Right  string `json:"right" doc:"右侧路径（文件或目录）绝对路径"`
 	Opener string `json:"opener" doc:"opener 名称"`
@@ -153,7 +153,7 @@ func isDirPath(p string) (bool, error) {
  * POST /api/opener/save
  */
 
-func (h *OpenerHandler) openerSave(input WithBody[OpenerItem]) (*OpResult, error) {
+func (h *OpenerHandler) save(input WithBody[OpenerItem]) (*OpResult, error) {
 	// 校验在 Service 写侧（领域构造函数），坏数据返回中文错误、不落文件
 	if err := h.openerService.SaveOpener(input.Body.toSpec()); err != nil {
 		return nil, err
@@ -165,7 +165,7 @@ func (h *OpenerHandler) openerSave(input WithBody[OpenerItem]) (*OpResult, error
  * POST /api/opener/delete
  */
 
-func (h *OpenerHandler) openerDelete(input WithBody[OpenerItem]) (*OpResult, error) {
+func (h *OpenerHandler) delete(input WithBody[OpenerItem]) (*OpResult, error) {
 	if err := h.openerService.DeleteOpener(input.Body.toSpec()); err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (h *OpenerHandler) openerDelete(input WithBody[OpenerItem]) (*OpResult, err
  * POST /api/opener/save-all
  */
 
-func (h *OpenerHandler) openerSaveAll(input WithBody[struct {
+func (h *OpenerHandler) saveAll(input WithBody[struct {
 	Items []OpenerItem `json:"items" doc:"按目标顺序排列的全部 opener"`
 }]) (*OpResult, error) {
 	if err := h.openerService.SaveAllOpeners(xslices.Map(input.Body.Items, OpenerItem.toSpec)); err != nil {
@@ -190,7 +190,7 @@ func (h *OpenerHandler) openerSaveAll(input WithBody[struct {
  */
 
 // intent-default/save 接口入参。
-func (h *OpenerHandler) openerIntentDefaultSave(input WithBody[struct {
+func (h *OpenerHandler) intentDefaultSave(input WithBody[struct {
 	Intent string `json:"intent" doc:"打开意图（如 dir / file / diff-file / git）"`
 	Opener string `json:"opener" doc:"opener 名称（须声明该 intent 对应的 role）"`
 }]) (*OpResult, error) {
@@ -209,7 +209,7 @@ func (h *OpenerHandler) openerIntentDefaultSave(input WithBody[struct {
  */
 
 // intent-default/delete 接口入参。
-func (h *OpenerHandler) openerIntentDefaultDelete(input WithBody[struct {
+func (h *OpenerHandler) intentDefaultDelete(input WithBody[struct {
 	Intent string `json:"intent" doc:"打开意图"`
 }]) (*OpResult, error) {
 	intent, err := opener.ParseIntent(input.Body.Intent)
