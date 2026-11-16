@@ -3,9 +3,8 @@ import { BookOpen, Box, Cloud, FolderKanban, Moon, PanelsTopLeft, Settings, Sun 
 import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 
+import { HintTip } from '@/components/ui/tooltip';
 import { toggleTheme, useTheme } from '@/hooks/use-theme';
-
-import { HintTip } from './ui/tooltip';
 
 // 全局图标栏（提案 1023）：所有业务页面（含工作台）共用的 48px 细栏杆，
 // 保证从任何页面一键回 Projects。图标靠 HintTip 出 hover 标签。

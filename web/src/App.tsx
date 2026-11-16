@@ -1,9 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router';
 
-import { Layout } from './components/layout';
 import { useTheme } from './hooks/use-theme';
 import { NotFoundPage } from './pages/errors/not-found';
 import { ForgesPage } from './pages/forges';
+import { Layout } from './pages/layout';
 import { MdPage } from './pages/md';
 import { ProjectsPage } from './pages/projects';
 import { SettingsPage } from './pages/settings';
