@@ -41,7 +41,7 @@ func applyDefaults(cfg *Config, path string) *Config {
 	}
 	// server 默认绑定回环地址：个人本地工具，不对外暴露
 	if cfg.Server.Host == "" {
-		cfg.Server.Host = "127.0.0.1"
+		cfg.Server.Host = "localhost"
 	}
 	if cfg.Server.Port == 0 {
 		cfg.Server.Port = 6001
