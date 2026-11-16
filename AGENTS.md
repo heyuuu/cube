@@ -35,7 +35,7 @@
 
 - **pkg 是独立工具层**：只依赖标准库/第三方，不含业务实体；基础设施层与能力层都可以依赖 pkg（`internal/logger → pkg/tui` 合规）。基础设施不依赖上层；能力层不依赖领域/出口；领域层依赖能力+基础设施+pkg；`handlers` 依赖领域层与 `internal/api` 契约（不依赖 `internal/server` 运行时；server 依赖 api 完成装配）；**cmd 与 web 不互调**（cmd 对 server 进程的探活/关停走 localhost HTTP（helper 在 `internal/cmd/server/helpers.go`），是进程间通信，不算互调）；`internal/app` 是唯一接线点。
 - **App 装配是显式构造，CLI 侧惰性触发**：`app.New()` 只建空壳（`internal/app/app.go`），root 的 `PersistentPreRunE` 调 `a.Init(cfgFile, debug, local)` 完成组装（config.Load → logger.Init → `di.RegisterAll` 建 DI 容器）；业务单例注册清单在 `internal/app/boot.go`（serviceFactories / handlerFactories，带 generate 注入点标记）。`cmd.Execute()`（`internal/cmd/cmd.go`）在 `cmd/cube/main.go` 里调用；命令工厂收 `*app.App`。**无全局单例、无 `app.Default()`、无包级 `init()` 反向依赖**（「惰性」仅指 cmd 层触发时机，装配本身仍是显式一次性构造）。
-- 加一个新 domain = ①`internal/domain/<x>` 领域包 ②`internal/cmd/<x>/` 命令组子目录（+ `internal/cmd/cmd.go` 的 root 注册） ③`internal/handlers/<x>_handler.go`（实现 `api.Registerer` 的 `Register(r *api.Routes)`，注册走 `r.Get` / `r.Post` + `api.JSONHandler`） ④config 加节（如需） ⑤`internal/app/boot.go` 注册清单加构造。**五处都是加法，不碰现有 domain**；脚手架已工具化——`just gen domain <name>` 自动完成（生成器在 `cmd/devtool/internal/generate`，以 boot.go 注入点标记为锚点追加）。
+- 加一个新 domain = ①`internal/domain/<x>` 领域包 ②`internal/cmd/<x>/` 命令组子目录（+ `internal/cmd/cmd.go` 的 root 注册） ③`internal/handlers/<x>_handler.go`（实现 `api.Registerer` 的 `Register(r *api.Routes)`，注册走 `r.Get` / `r.Post` + `api.JSONHandler`） ④config 加节（如需） ⑤`internal/app/boot.go` 注册清单加构造。**五处都是加法，不碰现有 domain**；脚手架已工具化——`just gen domain <name>` 自动完成（生成器在 `cmd/devtool/generate`，以 boot.go 注入点标记为锚点追加）。
 
 ## 关键机制（改动前先理解）
 

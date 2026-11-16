@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cube/cmd/devtool/internal/generate"
+	"devtool/generate"
 )
 
 func newRootCmd() *cobra.Command {

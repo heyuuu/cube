@@ -2,7 +2,7 @@
 package main
 
 import (
-	"cube/cmd/devtool/internal/cmd"
+	"devtool/cmd"
 )
 
 func main() {

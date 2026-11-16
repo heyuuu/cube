@@ -101,24 +101,28 @@ install: build-ui
     @cube completion zsh > {{zsh_completion_file}}
     @cat ./scripts/zsh-append.sh >> {{zsh_completion_file}}
 
+# 生成 api
+gen-api:
+    pnpm --dir {{ ui_src }} gen:api
+
 # 执行一次主命令
 run *args:
     go run {{ main_cmd }} {{ args }}
 
-# 代码生成（生成逻辑在 cmd/devtool/internal/generate/，模板在其 tpl/ 下）
+# 执行 devtool 命令
+devtool *args:
+    go run {{ devtool_cmd }} {{ args }}
+
+# 代码生成（生成逻辑在 cmd/devtool/generate/，模板在其 tpl/ 下）
 #   just gen domain <name>                        生成业务 domain 脚手架
 #   just gen api <GET|POST> <domain> <base-name>  在已有 domain 的 handler 追加 api 端点
 gen *args:
     go run {{ devtool_cmd }} generate {{args}}
     just fmt
 
-# 生成 api
-gen-api:
-    pnpm --dir {{ ui_src }} gen:api
-
 # 打新标签
 tag:
-     go run {{ devtool_cmd }} tag
+    go run {{ devtool_cmd }} tag
 
 # 取当前最大提案 ID（新建提案前必跑：新 ID = 最大 + 1，不得猜测取号，见 docs/README.md 的「ID 分配规则」）
 last-proposal:
