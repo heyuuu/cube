@@ -1,17 +1,18 @@
-// Package generate 按子命令生成业务 domain 脚手架、在已有 domain 追加 api 端点。
-// 经 justfile 调用：just gen domain <name>、just gen api <GET|POST> <domain> <base-name>。
-package generate
+package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+
+	"devtool/generate"
 )
 
 var module string
 
-// NewGenerateCmd generate 命令。新增生成子命令在这里 AddCommand，实现放独立文件、模板放 tpl/。
-func NewGenerateCmd() *cobra.Command {
+func newGenerateCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:               "generate",
 		Short:             "代码生成：domain 脚手架、api 端点、command 命令",
@@ -38,7 +39,7 @@ func newDomainCmd() *cobra.Command {
 		Short: "生成业务 domain 脚手架",
 		Args:  exactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return genDomain(module, args[0])
+			return generate.GenDomain(module, args[0])
 		},
 	}
 }
@@ -46,11 +47,11 @@ func newDomainCmd() *cobra.Command {
 // newAPICmd api 子命令。
 func newAPICmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "api <GET|POST> <domain> <base-name>",
+		Use:   "api <GET|POST> <route>",
 		Short: "在已有 domain 的 handler 追加 api 端点",
-		Args:  exactArgs(3),
+		Args:  exactArgs(2),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return genAPI(args[0], args[1], args[2])
+			return generate.GenAPI(args[0], args[1])
 		},
 	}
 }
@@ -67,7 +68,7 @@ func newCommandGenCmd() *cobra.Command {
 			return nil
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-			return genCommand(module, args)
+			return generate.GenCommand(module, args)
 		},
 	}
 }
@@ -80,4 +81,18 @@ func exactArgs(n int) cobra.PositionalArgs {
 		}
 		return nil
 	}
+}
+
+// resolveModule 从当前目录 go.mod 读 module 声明。
+func resolveModule() (string, error) {
+	data, err := os.ReadFile("go.mod")
+	if err != nil {
+		return "", fmt.Errorf("读取 go.mod 失败（请在工具目录下执行）: %w", err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if after, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
+			return strings.TrimSpace(after), nil
+		}
+	}
+	return "", fmt.Errorf("go.mod 里找不到 module 声明")
 }

@@ -107,22 +107,25 @@ gen-api:
 
 # 执行一次主命令
 run *args:
-    go -C {{ main_cmd }} run . {{ args }}
+    go run {{ main_cmd }} {{ args }}
 
-# 执行 devtool 命令
+# 执行 devtool 命令。
+# devtool 是独立 go module 且依赖仓库根相对路径（internal/... 与 go.mod），不能用 go -C run——
+# go -C 会把子进程 cwd 切到 cmd/devtool，导致读错 go.mod、找不到 internal/。改为 build 后从仓库根执行。
 devtool *args:
-    go -C {{ devtool_cmd }} run . {{ args }}
+    @mkdir -p tmp
+    go -C {{ devtool_cmd }} build -o ../../tmp/devtool . && ./tmp/devtool {{ args }}
 
 # 代码生成（生成逻辑在 cmd/devtool/generate/，模板在其 tpl/ 下）
-#   just gen domain <name>                        生成业务 domain 脚手架
-#   just gen api <GET|POST> <domain> <base-name>  在已有 domain 的 handler 追加 api 端点
+#   just gen domain <name>                      生成业务 domain 脚手架
+#   just gen api <GET|POST> <route>             在已有 domain 的 handler 追加 api 端点，route 形如 /api/{domain}/{basename}（basename 可多级）
 gen *args:
-    go -C {{ devtool_cmd }} run . generate {{args}}
+    just devtool generate {{args}}
     just fmt
 
 # 打新标签
 tag:
-    go -C {{ devtool_cmd }} run . tag
+    just devtool tag
 
 # 取当前最大提案 ID（新建提案前必跑：新 ID = 最大 + 1，不得猜测取号，见 docs/README.md 的「ID 分配规则」）
 last-proposal:

@@ -9,22 +9,9 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
-	"unicode"
-)
 
-// resolveModule 从当前目录 go.mod 读 module 声明。
-func resolveModule() (string, error) {
-	data, err := os.ReadFile("go.mod")
-	if err != nil {
-		return "", fmt.Errorf("读取 go.mod 失败（请在工具目录下执行）: %w", err)
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		if after, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
-			return strings.TrimSpace(after), nil
-		}
-	}
-	return "", fmt.Errorf("go.mod 里找不到 module 声明")
-}
+	"github.com/heyuuu/x/xstd/xstrings"
+)
 
 // writeFormatted 校验内容是合法 Go 源码（gofmt 归一化，含补尾换行）后写出。
 func writeFormatted(path, src string) error {
@@ -43,19 +30,11 @@ var (
 )
 
 // checkDomain 校验 domain 名（小写单词，作包名与 URL 段），返回导出前缀。
-func checkDomain(domain string) (string, error) {
+func checkDomain(domain string) error {
 	if !domainPattern.MatchString(domain) {
-		return "", fmt.Errorf("domain 只允许小写字母/数字且以字母开头: %q", domain)
+		return fmt.Errorf("domain 只允许小写字母/数字且以字母开头: %q", domain)
 	}
-	return exportName(domain), nil
-}
-
-// checkBaseName 校验 api base-name（kebab-case，作 URL 段），返回导出前缀：run-diff → RunDiff。
-func checkBaseName(base string) (string, error) {
-	if !baseNamePattern.MatchString(base) {
-		return "", fmt.Errorf("base-name 只允许小写字母/数字与中划线（kebab-case，如 run-diff）: %q", base)
-	}
-	return exportName(base), nil
+	return nil
 }
 
 // checkCommandName 校验 command 名（kebab-case，作 cobra Use，文件名经 fileName 转 snake_case），返回导出前缀：opener-search → OpenerSearch。
@@ -63,7 +42,7 @@ func checkCommandName(name string) (string, error) {
 	if !baseNamePattern.MatchString(name) {
 		return "", fmt.Errorf("command 名只允许小写字母/数字与中划线（kebab-case，首尾与连续中划线不允许，如 opener-search）: %q", name)
 	}
-	return exportName(name), nil
+	return xstrings.PascalCase(name), nil
 }
 
 // checkCommandGroup 校验 command 组名（小写单词，作包名与目录名，中划线不合法）。
@@ -75,48 +54,19 @@ func checkCommandGroup(group string) error {
 }
 
 // checkMethod 校验 HTTP method 并返回路由注册方法名（Routes 层只提供 Get/Post）。
-func checkMethod(method string) (string, error) {
+func checkMethod(method string) error {
 	switch strings.ToUpper(method) {
 	case "GET":
-		return "Get", nil
 	case "POST":
-		return "Post", nil
 	default:
-		return "", fmt.Errorf("method 只支持 GET/POST: %q", method)
+		return fmt.Errorf("method 只支持 GET/POST: %q", method)
 	}
+	return nil
 }
 
 // fileName 把 kebab-case 名转 Go 文件名惯用的 snake_case：opener-search → opener_search。
 func fileName(s string) string {
 	return strings.ReplaceAll(s, "-", "_")
-}
-
-// exportName 把小写/kebab-case 名转导出名：compare → Compare、run-diff → RunDiff。
-func exportName(s string) string {
-	var b strings.Builder
-	upper := true
-	for _, r := range s {
-		switch {
-		case r == '-':
-			upper = true
-		case upper:
-			b.WriteRune(unicode.ToUpper(r))
-			upper = false
-		default:
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
-}
-
-// lowerFirst 首字母转小写：RunDiff → runDiff（handler 方法名为私有风格）。
-func lowerFirst(s string) string {
-	if s == "" {
-		return s
-	}
-	r := []rune(s)
-	r[0] = unicode.ToLower(r[0])
-	return string(r)
 }
 
 /* template */

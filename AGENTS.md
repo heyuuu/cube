@@ -72,7 +72,7 @@ just dev           # 需安装 air；concurrently 同时起 air（--debug server
 
 ```bash
 just gen domain <name>                        # 生成业务 domain 脚手架（五处加法自动注入）
-just gen api <GET|POST> <domain> <base-name>  # 在已有 domain 的 handler 追加 API 端点
+just gen api <GET|POST> <route>               # 在已有 domain 的 handler 追加 API 端点（route 形如 /api/{domain}/{basename}，basename 可多级）
 just gen-api                                   # 前端类型再生成（cube openapi → openapi-typescript → src/api/schema.d.ts）
 ```
 

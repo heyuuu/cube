@@ -16,11 +16,11 @@ const (
 	rootCmdFile  = "internal/cmd/cmd.go"
 )
 
-// genCommand 生成命令脚手架并注入注册点：
+// GenCommand 生成命令脚手架并注入注册点：
 //   - 无 group：建 internal/cmd/<name>.go，在 root.go 注册
 //   - 有 group：建 internal/cmd/<group>/<name>.go；组入口 cmd.go 不存在则创建并在 root.go 注册，
 //     存在则在组入口 NewCmd 里追加 AddCommand
-func genCommand(module string, args []string) error {
+func GenCommand(module string, args []string) error {
 	var group, name string
 	if len(args) == 1 {
 		name = args[0]

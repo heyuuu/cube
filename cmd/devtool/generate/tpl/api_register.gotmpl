@@ -1,2 +1,2 @@
 {{/* Register 方法末尾追加的路由注册行（渲染为单行） */}}
-r.{{.method}}("/api/{{.domain}}/{{.baseName}}", "TODO: {{.baseName}} 端点说明", server.JSONHandler({{.recv}}.{{.baseMethod}}))
+r.{{.routeMethod}}("{{.route}}", "TODO: {{.basename}} 端点说明", api.JSONHandler({{.recv}}.{{.handlerMethod}}))

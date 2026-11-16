@@ -5,8 +5,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-
-	"devtool/generate"
 )
 
 func newRootCmd() *cobra.Command {
@@ -22,7 +20,10 @@ func newRootCmd() *cobra.Command {
 		// 不创建 completion 命令
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
-	cmd.AddCommand(newTagCmd(), newVersionCmd(), generate.NewGenerateCmd())
+
+	cmd.AddCommand(newTagCmd())
+	cmd.AddCommand(newVersionCmd())
+	cmd.AddCommand(newGenerateCmd())
 	return cmd
 }
 

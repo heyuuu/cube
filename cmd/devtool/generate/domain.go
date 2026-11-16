@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/heyuuu/x/xstd/xstrings"
 )
 
 // app/boot.go 的注入锚点（与 boot.go 内标记保持一致，改一侧须同步另一侧）
@@ -30,12 +32,12 @@ var genTargets = []genTarget{
 	{Path: "internal/handlers/{{.domain}}_handler.go", Tpl: "handler.gotmpl"},
 }
 
-// genDomain 生成 domain 脚手架并注入 boot.go。
-func genDomain(module, domain string) error {
-	exported, err := checkDomain(domain)
-	if err != nil {
+// GenDomain 生成 domain 脚手架并注入 boot.go。
+func GenDomain(module, domain string) error {
+	if err := checkDomain(domain); err != nil {
 		return err
 	}
+	exported := xstrings.PascalCase(domain)
 
 	// boot.go 先于建文件检查：执行目录不对时避免留下半成品
 	if _, err := os.Stat(bootFile); err != nil {

@@ -8,26 +8,55 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"regexp"
 	"strings"
+
+	"github.com/heyuuu/x/xstd/xslices"
+	"github.com/heyuuu/x/xstd/xstrings"
 )
 
-// genAPI 追加端点 (GET|POST) /api/{domain}/{base-name} 到 {domain}_handler.go：
-// Register 方法末尾插入注册行，文件尾部追加 Input/Output 类型与 handler 方法。
-func genAPI(method, domain, baseName string) error {
-	routeMethod, err := checkMethod(method)
-	if err != nil {
-		return err
-	}
-	exported, err := checkDomain(domain)
-	if err != nil {
-		return err
-	}
-	baseExported, err := checkBaseName(baseName)
-	if err != nil {
-		return err
-	}
-	baseMethod := lowerFirst(baseExported)
+var (
+	urlSegmentPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*$`)
+)
 
+func checkRoute(raw string) (domain string, basename string, err error) {
+	segments := xslices.Filter(strings.Split(raw, "/"), func(s string) bool { return s != "" })
+	if len(segments) < 3 || segments[0] != "api" {
+		return "", "", fmt.Errorf("不支持的 api route，预期 api route 为 /api/{domain}/{basename} 形式: %s", raw)
+	}
+	for _, segment := range segments[1:] {
+		if !urlSegmentPattern.MatchString(segment) {
+			return "", "", fmt.Errorf("不支持的 api route，预期 uri segment 为小写字母、数字、中划线组成，且中划线不可在首尾: %s", raw)
+		}
+	}
+
+	domain = segments[1]
+	basename = strings.Join(segments[2:], "/")
+	return domain, basename, nil
+}
+
+// GenAPI 追加端点 (GET|POST) /api/{domain}/{base-name} 到 {domain}_handler.go：
+// Register 方法末尾插入注册行，文件尾部追加 Input/Output 类型与 handler 方法。
+func GenAPI(method, route string) error {
+	if err := checkMethod(method); err != nil {
+		return err
+	}
+
+	domain, basename, err := checkRoute(route)
+	if err != nil {
+		return err
+	}
+
+	// 预处理所需参数
+	method = strings.ToLower(method)
+	domain = strings.ToLower(domain)
+	basename = strings.ToLower(basename)
+	route = "/api/" + domain + "/" + basename                        // 完整路由名
+	routeMethod := xstrings.UpperFirst(method)                       // route 方法名
+	handlerMethod := xstrings.CamelCase(basename)                    // handler 方法名
+	resultType := xstrings.CamelCase(domain+"/"+basename) + "Result" // Result 类型名
+
+	// 处理模板文件
 	handlerFile := "internal/handlers/" + domain + "_handler.go"
 	src, err := os.ReadFile(handlerFile)
 	if err != nil {
@@ -36,12 +65,10 @@ func genAPI(method, domain, baseName string) error {
 	text := string(src)
 
 	// 查重：路由或任一同名标识符已存在即拒绝，防重复生成
-	route := "/api/" + domain + "/" + baseName
 	for _, ident := range []string{
-		fmt.Sprintf("%q", route),
-		exported + baseExported + "Input",
-		exported + baseExported + "Output",
-		baseMethod + "(",
+		route,
+		resultType,
+		handlerMethod + "(",
 	} {
 		if strings.Contains(text, ident) {
 			return fmt.Errorf("%s 已包含 %s，拒绝重复生成", handlerFile, strings.Trim(ident, `"(`))
@@ -53,15 +80,16 @@ func genAPI(method, domain, baseName string) error {
 		return fmt.Errorf("%s: %w", handlerFile, err)
 	}
 	data := map[string]string{
-		"method":       routeMethod,
-		"upperMethod":  strings.ToUpper(routeMethod),
-		"domain":       domain,
-		"exported":     exported,
-		"baseName":     baseName,
-		"baseExported": baseExported,
-		"baseMethod":   baseMethod,
-		"recv":         recv,
-		"handlerType":  handlerType,
+		"method":        method,
+		"domain":        domain,
+		"basename":      basename,
+		"upperMethod":   strings.ToUpper(method),
+		"route":         route,
+		"routeMethod":   routeMethod,
+		"handlerMethod": handlerMethod,
+		"resultType":    resultType,
+		"recv":          recv,
+		"handlerType":   handlerType,
 	}
 
 	// 先插注册行（偏移基于原文，插入不影响其前内容），再在文件尾追加端点代码
