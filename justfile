@@ -19,9 +19,9 @@ ldflags     := "-X " + version_pkg + ".version=" + version + " -X " + version_pk
 
 zsh_completion_file := "~/.config/cube/zsh.sh"
 
-# 主命令入口包
+# 主命令目录
 main_cmd := "./cmd/cube"
-# 工具命令入口包
+# 工具命令目录
 devtool_cmd := "./cmd/devtool"
 
 ui_src := "./web"
@@ -107,22 +107,22 @@ gen-api:
 
 # 执行一次主命令
 run *args:
-    go run {{ main_cmd }} {{ args }}
+    go -C {{ main_cmd }} run . {{ args }}
 
 # 执行 devtool 命令
 devtool *args:
-    go run {{ devtool_cmd }} {{ args }}
+    go -C {{ devtool_cmd }} run . {{ args }}
 
 # 代码生成（生成逻辑在 cmd/devtool/generate/，模板在其 tpl/ 下）
 #   just gen domain <name>                        生成业务 domain 脚手架
 #   just gen api <GET|POST> <domain> <base-name>  在已有 domain 的 handler 追加 api 端点
 gen *args:
-    go run {{ devtool_cmd }} generate {{args}}
+    go -C {{ devtool_cmd }} run . generate {{args}}
     just fmt
 
 # 打新标签
 tag:
-    go run {{ devtool_cmd }} tag
+    go -C {{ devtool_cmd }} run . tag
 
 # 取当前最大提案 ID（新建提案前必跑：新 ID = 最大 + 1，不得猜测取号，见 docs/README.md 的「ID 分配规则」）
 last-proposal:
