@@ -8,8 +8,6 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.4
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/x/ansi v0.11.9
-	github.com/coder/websocket v1.8.15
-	github.com/creack/pty v1.1.24
 	github.com/danielgtaylor/huma/v2 v2.40.0
 	github.com/google/uuid v1.6.0
 	github.com/heyuuu/x/di v0.1.0

@@ -6,7 +6,6 @@ package workbench
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,9 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 
-	"github.com/coder/websocket"
 	"github.com/heyuuu/x/xstd/xslices"
 
 	"cube/internal/domain/project"
@@ -25,14 +22,9 @@ import (
 )
 
 // Service 工作台领域服务。git 读路径无状态（每次调用直接调 git）；
-// 运行期状态是 PTY 会话注册表（server 停机时统一回收，见 pty.go）与写侧
-// snapshot 定向刷新回调（app 装配点注入 project 域实现，本包不依赖 project）。
+// 运行期状态仅写侧 snapshot 定向刷新回调（app 装配点注入 project 域实现，本包不依赖 project）。
 type Service struct {
 	cacheRefresh func(path string) error // 写操作成功后定向刷新 snapshot（nil = 无刷新能力，跳过）
-
-	ptyMu      sync.Mutex
-	ptySeq     int
-	ptyCancels map[int]context.CancelFunc
 }
 
 // NewService di 装配入口：注入 project.Service 的项目快照定向刷新能力。
@@ -46,7 +38,7 @@ func NewService(projectService *project.Service) *Service {
 
 // newServiceEx 构造 Service（cacheRefresh 为 nil 表示无刷新能力，跳过）。
 func newServiceEx(cacheRefresh func(path string) error) *Service {
-	return &Service{cacheRefresh: cacheRefresh, ptyCancels: map[int]context.CancelFunc{}}
+	return &Service{cacheRefresh: cacheRefresh}
 }
 
 // refreshCache 写操作成功后定向刷新主项目快照。刷新失败只 Warn（写操作本身已
@@ -556,48 +548,4 @@ func countFileLines(absPath string) (lines int, binary bool) {
 		return 0, true
 	}
 	return bytes.Count(data, []byte{'\n'}), false
-}
-
-// --- PTY 会话（提案 1014，server 停机时由 OnServerStop 收尾）---
-
-// ServePty 处理一个 PTY WebSocket 连接。会话机制在 pty.go（servePtySession）；
-// 这里负责入参校验与把 cancel 登记进注册表（server 停机时 StopPtySessions 广播）。
-func (s *Service) ServePty(ctx context.Context, conn *websocket.Conn, dir string, cols, rows int) error {
-	if _, err := os.Stat(dir); err != nil {
-		return fmt.Errorf("path 目录不可用: path=%s: %w", dir, err)
-	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	defer s.trackPty(cancel)()
-	return servePtySession(ctx, conn, dir, cols, rows)
-}
-
-// StopPtySessions 向所有活跃 PTY 会话发取消（server 停机时调用），确保无孤儿 shell。
-// MVP 用 Service 上的轻量注册表；会话数 = 浏览器页面数，量级极小。
-func (s *Service) StopPtySessions() {
-	s.ptyMu.Lock()
-	defer s.ptyMu.Unlock()
-	for _, cancel := range s.ptyCancels {
-		cancel()
-	}
-	s.ptyCancels = map[int]context.CancelFunc{}
-}
-
-// trackPty 把会话 cancel 登记进注册表，返回的 untrack 供会话结束时 defer 注销。
-func (s *Service) trackPty(cancel context.CancelFunc) (untrack func()) {
-	s.ptyMu.Lock()
-	s.ptySeq++
-	id := s.ptySeq
-	s.ptyCancels[id] = cancel
-	s.ptyMu.Unlock()
-	return func() {
-		s.ptyMu.Lock()
-		delete(s.ptyCancels, id)
-		s.ptyMu.Unlock()
-	}
-}
-
-// OnServerStop 实现 app 的 serverStopHook：server 停机时杀掉全部 PTY 子进程。
-func (s *Service) OnServerStop() {
-	s.StopPtySessions()
 }

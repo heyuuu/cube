@@ -3,14 +3,10 @@ package handlers
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"mime"
-	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 
-	"github.com/coder/websocket"
 	"github.com/danielgtaylor/huma/v2"
 
 	"cube/internal/api"
@@ -19,7 +15,7 @@ import (
 )
 
 // 工作台基座（提案 docs/proposals/1010-1013 系列）：repo 信息 / refs / tree /
-// file / diff / commits / worktree / branch / pty 等端点的 HTTP 出口。
+// file / diff / commits / worktree / branch 等端点的 HTTP 出口。
 
 // WorkbenchHandler workbench 域 HTTP 出口。
 type WorkbenchHandler struct {
@@ -55,9 +51,6 @@ func (h *WorkbenchHandler) Register(r *api.Routes) {
 	// raw 文件读取：响应是原始字节 + 按扩展名的 Content-Type（图片预览用），
 	// 不套 JSONOutput envelope，huma 签名的 handler 直接传 Get（Body []byte 直写）
 	r.Get("/api/workbench/file/raw", "读取文件原始内容", h.fileRaw)
-
-	// WebSocket：连接升级，需要原始控制 ResponseWriter，走 Raw（不进文档）
-	r.Raw("GET /api/workbench/pty", http.HandlerFunc(h.ptyWs))
 }
 
 func (h *WorkbenchHandler) info(input struct {
@@ -304,22 +297,6 @@ func (h *WorkbenchHandler) fileRaw(_ context.Context, input *FileRawInput) (*Fil
 		ContentType:  ctype,
 		CacheControl: "no-store", // 内容随源切换实时变，不做缓存
 	}, nil
-}
-
-func (h *WorkbenchHandler) ptyWs(w http.ResponseWriter, r *http.Request) {
-	dir := r.URL.Query().Get("path")
-	cols, _ := strconv.Atoi(r.URL.Query().Get("cols"))
-	rows, _ := strconv.Atoi(r.URL.Query().Get("rows"))
-
-	conn, err := websocket.Accept(w, r, nil)
-	if err != nil {
-		return
-	}
-	defer func() { _ = conn.CloseNow() }()
-	if err := h.workbenchService.ServePty(r.Context(), conn, dir, cols, rows); err != nil {
-		slog.Warn("pty 会话异常结束", "dir", dir, "err", err)
-		_ = conn.Close(websocket.StatusInternalError, err.Error())
-	}
 }
 
 func (h *WorkbenchHandler) changes(input struct {

@@ -15,7 +15,6 @@ import { ContentViewPanel } from './panels/content-view-panel';
 import { GitTreePanel } from './panels/git-tree-panel';
 import { ContentPanelPlaceholder } from './panels/placeholders';
 import { PANEL_ORDER, PANEL_REGISTRY } from './panels/registry';
-import { TerminalPanel } from './panels/terminal-panel';
 import { readWorkbenchParams, writePathParam } from './params';
 import { PathEntry } from './path-entry';
 import { ProjectSwitcher } from './project-switcher';
@@ -24,10 +23,10 @@ import { useWorkbenchLayout } from './workbench-layout';
 import type { PanelId } from './panels/registry';
 
 // 工作台页面（1010 基座 → 1011 选择 → 1015 面板组装）：以任意本机 git 目录为输入，
-// 聚合 git 可视化 / 代码阅读 / diff / PTY。挂全局壳（1023），Layout 按本前缀切铺满型 main。
+// 聚合 git 可视化 / 代码阅读 / diff。挂全局壳（1023），Layout 按本前缀切铺满型 main。
 // URL 是面板间唯一总线（path + 选中态 source/left/right/file，见 params.ts）；
 // 布局（面板槽位组合）存 localStorage，属个人偏好不进 URL。
-// 终端固定底部抽屉，不进主区布局；主区面板同类型单实例（多实例留待后续）。
+// 主区面板同类型单实例（多实例留待后续）。
 export function WorkbenchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   // memo 化稳住对象身份：URL 不变则 params 不重建，下游 effect 依赖 params 才不会每渲染都触发
@@ -222,7 +221,6 @@ export function WorkbenchPage() {
           );
         })}
       </div>
-      <TerminalPanel path={params.path} />
     </div>
   );
 }

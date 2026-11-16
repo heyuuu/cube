@@ -111,7 +111,7 @@ func (r *Routes) Post[I, O any](path string, summary string, h TypedHandler[I, O
 // --- 原生路由（Raw）---
 
 // Raw 原样透传给底层 mux 挂载，不经 huma、不进 OpenAPI 文档。
-// pattern 为完整 method+path（如 "GET /api/workbench/pty"）。
+// pattern 为完整 method+path（如静态资源 SPA 回退的 "GET /"）。
 func (r *Routes) Raw(pattern string, h http.Handler) {
 	r.mux.Handle(pattern, h)
 }
