@@ -8,8 +8,6 @@ import (
 	"cube/internal/domain/usage"
 )
 
-// --- handler ---
-
 // UsageHandler usage 出口：读侧给 workbench 入口的「最近打开」，写侧补记
 // web 直开（url 型 opener 动作、workbench 进入）这类不经过后端打开链路的使用信号。
 type UsageHandler struct {
@@ -27,6 +25,9 @@ func (h *UsageHandler) Register(r *api.Routes) {
 	r.Post("/api/usage/record", "补记一条使用记录（web 直开不经过后端记录的场景，如 url 型 opener 动作、workbench 进入）", api.JSONHandler(h.record))
 }
 
+/**
+ * GET /api/usage/recent-paths
+ */
 func (h *UsageHandler) recentPaths(input struct {
 	Limit int `query:"limit" doc:"返回条数上限，缺省 5"`
 }) (*ListResult[usage.PathUsage], error) {
@@ -36,6 +37,10 @@ func (h *UsageHandler) recentPaths(input struct {
 	}
 	return listResult(h.service.RecentPaths(limit)), nil
 }
+
+/**
+ * POST /api/usage/record
+ */
 
 // record 接口入参。字段对齐 usage.Record：
 // workbench 进入只传 project（opener 留空——空 opener 不参与 opener 偏好统计）。

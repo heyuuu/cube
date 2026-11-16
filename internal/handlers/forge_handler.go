@@ -9,8 +9,7 @@ import (
 	"cube/internal/domain/project"
 )
 
-// ForgeHandler forge 配置管理的 HTTP 出口（1040 forge / 1041 account / 1042 forge 页）。
-// 1044 起 namespace 模型移除，account 是 forge 下唯一的关联配置。
+// ForgeHandler forge 领域的 HTTP handler。
 type ForgeHandler struct {
 	forgeService   *forge.Service
 	projectService *project.Service // 对账用：本地项目快照投影为 forge.LocalRepo

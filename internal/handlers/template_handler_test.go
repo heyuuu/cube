@@ -11,7 +11,7 @@ import (
 func TestTplSourceListEmpty(t *testing.T) {
 	env := newTestEnv(t)
 	got := getJSON(t, env.url("/api/template/source/list"))
-	var out TplSourceListResult
+	var out templateSourceListResult
 	decodeData(t, got, &out)
 	if out.List == nil || len(out.List) != 0 {
 		t.Fatalf("空配置应返回 []（nil 序列化）, got %#v", out.List)
@@ -24,9 +24,9 @@ func TestTplSourceListEmpty(t *testing.T) {
 // TestTplSourceWrite save/delete/save-all 出口契约（含坏数据中文错误不落文件）。
 func TestTplSourceWrite(t *testing.T) {
 	env := newTestEnv(t)
-	list := func() TplSourceListResult {
+	list := func() templateSourceListResult {
 		t.Helper()
-		var out TplSourceListResult
+		var out templateSourceListResult
 		decodeData(t, getJSON(t, env.url("/api/template/source/list")), &out)
 		return out
 	}

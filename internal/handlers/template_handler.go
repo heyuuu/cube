@@ -25,29 +25,25 @@ func (h *TemplateHandler) Register(r *api.Routes) {
 	r.Post("/api/template/source/save-all", "整节覆盖模板源（提交即落盘，含顺序）", api.JSONHandler(h.sourceSaveAll))
 }
 
-// TplSourceListResult template/source/list 出参：列表 + 默认源名（前端标注「默认」用，
-// 事实源是 template.DefaultSourceName 常量，避免前端硬编码）。
-type TplSourceListResult struct {
+/**
+ * GET /api/template/source/list
+ */
+
+type templateSourceListResult struct {
 	List          []template.TplSource `json:"list"`
 	DefaultSource string               `json:"defaultSource"`
 }
 
-func (h *TemplateHandler) sourceList(_ struct{}) (*TplSourceListResult, error) {
-	return &TplSourceListResult{
+func (h *TemplateHandler) sourceList(_ struct{}) (*templateSourceListResult, error) {
+	return &templateSourceListResult{
 		List:          h.templateService.TplSources(),
 		DefaultSource: template.DefaultSourceName,
 	}, nil
 }
 
-// TplSourceItem 模板源单项（save / delete / save-all 共用，字段与 template.TplSource 对齐）。
-type TplSourceItem struct {
-	Name    string `json:"name" doc:"source 名（cube create 的引用短名，如 core）"`
-	RepoURL string `json:"repoUrl" doc:"git 仓库地址（git@host:path / https://host/path / 本地绝对路径）"`
-}
-
-func (it TplSourceItem) toTplSource() template.TplSource {
-	return template.TplSource{Name: it.Name, RepoURL: it.RepoURL}
-}
+/**
+ * POST /api/template/source/save
+ */
 
 // template/source/save 接口入参（name 是唯一键）。
 func (h *TemplateHandler) sourceSave(input WithBody[TplSourceItem]) (*OpResult, error) {
@@ -57,6 +53,10 @@ func (h *TemplateHandler) sourceSave(input WithBody[TplSourceItem]) (*OpResult, 
 	return opSuccess, nil
 }
 
+/**
+ * POST /api/template/source/delete
+ */
+
 // template/source/delete 接口入参（完整单项，唯一键由 domain 计算）。
 func (h *TemplateHandler) sourceDelete(input WithBody[TplSourceItem]) (*OpResult, error) {
 	if err := h.templateService.DeleteTplSource(input.Body.toTplSource()); err != nil {
@@ -64,6 +64,10 @@ func (h *TemplateHandler) sourceDelete(input WithBody[TplSourceItem]) (*OpResult
 	}
 	return opSuccess, nil
 }
+
+/**
+ * POST /api/template/source/save-all
+ */
 
 // template/source/save-all 接口入参（提交清单即落盘结果，含顺序）。
 func (h *TemplateHandler) sourceSaveAll(input WithBody[struct {
