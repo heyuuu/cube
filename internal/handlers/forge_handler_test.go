@@ -29,6 +29,11 @@ func TestForgeWrite(t *testing.T) {
 	if !r.Ok {
 		t.Fatalf("save 应成功, message=%q", r.Message)
 	}
+	var op OpResult
+	decodeData(t, r, &op)
+	if !op.Ok {
+		t.Fatalf("操作型端点 data 应为 {\"ok\":true}, got %#v", op)
+	}
 	got := getJSON(t, env.url("/api/forge/list"))
 	var out ListResult[forge.Forge]
 	decodeData(t, got, &out)

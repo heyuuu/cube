@@ -52,7 +52,7 @@ func (it ForgeItem) toForge() forge.Forge {
 	return forge.Forge{Host: it.Host, Kind: it.Kind, Icon: it.Icon}
 }
 
-// ForgeSaveInput forge/save 接口入参。
+// forge/save 接口入参。
 func (h *ForgeHandler) forgeSave(input WithBody[ForgeItem]) (*OpResult, error) {
 	if err := h.forgeService.SaveForge(input.Body.toForge()); err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (h *ForgeHandler) forgeSave(input WithBody[ForgeItem]) (*OpResult, error) {
 	return opSuccess, nil
 }
 
-// ForgeDeleteInput forge/delete 接口入参（完整单项，唯一键由 domain 计算）。
+// forge/delete 接口入参（完整单项，唯一键由 domain 计算）。
 func (h *ForgeHandler) forgeDelete(input WithBody[ForgeItem]) (*OpResult, error) {
 	if err := h.forgeService.DeleteForge(input.Body.toForge()); err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (it AccountItem) toAccount() forge.Account {
 	return forge.Account{ForgeHost: it.ForgeHost, Username: it.Username, Token: it.Token}
 }
 
-// AccountSaveInput account/save 接口入参。
+// account/save 接口入参。
 func (h *ForgeHandler) accountSave(input WithBody[AccountItem]) (*OpResult, error) {
 	if err := h.forgeService.SaveAccount(input.Body.toAccount()); err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (h *ForgeHandler) accountSave(input WithBody[AccountItem]) (*OpResult, erro
 	return opSuccess, nil
 }
 
-// AccountDeleteInput account/delete 接口入参（完整单项，唯一键由 domain 计算）。
+// account/delete 接口入参（完整单项，唯一键由 domain 计算）。
 func (h *ForgeHandler) accountDelete(input WithBody[AccountItem]) (*OpResult, error) {
 	if err := h.forgeService.DeleteAccount(input.Body.toAccount()); err != nil {
 		return nil, err

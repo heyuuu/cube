@@ -49,7 +49,7 @@ func (it TplSourceItem) toTplSource() template.TplSource {
 	return template.TplSource{Name: it.Name, RepoURL: it.RepoURL}
 }
 
-// TplSourceSaveInput template/source/save 接口入参（name 是唯一键）。
+// template/source/save 接口入参（name 是唯一键）。
 func (h *TemplateHandler) sourceSave(input WithBody[TplSourceItem]) (*OpResult, error) {
 	if err := h.templateService.SaveTplSource(input.Body.toTplSource()); err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (h *TemplateHandler) sourceSave(input WithBody[TplSourceItem]) (*OpResult, 
 	return opSuccess, nil
 }
 
-// TplSourceDeleteInput template/source/delete 接口入参（完整单项，唯一键由 domain 计算）。
+// template/source/delete 接口入参（完整单项，唯一键由 domain 计算）。
 func (h *TemplateHandler) sourceDelete(input WithBody[TplSourceItem]) (*OpResult, error) {
 	if err := h.templateService.DeleteTplSource(input.Body.toTplSource()); err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (h *TemplateHandler) sourceDelete(input WithBody[TplSourceItem]) (*OpResult
 	return opSuccess, nil
 }
 
-// TplSourceSaveAllInput template/source/save-all 接口入参（提交清单即落盘结果，含顺序）。
+// template/source/save-all 接口入参（提交清单即落盘结果，含顺序）。
 func (h *TemplateHandler) sourceSaveAll(input WithBody[struct {
 	Items []TplSourceItem `json:"items" doc:"按目标顺序排列的全部模板源"`
 }]) (*OpResult, error) {

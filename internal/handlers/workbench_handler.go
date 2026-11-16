@@ -72,7 +72,7 @@ func (h *WorkbenchHandler) refs(input struct {
 	return h.workbenchService.Refs(input.Path)
 }
 
-// todo 此处 Output 应该改为 *ListResult[workbench.RemoteEntry], 但是需要前端兼容所以暂缓
+// todo 出参应改为 *ListResult[workbench.RemoteEntry]，需前端兼容，暂缓
 func (h *WorkbenchHandler) remotes(input struct {
 	Path string `query:"path" required:"true"`
 }) (*[]workbench.RemoteEntry, error) {
@@ -102,7 +102,7 @@ func (h *WorkbenchHandler) commitInfo(input struct {
 	return h.workbenchService.CommitInfo(input.Path, src)
 }
 
-// todo 此处 Output 应该改为 *ListResult[workbench.WorktreeStatus], 但是需要前端兼容所以暂缓
+// todo 出参应改为 *ListResult[workbench.WorktreeStatus]，需前端兼容，暂缓
 func (h *WorkbenchHandler) worktrees(input struct {
 	Path string `query:"path" required:"true"`
 }) (*[]workbench.WorktreeStatus, error) {

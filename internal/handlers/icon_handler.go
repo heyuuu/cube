@@ -21,13 +21,13 @@ func (h *IconHandler) Register(r *api.Routes) {
 	r.Post("/api/icon/extract", "从本地路径（.app 目录或图片文件）或 http(s) URL 提取图标（64px PNG，base64）", api.JSONHandler(h.iconExtract))
 }
 
-// IconExtractInput icon/extract 接口入参。source 由后端按形态分发：
-// http(s):// 拉取（favicon.ico / png / jpg / gif）、.app 目录走 icns、文件按图片解码。
 // IconExtractResult icon/extract 接口出参（结构化出参，openapi 类型化供前端推导）。
 type IconExtractResult struct {
 	Value string `json:"value" doc:"64px PNG 的 base64 字符串"`
 }
 
+// iconExtract 入参 source 由后端按形态分发：http(s):// 拉取（favicon.ico / png /
+// jpg / gif）、.app 目录走 icns、文件按图片解码。
 func (h *IconHandler) iconExtract(input WithBody[struct {
 	Source string `json:"source" doc:"图标来源：本地路径（.app 目录或图片文件）或 http(s) URL（如 https://gitee.com/favicon.ico）"`
 }]) (*IconExtractResult, error) {

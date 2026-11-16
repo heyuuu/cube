@@ -144,11 +144,10 @@ func (h *ProjectHandler) projectList(_ struct{}) (*ProjectListResult, error) {
 	}, nil
 }
 
-// ProjectOpenInput open 接口入参。huma 约定：请求体字段须挂在名为 Body 的子结构上。
-// path 是项目绝对路径（项目唯一标识口径）；dir 可选，为目标目录（worktree，1032），
-// 缺省/等于项目根 = 打开根目录。
 // projectOpen 用指定 opener 打开已收录项目的指定目标目录，成功后记 usage（best-effort：失败不影响打开结果）。
 // 区别于 opener/open（打开任意路径，不产生使用信号）。
+// 入参：path 是项目绝对路径（项目唯一标识口径）；dir 可选，为目标目录（worktree，1032），
+// 缺省/等于项目根 = 打开根目录。
 func (h *ProjectHandler) projectOpen(input WithBody[struct {
 	Path   string `json:"path" doc:"项目绝对路径"`
 	Dir    string `json:"dir,omitempty" doc:"目标目录绝对路径（worktree；缺省打开项目根）"`
@@ -228,7 +227,7 @@ func (it ScanRuleItem) toScanRule() project.ScanRule {
 	return project.ScanRule{Group: it.Group, Path: it.Path, MaxDepth: it.MaxDepth, Icon: it.Icon, Tags: it.Tags}
 }
 
-// ScanRuleSaveInput scan-rule/save 接口入参。
+// scan-rule/save 接口入参。
 func (h *ProjectHandler) scanRuleSave(input WithBody[ScanRuleItem]) (*OpResult, error) {
 	if err := h.projectService.SaveScanRule(input.Body.toScanRule()); err != nil {
 		return nil, err
@@ -236,7 +235,7 @@ func (h *ProjectHandler) scanRuleSave(input WithBody[ScanRuleItem]) (*OpResult, 
 	return opSuccess, nil
 }
 
-// ScanRuleDeleteInput scan-rule/delete 接口入参（完整单项，唯一键由 domain 计算）。
+// scan-rule/delete 接口入参（完整单项，唯一键由 domain 计算）。
 func (h *ProjectHandler) scanRuleDelete(input WithBody[ScanRuleItem]) (*OpResult, error) {
 	if err := h.projectService.DeleteScanRule(input.Body.toScanRule()); err != nil {
 		return nil, err
@@ -244,7 +243,7 @@ func (h *ProjectHandler) scanRuleDelete(input WithBody[ScanRuleItem]) (*OpResult
 	return opSuccess, nil
 }
 
-// ScanRuleSaveAllInput scan-rule/save-all 接口入参（提交清单即落盘结果，含顺序）。
+// scan-rule/save-all 接口入参（提交清单即落盘结果，含顺序）。
 func (h *ProjectHandler) scanRuleSaveAll(input WithBody[struct {
 	Items []ScanRuleItem `json:"items" doc:"按目标顺序排列的全部扫描规则"`
 }]) (*OpResult, error) {
@@ -265,7 +264,7 @@ func (it CloneRuleItem) toCloneRule() project.CloneRule {
 	return project.CloneRule{RepoHost: it.RepoHost, RepoPrefix: it.RepoPrefix, LocalPath: it.LocalPath}
 }
 
-// CloneRuleSaveInput clone-rule/save 接口入参。
+// clone-rule/save 接口入参。
 func (h *ProjectHandler) cloneRuleSave(input WithBody[CloneRuleItem]) (*OpResult, error) {
 	if err := h.projectService.SaveCloneRule(input.Body.toCloneRule()); err != nil {
 		return nil, err
@@ -273,7 +272,7 @@ func (h *ProjectHandler) cloneRuleSave(input WithBody[CloneRuleItem]) (*OpResult
 	return opSuccess, nil
 }
 
-// CloneRuleDeleteInput clone-rule/delete 接口入参（完整单项，唯一键由 domain 计算）。
+// clone-rule/delete 接口入参（完整单项，唯一键由 domain 计算）。
 func (h *ProjectHandler) cloneRuleDelete(input WithBody[CloneRuleItem]) (*OpResult, error) {
 	if err := h.projectService.DeleteCloneRule(input.Body.toCloneRule()); err != nil {
 		return nil, err
@@ -281,7 +280,7 @@ func (h *ProjectHandler) cloneRuleDelete(input WithBody[CloneRuleItem]) (*OpResu
 	return opSuccess, nil
 }
 
-// CloneRuleSaveAllInput clone-rule/save-all 接口入参（提交清单即落盘结果，含顺序）。
+// clone-rule/save-all 接口入参（提交清单即落盘结果，含顺序）。
 func (h *ProjectHandler) cloneRuleSaveAll(input WithBody[struct {
 	Items []CloneRuleItem `json:"items" doc:"按目标顺序排列的全部 clone 规则"`
 }]) (*OpResult, error) {

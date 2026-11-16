@@ -89,7 +89,6 @@ func (h *OpenerHandler) openerIntents(_ struct{}) (*ListResult[*OpenerIntentDTO]
 	return listResult(list), nil
 }
 
-// OpenerOpenInput open 接口入参。huma 约定：请求体字段须挂在名为 Body 的子结构上。
 // openerOpen 用指定 opener 打开任意文件/目录（项目打开走 project/open，那里记 usage；此处不产生使用信号）。
 // role 按路径实际类型校验：目录须 open-dir、文件须 open-file。
 func (h *OpenerHandler) openerOpen(input WithBody[struct {
@@ -183,7 +182,7 @@ func (it OpenerItem) toSpec() opener.Opener {
 	return opener.Opener{Name: it.Name, Title: it.Title, Actions: actions, Icon: it.Icon}
 }
 
-// OpenerSaveInput save 接口入参。
+// opener/save 接口入参。
 func (h *OpenerHandler) openerSave(input WithBody[OpenerItem]) (*OpResult, error) {
 	// 校验在 Service 写侧（领域构造函数），坏数据返回中文错误、不落文件
 	if err := h.service.SaveOpener(input.Body.toSpec()); err != nil {
@@ -192,7 +191,7 @@ func (h *OpenerHandler) openerSave(input WithBody[OpenerItem]) (*OpResult, error
 	return opSuccess, nil
 }
 
-// OpenerDeleteInput delete 接口入参（完整单项，唯一键由 domain 计算）。
+// opener/delete 接口入参（完整单项，唯一键由 domain 计算）。
 func (h *OpenerHandler) openerDelete(input WithBody[OpenerItem]) (*OpResult, error) {
 	if err := h.service.DeleteOpener(input.Body.toSpec()); err != nil {
 		return nil, err
@@ -200,7 +199,7 @@ func (h *OpenerHandler) openerDelete(input WithBody[OpenerItem]) (*OpResult, err
 	return opSuccess, nil
 }
 
-// OpenerSaveAllInput save-all 接口入参（提交清单即落盘结果，含顺序）。
+// opener/save-all 接口入参（提交清单即落盘结果，含顺序）。
 func (h *OpenerHandler) openerSaveAll(input WithBody[struct {
 	Items []OpenerItem `json:"items" doc:"按目标顺序排列的全部 opener"`
 }]) (*OpResult, error) {
@@ -210,7 +209,7 @@ func (h *OpenerHandler) openerSaveAll(input WithBody[struct {
 	return opSuccess, nil
 }
 
-// IntentDefaultSaveInput intent-default/save 接口入参。
+// intent-default/save 接口入参。
 func (h *OpenerHandler) intentDefaultSave(input WithBody[struct {
 	Intent string `json:"intent" doc:"打开意图（如 dir / file / diff-file / git）"`
 	Opener string `json:"opener" doc:"opener 名称（须声明该 intent 对应的 role）"`
@@ -225,7 +224,7 @@ func (h *OpenerHandler) intentDefaultSave(input WithBody[struct {
 	return opSuccess, nil
 }
 
-// IntentDefaultDeleteInput intent-default/delete 接口入参。
+// intent-default/delete 接口入参。
 func (h *OpenerHandler) intentDefaultDelete(input WithBody[struct {
 	Intent string `json:"intent" doc:"打开意图"`
 }]) (*OpResult, error) {
