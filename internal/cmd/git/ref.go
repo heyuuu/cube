@@ -80,9 +80,15 @@ func allRefInfos(repoPath string, remote string) ([]refInfo, error) {
 		refNames[ref.ShortName] = struct{}{}
 		localKinds[ref.ShortName] = RefTag
 	}
+	// 远端分支的 ShortName 含 remote 前缀（"origin/develop"），与本地分支名对不上，
+	// 须以 Branch 为 key 才能与本地分支配对；且只统计目标 remote 的跟踪分支，
+	// 其它 remote 的同名分支不算「远端已存在」
 	for _, ref := range refs.Remotes {
-		refNames[ref.ShortName] = struct{}{}
-		remoteKinds[ref.ShortName] = RefBranch
+		if ref.Remote != remote {
+			continue
+		}
+		refNames[ref.Branch] = struct{}{}
+		remoteKinds[ref.Branch] = RefBranch
 	}
 	for _, tag := range remoteTags {
 		refNames[tag.Name] = struct{}{}
