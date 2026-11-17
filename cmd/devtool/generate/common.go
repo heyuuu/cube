@@ -3,10 +3,10 @@ package generate
 import (
 	"fmt"
 	"go/format"
-	"os"
 	"regexp"
 	"strings"
 
+	"github.com/heyuuu/x/xstd/xos"
 	"github.com/heyuuu/x/xstd/xstrings"
 )
 
@@ -16,7 +16,7 @@ func writeFormatted(path, src string) error {
 	if err != nil {
 		return fmt.Errorf("生成内容不是合法 Go 源码（%s）: %w", path, err)
 	}
-	return os.WriteFile(path, formatted, 0o644)
+	return xos.WriteFile(path, formatted, 0o644)
 }
 
 /* naming */

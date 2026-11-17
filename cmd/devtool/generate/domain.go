@@ -5,7 +5,6 @@ package generate
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/heyuuu/x/xstd/xstrings"
@@ -63,17 +62,9 @@ func GenDomain(module, domain string) error {
 		targets = append(targets, genTarget{Path: path, Tpl: g.Tpl})
 	}
 	for _, t := range targets {
-		if err := os.MkdirAll(filepath.Dir(t.Path), 0o755); err != nil {
+		if err := renderToFile(t.Tpl, t.Path, data); err != nil {
 			return err
 		}
-		src, err := renderTplFile(t.Tpl, data)
-		if err != nil {
-			return err
-		}
-		if err := writeFormatted(t.Path, src); err != nil {
-			return err
-		}
-		fmt.Println("已创建", t.Path)
 	}
 
 	if err := injectBoot(bootFile, module, domain, exported); err != nil {

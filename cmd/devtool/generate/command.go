@@ -60,18 +60,9 @@ func GenCommand(module string, args []string) error {
 // genRootCommand 生成根命令文件并注入 root.go。
 func genRootCommand(data map[string]string) error {
 	target := "internal/cmd/" + fileName(data["name"]) + ".go"
-	if _, err := os.Stat(target); err == nil {
-		return fmt.Errorf("目标文件已存在，拒绝覆盖: %s", target)
-	}
-
-	src, err := renderTplFile("cmd_root.gotmpl", data)
-	if err != nil {
+	if err := renderToFile("cmd_root.gotmpl", target, data); err != nil {
 		return err
 	}
-	if err := writeFormatted(target, src); err != nil {
-		return err
-	}
-	fmt.Println("已创建", target)
 
 	line := fmt.Sprintf("cmd.AddCommand(new%sCmd(a)) // %s\n", data["exported"], data["name"])
 	if err := injectRootCmd(rootCmdFile, line, ""); err != nil {
@@ -87,23 +78,16 @@ func genGroupCommand(data map[string]string) error {
 	groupDir := filepath.Join("internal/cmd", group)
 	groupCmdFile := filepath.Join(groupDir, "cmd.go")
 	target := filepath.Join(groupDir, fileName(data["name"])+".go")
-	if _, err := os.Stat(target); err == nil {
-		return fmt.Errorf("目标文件已存在，拒绝覆盖: %s", target)
+
+	if err := renderToFile("cmd_sub.gotmpl", target, data); err != nil {
+		return err
 	}
 
 	if _, err := os.Stat(groupCmdFile); os.IsNotExist(err) {
 		// 组未初始化：建组入口（首个子命令直接写进模板），并在 root.go 注册组
-		if err := os.MkdirAll(groupDir, 0o755); err != nil {
+		if err := renderToFile("cmd_group.gotmpl", groupCmdFile, data); err != nil {
 			return err
 		}
-		src, err := renderTplFile("cmd_group.gotmpl", data)
-		if err != nil {
-			return err
-		}
-		if err := writeFormatted(groupCmdFile, src); err != nil {
-			return err
-		}
-		fmt.Println("已创建", groupCmdFile)
 
 		line := fmt.Sprintf("cmd.AddCommand(%s.NewCmd(a)) // %s 相关\n", group, group)
 		importPath := data["module"] + "/internal/cmd/" + group
@@ -119,15 +103,6 @@ func genGroupCommand(data map[string]string) error {
 			return err
 		}
 	}
-
-	src, err := renderTplFile("cmd_sub.gotmpl", data)
-	if err != nil {
-		return err
-	}
-	if err := writeFormatted(target, src); err != nil {
-		return err
-	}
-	fmt.Println("已创建", target)
 	return nil
 }
 
