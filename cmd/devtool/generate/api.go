@@ -93,13 +93,13 @@ func GenAPI(method, route string) error {
 	}
 
 	// 先插注册行（偏移基于原文，插入不影响其前内容），再在文件尾追加端点代码
-	registerLine, err := renderTemplate("api_register.gotmpl", data)
+	registerLine, err := renderTplFile("api_register.gotmpl", data)
 	if err != nil {
 		return err
 	}
 	text = text[:insertAt] + "\t" + registerLine + "\n" + text[insertAt:]
 
-	appendCode, err := renderTemplate("api_append.gotmpl", data)
+	appendCode, err := renderTplFile("api_append.gotmpl", data)
 	if err != nil {
 		return err
 	}

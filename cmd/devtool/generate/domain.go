@@ -53,7 +53,7 @@ func GenDomain(module, domain string) error {
 	// 先展开全部目标路径并逐一检查，全部通过后才动文件系统
 	targets := make([]genTarget, 0, len(genTargets))
 	for _, g := range genTargets {
-		path, err := expandPath(g.Path, data)
+		path, err := renderTplStr(g.Path, data)
 		if err != nil {
 			return fmt.Errorf("展开目标路径 %q 失败: %w", g.Path, err)
 		}
@@ -66,7 +66,7 @@ func GenDomain(module, domain string) error {
 		if err := os.MkdirAll(filepath.Dir(t.Path), 0o755); err != nil {
 			return err
 		}
-		src, err := renderTemplate(t.Tpl, data)
+		src, err := renderTplFile(t.Tpl, data)
 		if err != nil {
 			return err
 		}
@@ -102,7 +102,7 @@ func injectBoot(path, module, domain, exported string) error {
 		}
 	}
 
-	getter, err := renderTemplate("boot_getter.gotmpl", map[string]string{
+	getter, err := renderTplFile("boot_getter.gotmpl", map[string]string{
 		"domain":   domain,
 		"exported": exported,
 	})

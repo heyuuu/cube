@@ -1,14 +1,11 @@
 package generate
 
 import (
-	"bytes"
-	"embed"
 	"fmt"
 	"go/format"
 	"os"
 	"regexp"
 	"strings"
-	"text/template"
 
 	"github.com/heyuuu/x/xstd/xstrings"
 )
@@ -67,37 +64,4 @@ func checkMethod(method string) error {
 // fileName 把 kebab-case 名转 Go 文件名惯用的 snake_case：opener-search → opener_search。
 func fileName(s string) string {
 	return strings.ReplaceAll(s, "-", "_")
-}
-
-/* template */
-
-//go:embed tpl
-var tplFS embed.FS
-
-// renderTemplate 渲染 tpl/ 下指定模板为源码片段（去首尾空白），可用键由调用方的 data 决定。
-func renderTemplate(name string, data map[string]string) (string, error) {
-	tpl, err := template.ParseFS(tplFS, "tpl/"+name)
-	if err != nil {
-		return "", fmt.Errorf("解析模板 tpl/%s 失败: %w", name, err)
-	}
-	tpl.Option("missingkey=error") // 模板里打错变量名直接报错，不静默产空
-	var buf bytes.Buffer
-	if err := tpl.Execute(&buf, data); err != nil {
-		return "", fmt.Errorf("渲染模板 tpl/%s 失败: %w", name, err)
-	}
-	return strings.TrimSpace(buf.String()), nil
-}
-
-// expandPath 用同一套模板变量展开目标路径模板。
-func expandPath(pattern string, data map[string]string) (string, error) {
-	tpl, err := template.New("path").Parse(pattern)
-	if err != nil {
-		return "", err
-	}
-	tpl.Option("missingkey=error")
-	var buf bytes.Buffer
-	if err := tpl.Execute(&buf, data); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
 }

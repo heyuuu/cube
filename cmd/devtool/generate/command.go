@@ -64,7 +64,7 @@ func genRootCommand(data map[string]string) error {
 		return fmt.Errorf("目标文件已存在，拒绝覆盖: %s", target)
 	}
 
-	src, err := renderTemplate("cmd_root.gotmpl", data)
+	src, err := renderTplFile("cmd_root.gotmpl", data)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func genGroupCommand(data map[string]string) error {
 		if err := os.MkdirAll(groupDir, 0o755); err != nil {
 			return err
 		}
-		src, err := renderTemplate("cmd_group.gotmpl", data)
+		src, err := renderTplFile("cmd_group.gotmpl", data)
 		if err != nil {
 			return err
 		}
@@ -120,7 +120,7 @@ func genGroupCommand(data map[string]string) error {
 		}
 	}
 
-	src, err := renderTemplate("cmd_sub.gotmpl", data)
+	src, err := renderTplFile("cmd_sub.gotmpl", data)
 	if err != nil {
 		return err
 	}
